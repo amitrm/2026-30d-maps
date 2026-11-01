@@ -28,7 +28,11 @@ Each map uses public open data, and the whole set reads as one story told in fiv
 
 ## The maps so far
 
-The first map is published on November 1. A row is added here for each day of the challenge.
+| Day | Theme | The story | Data | Map |
+| --- | --- | --- | --- | --- |
+| 01 | Points | Which 'L' stations can a rider who cannot take the stairs actually use? | [CTA 'L' stops with accessibility flags](https://data.cityofchicago.org/d/8pix-ypme) | [The Doors](https://amitrm.github.io/2026-30d-maps/day01/) |
+
+A new row is added on each day of the challenge.
 
 ## Data
 
