@@ -1,0 +1,49 @@
+---
+import Base from '../../layouts/Base.astro';
+import days from '../../data/days.json';
+import { plates } from '../../plates/index.js';
+
+export function getStaticPaths() {
+  return days
+    .filter((d) => d.status === 'published' && plates[d.day])
+    .map((d) => ({ params: { slug: `day${String(d.day).padStart(2, '0')}` }, props: { d } }));
+}
+
+const { d } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const p = plates[d.day];
+const svg = p.render();
+const slug = (n) => `day${String(n).padStart(2, '0')}`;
+const published = days.filter((x) => x.status === 'published' && plates[x.day]).map((x) => x.day);
+const prev = published.filter((n) => n < d.day).at(-1);
+const next = published.find((n) => n > d.day);
+const dd = String(d.day).padStart(2, '0');
+---
+<Base title={`Plate ${d.plate} · ${d.title} — 800 to the Mile`} description={p.notes[1]}>
+  <nav class="daynav mono">
+    {prev ? <a href={`${base}${slug(prev)}/`}>← Day {String(prev).padStart(2, '0')}</a> : <span class="quiet">← —</span>}
+    <span>Day {dd} · {d.theme}</span>
+    {next ? <a href={`${base}${slug(next)}/`}>Day {String(next).padStart(2, '0')} →</a> : <span class="quiet">— →</span>}
+  </nav>
+
+  <a class="plate-link" href={`${base}exports/${slug(d.day)}.png`} aria-label="Open full-resolution plate"><figure class="plate" set:html={svg} /></a>
+
+  <section class="notes">
+    <p class="mono quiet">Plate {d.plate} · {d.chapter} · {d.date}</p>
+    {p.notes.map((n) => <p>{n}</p>)}
+    <h2 class="mono">Sources</h2>
+    <ul>{p.sources.map((s) => <li><a href={s.url}>{s.label}</a></li>)}</ul>
+    <p class="mono"><a href={`${base}exports/${slug(d.day)}.png`} download>Download plate, 2160 × 2700 PNG</a></p>
+  </section>
+</Base>
+
+<style>
+  .daynav { display: flex; justify-content: space-between; padding: 14px 0; font-size: 11px; }
+  .daynav a { text-decoration: none; }
+  .plate-link { display: block; text-decoration: none; }
+  .plate { margin: 8px auto 0; max-width: 880px; border: 1px solid var(--fog); }
+  .plate :global(svg) { display: block; width: 100%; height: auto; }
+  .notes { max-width: var(--measure); margin: 48px auto 0; }
+  .notes h2 { font-weight: 500; margin: 36px 0 8px; }
+  .notes ul { padding-left: 1.1em; }
+</style>

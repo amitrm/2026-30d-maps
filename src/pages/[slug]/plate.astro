@@ -1,0 +1,22 @@
+---
+// Bare, full-bleed plate used only for PNG export (scripts/export-plates.mjs).
+import Base from '../../layouts/Base.astro';
+import days from '../../data/days.json';
+import { plates } from '../../plates/index.js';
+
+export function getStaticPaths() {
+  return days
+    .filter((d) => d.status === 'published' && plates[d.day])
+    .map((d) => ({ params: { slug: `day${String(d.day).padStart(2, '0')}` }, props: { d } }));
+}
+const { d } = Astro.props;
+const svg = plates[d.day].render();
+---
+<Base title={`Plate ${d.plate} export`} bare>
+  <meta name="robots" content="noindex" />
+  <div class="export" set:html={svg} />
+</Base>
+<style>
+  .export { width: 1080px; height: 1350px; }
+  .export :global(svg) { display: block; width: 1080px; height: 1350px; }
+</style>

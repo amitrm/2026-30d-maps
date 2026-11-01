@@ -1,0 +1,91 @@
+---
+import Base from '../layouts/Base.astro';
+import days from '../data/days.json';
+import { plates } from '../plates/index.js';
+
+const base = import.meta.env.BASE_URL;
+const chapters = ['The Grid', 'The Systems', 'The Gaps', 'The Body', 'The Possible'];
+const numerals = ['I', 'II', 'III', 'IV', 'V'];
+const slug = (n) => `day${String(n).padStart(2, '0')}`;
+const isLive = (d) => d.status === 'published' && plates[d.day];
+const liveCount = days.filter(isLive).length;
+const fmt = (iso) => new Date(iso + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+---
+<Base title="800 to the Mile — a Chicago access atlas in 30 plates">
+  <section class="hero">
+    <!-- Reserved for the landing animation (to be designed). Static grid stands in for now. -->
+    <div id="hero-animation" aria-hidden="true">
+      <svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice">
+        {Array.from({ length: 21 }, (_, i) => <line x1={i * 20} x2={i * 20} y1="0" y2="300" />)}
+        {Array.from({ length: 16 }, (_, i) => <line x1="0" x2="400" y1={i * 20} y2={i * 20} />)}
+      </svg>
+    </div>
+    <div class="hero-text">
+      <p class="mono quiet">#30DayMapChallenge 2026 · Chicago · {liveCount} of 30 plates</p>
+      <h1>800 to the Mile</h1>
+      <p class="lede">
+        Chicago’s address grid promises equal distance: 800 numbers to a mile, an arterial every half mile, a bus on every arterial.
+        For thirty days in November, this atlas tests that promise with open data and asks one question: who actually gets to cover the mile?
+      </p>
+    </div>
+  </section>
+
+  {chapters.map((ch, ci) => (
+    <section class="chapter">
+      <h2><span class="mono quiet">Chapter {numerals[ci]}</span> {ch}</h2>
+      <ol class="tiles">
+        {days.filter((d) => d.chapter === ch).map((d) => (
+          <li class={isLive(d) ? 'tile live' : 'tile'}>
+            {isLive(d) ? (
+              <a href={`${base}${slug(d.day)}/`}>
+                <img src={`${base}exports/${slug(d.day)}.png`} alt={`Plate ${d.plate}: ${d.title}`} loading="lazy" width="1080" height="1350" />
+                <span class="meta mono">{String(d.day).padStart(2, '0')} · {d.theme}</span>
+                <span class="title">{d.title}</span>
+              </a>
+            ) : (
+              <div>
+                <span class="numeral">{d.plate}</span>
+                <span class="title">{d.theme}</span>
+                <span class="mono quiet when">Day {String(d.day).padStart(2, '0')} · {fmt(d.date)}</span>
+              </div>
+            )}
+          </li>
+        ))}
+      </ol>
+    </section>
+  ))}
+</Base>
+
+<style>
+  .hero { position: relative; display: grid; grid-template-columns: 1fr; padding: 72px 0 56px; border-bottom: 1px solid var(--ink); overflow: hidden; }
+  #hero-animation { position: absolute; inset: 0; opacity: 0.55; pointer-events: none; }
+  #hero-animation svg { width: 100%; height: 100%; }
+  #hero-animation line { stroke: var(--rule); stroke-width: 0.6; }
+  .hero-text { position: relative; max-width: 760px; }
+  h1 { font-weight: 500; font-size: clamp(52px, 9vw, 112px); line-height: 0.95; margin: 12px 0 24px; letter-spacing: -0.01em; }
+  .lede { font-size: 21px; max-width: 46ch; margin: 0; }
+
+  .chapter { padding: 40px 0 8px; }
+  .chapter h2 { font-weight: 500; font-size: 28px; margin: 0 0 18px; display: flex; gap: 16px; align-items: baseline; }
+  .tiles { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; }
+  .tile { aspect-ratio: 4 / 5; border: 1px solid var(--fog); position: relative; }
+  .tile > a, .tile > div { display: flex; flex-direction: column; height: 100%; padding: 10px; text-decoration: none; }
+  .tile .numeral { font-size: 34px; line-height: 1; color: var(--fog); margin-bottom: auto; }
+  .tile .meta { font-size: 10px; color: var(--pencil); letter-spacing: 0.06em; }
+  .tile .title { font-size: 16px; line-height: 1.2; margin-top: 4px; }
+  .tile .when { font-size: 10px; margin-top: 6px; }
+  .tile.live { border-color: var(--ink); }
+  .tile.live > a { padding: 0; }
+  .tile.live img { display: block; width: 100%; height: auto; flex: 1; min-height: 0; object-fit: cover; object-position: top; }
+  .tile.live .meta, .tile.live .title { position: absolute; left: 0; right: 0; background: var(--paper); padding: 0 10px; }
+  .tile.live .meta { bottom: 34px; padding-top: 6px; border-top: 1px solid var(--ink); }
+  .tile.live .title { bottom: 0; padding-bottom: 10px; }
+  .tile.live a:hover .title { text-decoration: underline; }
+
+  @media (max-width: 900px) { .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 520px) {
+    .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .hero { padding: 48px 0 40px; }
+    .lede { font-size: 18px; }
+  }
+</style>
