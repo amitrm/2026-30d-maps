@@ -6,7 +6,7 @@
 @import '@fontsource/ibm-plex-mono/500.css';
 @import '@fontsource/ibm-plex-mono/600.css';
 
-/* Grayscale only. No hue anywhere in the series. */
+/* Grayscale by default. Color mode (html[data-mode="color"]) adds hue only to tell data apart. */
 :root {
   --paper: #f1f0ec;
   --ink: #232323;
@@ -35,13 +35,28 @@ a:hover { text-decoration-thickness: 2px; }
 
 .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
 
-.topbar {
-  display: flex; justify-content: space-between; align-items: center; gap: 16px;
-  padding: 18px 0; border-bottom: 1px solid var(--ink);
+.masthead {
+  display: flex; justify-content: space-between; align-items: center; gap: 16px 24px; flex-wrap: wrap;
+  padding: 14px 0; border-bottom: 1px solid var(--ink);
 }
-.topbar a { text-decoration: none; }
+.brand { display: flex; flex-direction: column; gap: 2px; text-decoration: none; }
+.brand-name { font-size: 22px; font-weight: 600; line-height: 1.1; }
+.brand .mono { font-size: 10px; }
+.modes { display: flex; border: 1px solid var(--ink); border-radius: 3px; overflow: hidden; font-size: 11px; }
+.modes button { font: inherit; letter-spacing: inherit; text-transform: inherit; color: var(--ink); background: none; border: 0; padding: 5px 10px; cursor: pointer; }
+.modes button[aria-pressed='true'] { background: var(--ink); color: var(--paper); }
+.modes button:focus-visible { outline: 2px solid var(--ink); outline-offset: -4px; }
+
+/* Show one rendering per mode. */
+html[data-mode='gray'] .only-color, html[data-mode='color'] .only-gray { display: none !important; }
 
 @media (max-width: 640px) {
   body { font-size: 17px; }
   .wrap { padding: 0 16px; }
+}
+
+/* Plate pages: one screen, no page scroll, on desktop. */
+@media (min-width: 901px) {
+  body.app { overflow: hidden; }
+  .wrap.app { max-width: none; height: 100dvh; display: flex; flex-direction: column; }
 }

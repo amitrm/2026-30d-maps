@@ -8,9 +8,24 @@ export const C = {
   pencil: '#77756F',
   fog: '#CFCDC7',
   rule: '#E1DFD9',
+  ground: '#E4E2DC', // land inside the city limits: fill only, no outline
+  grid: '#D3D1CA', // mile grid lines: dark enough to read over ground and over paper
 };
 
-export const SERIF = "'Source Serif 4', 'Source Serif Pro', Georgia, serif";
+// Color mode only: hue distinguishes elements, never decorates. CTA line colors;
+// Yellow is darkened from #F9E300 so rings stay legible on paper.
+export const LINES = {
+  Red: '#C60C30',
+  Blue: '#00A1DE',
+  Brown: '#62361B',
+  Green: '#009B3A',
+  Orange: '#F9461C',
+  Purple: '#522398',
+  Pink: '#E27EA6',
+  Yellow: '#D4BC00',
+};
+
+export const SERIF ="'Source Serif 4', 'Source Serif Pro', Georgia, serif";
 export const MONO = "'IBM Plex Mono', ui-monospace, Menlo, monospace";
 
 export const esc = (s) =>
@@ -19,10 +34,12 @@ export const esc = (s) =>
 export function text(x, y, str, o = {}) {
   const {
     size = 12, font = MONO, fill = C.ink, anchor = 'start', weight = 400,
-    italic = false, spacing = 0, rotate = 0, opacity = 1,
+    italic = false, spacing = 0, rotate = 0, opacity = 1, halo,
   } = o;
   const tr = rotate ? ` transform="rotate(${rotate} ${x} ${y})"` : '';
-  return `<text x="${x}" y="${y}" font-family="${font}" font-size="${size}" fill="${fill}" text-anchor="${anchor}" font-weight="${weight}"${italic ? ' font-style="italic"' : ''}${spacing ? ` letter-spacing="${spacing}"` : ''}${opacity < 1 ? ` opacity="${opacity}"` : ''}${tr}>${esc(str)}</text>`;
+  // halo: a knock-out stroke in the background color, so a label stays legible over marks
+  const hl = halo ? ` stroke="${halo}" stroke-width="3" stroke-linejoin="round" paint-order="stroke"` : '';
+  return `<text x="${x}" y="${y}" font-family="${font}" font-size="${size}" fill="${fill}" text-anchor="${anchor}" font-weight="${weight}"${italic ? ' font-style="italic"' : ''}${spacing ? ` letter-spacing="${spacing}"` : ''}${opacity < 1 ? ` opacity="${opacity}"` : ''}${hl}${tr}>${esc(str)}</text>`;
 }
 
 // Greedy word wrap by an approximate character budget.
@@ -66,6 +83,7 @@ export function frame({ plate, chapter, day, theme, title, subtitle }) {
   return out.join('');
 }
 
-export function svg(body, { label }) {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">${body}</svg>`;
+export function svg(body, { label, viewBox = `0 0 ${W} ${H}`, align }) {
+  const par = align ? ` preserveAspectRatio="${align}"` : '';
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}"${par} role="img" aria-label="${esc(label)}">${body}</svg>`;
 }

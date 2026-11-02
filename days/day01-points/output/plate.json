@@ -1,9 +1,9 @@
 {
  "schema": 1,
  "day": 1,
- "generated": "2026-11-01T16:24:40+00:00",
+ "generated": "2026-11-02T04:01:40+00:00",
  "asOf": "2026-11-01",
- "finding": "38 of 144 ‘L’ stations still have no step-free entrance. Half of them, 19, are on one line: the Blue.",
+ "finding": "38 of 144 ‘L’ stations are not vertically accessible. Half of them, 19, are on one line: the Blue.",
  "ledger": {
   "source": "CTA - System Information - List of 'L' Stops",
   "dataset_id": "8pix-ypme",
@@ -11,12 +11,13 @@
   "pulled": "2026-11-01",
   "units": "144 stations (map_id); ADA flag as published",
   "method": [
-   "Stops collapsed to stations; step-free only if every stop is flagged accessible",
-   "Plotted in Chicago address units: 800 per mile; 1,200 for the first mile south",
-   "Origin: State & Madison"
+   "Stops merged to stations; vertically accessible only if every platform is flagged accessible",
+   "Coordinates in Chicago address units from State & Madison: 800 per mile; 1,200 for the first mile south",
+   "The site plots them in miles; grid lines carry address numbers"
   ],
   "caveats": [
-   "ADA flag can lag stations reopened under the All Stations Accessibility Program"
+   "ADA flag lags CTA: 110 of 146 accessible (Aug 2026)",
+   "Austin (Green) reopened accessible Aug 2026; still flagged non-accessible"
   ]
  },
  "source": {
