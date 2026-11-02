@@ -1,25 +1,82 @@
 ---
 import Base from '../layouts/Base.astro';
 import days from '../data/days.json';
+import cityBoundary from '../../reference/city-boundary.json';
 import { plates } from '../plates/index.js';
+import { toMiles } from '../lib/grid.js';
 
 const base = import.meta.env.BASE_URL;
-const chapters = ['The Grid', 'The Systems', 'The Gaps', 'The Body', 'The Possible'];
 const numerals = ['I', 'II', 'III', 'IV', 'V'];
-const slug = (n) => `day${String(n).padStart(2, '0')}`;
+const chapterNames = ['The Grid', 'The Systems', 'The Gaps', 'The Body', 'The Possible'];
+// What each chapter sets out to do. Name only what is public: the challenge themes and published plates.
+const intros = {
+  'The Grid': 'Chapter I starts where Chicago’s promise is written down: the address grid itself. Across six days and six challenge themes, it tests that promise at street level, asking how evenly the grid’s stations, routes and reach are shared, and who is left at the edge of it.',
+};
+// Each published plate's problem statement; unpublished days show only their date.
+const statements = { 1: 'Which ‘L’ stations can a rider who cannot take the stairs use?' };
+const pad = (n) => String(n).padStart(2, '0');
+const slug = (n) => `day${pad(n)}`;
 const isLive = (d) => d.status === 'published' && plates[d.day];
 const liveCount = days.filter(isLive).length;
 const fmt = (iso) => new Date(iso + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+const chapterDays = chapterNames.map((c) => days.filter((d) => d.chapter === c));
+// chapter date ranges as "Nov 01–06" (shown uppercase)
+const span = (ci) => { const day = (iso) => pad(Number(iso.slice(8, 10))); return `Nov ${day(chapterDays[ci][0].date)}–${day(chapterDays[ci].at(-1).date)}`; };
+
+// The map: Chicago in miles from State & Madison, 17 W to 6 E and 10.5 N to 17 S. Positions are
+// percentages of the map's width and height, so it scales with the page.
+const X0 = -17, Y0 = 10.5, MW = 23, MH = 27.5;
+const px = (x) => ((x - X0) / MW) * 100;
+const py = (y) => ((Y0 - y) / MH) * 100;
+const rings = cityBoundary.rings.map((r) => r.map(([x, y]) => [toMiles(x, 'x'), toMiles(y, 'y')]));
+const city = rings.map((r) => 'M' + r.map(([x, y]) => `${(x - X0).toFixed(3)},${(Y0 - y).toFixed(3)}`).join('L') + 'Z').join('');
+const inside = (x, y) => {
+  let c = false;
+  for (const r of rings) for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+    const [a, b] = r[i], [p, q] = r[j];
+    if ((b > y) !== (q > y) && x < ((p - a) * (y - b)) / (q - b) + a) c = !c;
+  }
+  return c;
+};
+// Thirty one-mile grid cells scattered inside the city limits, fixed by the seed: each lies wholly
+// inside the limits and none touch, even at a corner. Cells are named by their south-west corner.
+const rng = (s) => () => {
+  s |= 0; s = (s + 0x6d2b79f5) | 0;
+  let t = Math.imul(s ^ (s >>> 15), 1 | s);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+};
+const R = rng(800), cells = [];
+for (let x = Math.ceil(X0); x < X0 + MW; x++)
+  for (let y = Math.ceil(Y0 - MH); y < Y0 - 1; y++)
+    if ([[x, y], [x + 1, y], [x, y + 1], [x + 1, y + 1], [x + 0.5, y + 0.5]].every(([a, b]) => inside(a, b))) cells.push([x, y]);
+for (let i = cells.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [cells[i], cells[j]] = [cells[j], cells[i]]; }
+// Day 1 sits in the cell just south-west of State & Madison (-1, -1); the rest keep a cell of space
+// from it and from each other.
+const spots = [[-1, -1]];
+const clear = ([a, b], [x, y]) => Math.max(Math.abs(a - x), Math.abs(b - y)) >= 2;
+for (const c of cells) if (spots.length < days.length && spots.every((sp) => clear(sp, c))) spots.push(c);
+// A chosen chapter's boxes fill a column of one-mile cells on the open lake: x 1 to 2 E, from 7 N down.
+const COL = { x: 1, top: 7 };
+const VIEW = { x0: 0.55, x1: 6, y0: 7.45, y1: 0.55 };
+const zoom = Math.min(MW / (VIEW.x1 - VIEW.x0), MH / (VIEW.y0 - VIEW.y1));
+const camera = {
+  s: zoom,
+  x: (-((VIEW.x0 - X0) / MW) * zoom + (1 - ((VIEW.x1 - VIEW.x0) / MW) * zoom) / 2) * 100,
+  y: (-((Y0 - VIEW.y0) / MH) * zoom + (1 - ((VIEW.y0 - VIEW.y1) / MH) * zoom) / 2) * 100,
+};
+const homeOf = (i) => ({ left: px(spots[i][0]), top: py(spots[i][1] + 1), width: 100 / MW, height: 100 / MH });
+const slotOf = (k) => ({ left: px(COL.x), top: py(COL.top - k), width: 100 / MW, height: 100 / MH });
+// Labels sit to the right of each landed square, in the zoomed frame (percent of the map).
+const labelOf = (k) => ({
+  left: camera.x + px(COL.x + 1) * camera.s,
+  top: camera.y + py(COL.top - k) * camera.s,
+  height: (100 / MH) * camera.s,
+});
+const pos = (r) => `left:${r.left.toFixed(3)}%;top:${r.top.toFixed(3)}%;width:${r.width.toFixed(3)}%;height:${r.height.toFixed(3)}%`;
 ---
-<Base title="800 to the Mile — a Chicago access atlas in 30 plates">
+<Base title="800 to the Mile — a Chicago access atlas in 30 plates" masthead={false}>
   <section class="hero">
-    <!-- Reserved for the landing animation (to be designed). Static grid stands in for now. -->
-    <div id="hero-animation" aria-hidden="true">
-      <svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice">
-        {Array.from({ length: 21 }, (_, i) => <line x1={i * 20} x2={i * 20} y1="0" y2="300" />)}
-        {Array.from({ length: 16 }, (_, i) => <line x1="0" x2="400" y1={i * 20} y2={i * 20} />)}
-      </svg>
-    </div>
     <div class="hero-text">
       <p class="mono quiet">#30DayMapChallenge 2026 · Chicago · {liveCount} of 30 plates</p>
       <h1>800 to the Mile</h1>
@@ -27,65 +84,323 @@ const fmt = (iso) => new Date(iso + 'T12:00:00Z').toLocaleDateString('en-US', { 
         Chicago’s address grid promises equal distance: 800 numbers to a mile, an arterial every half mile, a bus on every arterial.
         For thirty days in November, this atlas tests that promise with open data and asks one question: who actually gets to cover the mile?
       </p>
-    </div>
-  </section>
-
-  {chapters.map((ch, ci) => (
-    <section class="chapter">
-      <h2><span class="mono quiet">Chapter {numerals[ci]}</span> {ch}</h2>
-      <ol class="tiles">
-        {days.filter((d) => d.chapter === ch).map((d) => (
-          <li class={isLive(d) ? 'tile live' : 'tile'}>
-            {isLive(d) ? (
-              <a href={`${base}${slug(d.day)}/`}>
-                <img src={`${base}exports/${slug(d.day)}.png`} alt={`Plate ${d.plate}: ${d.title}`} loading="lazy" width="1080" height="1350" />
-                <span class="meta mono">{String(d.day).padStart(2, '0')} · {d.theme}</span>
-                <span class="title">{d.title}</span>
-              </a>
-            ) : (
-              <div>
-                <span class="numeral">{d.plate}</span>
-                <span class="title">{d.theme}</span>
-                <span class="mono quiet when">Day {String(d.day).padStart(2, '0')} · {fmt(d.date)}</span>
-              </div>
-            )}
+      <ol class="chlist">
+        {chapterNames.map((name, ci) => (
+          <li data-ch={ci}>
+            <button type="button" class="chb" data-ch={ci} aria-expanded="false" aria-controls={`chapter-${ci + 1}-text`}>
+              <span class="name"><span class="num">{numerals[ci]}</span>{name}</span><span class="mono">{span(ci)}</span>
+            </button>
+            <div class="dwrap" id={`chapter-${ci + 1}-text`}><div class="desc"><p>{intros[name] ?? `Chapter ${numerals[ci]} opens on ${fmt(chapterDays[ci][0].date)}.`}</p></div></div>
           </li>
         ))}
       </ol>
-    </section>
-  ))}
+      <p class="hint">Choose a chapter or any box on the map. Click outside the boxes to scatter them back.</p>
+    </div>
+
+    <figure class="pane" data-camera={JSON.stringify(camera)}>
+      <div class="stage">
+        <svg viewBox={`0 0 ${MW} ${MH}`} preserveAspectRatio="none" aria-hidden="true">
+          <path d={city} class="city" fill-rule="evenodd" />
+          {Array.from({ length: MW + 1 }, (_, i) => <line x1={i} x2={i} y1="0" y2={MH} class={X0 + i === 0 ? 'major' : ''} />)}
+          {Array.from({ length: Math.floor(MH) + 1 }, (_, i) => <line x1="0" x2={MW} y1={Y0 - Math.floor(Y0) + i} y2={Y0 - Math.floor(Y0) + i} class={Math.floor(Y0) - i === 0 ? 'major' : ''} />)}
+        </svg>
+        {days.map((d, i) => {
+          const ci = chapterNames.indexOf(d.chapter), k = chapterDays[ci].indexOf(d);
+          const live = isLive(d);
+          return (
+            <button type="button" class={live ? 'box live' : 'box'} data-ch={ci} data-k={k} data-day={d.day} data-href={live ? `${base}${slug(d.day)}/` : undefined}
+              data-home={JSON.stringify(homeOf(i))} data-slot={JSON.stringify(slotOf(k))} style={pos(homeOf(i))}
+              aria-label={`Day ${d.day}, ${fmt(d.date)}: ${d.theme}. Chapter ${numerals[ci]}, ${d.chapter}`}>
+              {live ? <img src={`${base}exports/${slug(d.day)}.png`} alt="" class="thumb" loading="lazy" /> : <span class="rn">{d.plate}</span>}
+              <span class="n">{d.day}</span>
+              <svg class="frame" viewBox="0 0 10 10" preserveAspectRatio="none" aria-hidden="true"><rect width="10" height="10" /></svg>
+            </button>
+          );
+        })}
+      </div>
+      <div class="labels">
+        {days.map((d) => {
+          const ci = chapterNames.indexOf(d.chapter), k = chapterDays[ci].indexOf(d), l = labelOf(k), live = isLive(d);
+          const body = (
+            <Fragment>
+              <span class="meta">Day {pad(d.day)} · {fmt(d.date)} · {d.theme}</span>
+              <span class="ttl">{live ? d.title : d.theme}</span>
+              <span class="st">{statements[d.day] ?? `Opens ${fmt(d.date)}.`}</span>
+            </Fragment>
+          );
+          const style = `left:calc(${l.left.toFixed(3)}% + 14px);top:${l.top.toFixed(3)}%;height:${l.height.toFixed(3)}%`;
+          return live
+            ? <a class="lab" data-ch={ci} data-k={k} href={`${base}${slug(d.day)}/`} style={style} hidden>{body}</a>
+            : <div class="lab" data-ch={ci} data-k={k} style={style} hidden>{body}</div>;
+        })}
+      </div>
+    </figure>
+  </section>
+
+  <noscript>
+    <ol class="plain">
+      {days.filter(isLive).map((d) => <li><a href={`${base}${slug(d.day)}/`}>Plate {d.plate} · {d.title}</a> <span class="quiet">Day {pad(d.day)} · {d.theme}</span></li>)}
+    </ol>
+  </noscript>
 </Base>
 
+<script>
+  // Thirty boxes rest scattered across the city. Choosing a chapter plays one GSAP timeline: the
+  // other boxes fade, the grid zooms to the open lake, the chapter's six boxes fly into a column of
+  // one-mile cells there and their labels arrive. Going back plays that timeline in reverse; switching
+  // chapters goes all the way back first. Boxes move by transform only (x, y, scale, about their
+  // centres), so nothing is laid out again mid-flight and nothing is rounded to whole pixels.
+  import { gsap } from 'gsap';
+
+  const pane = document.querySelector<HTMLElement>('.pane');
+  const stage = pane?.querySelector<HTMLElement>('.stage');
+  if (pane && stage) {
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const EASE = 'power3.inOut';
+    const Z = JSON.parse(pane.dataset.camera!) as { s: number; x: number; y: number };
+    const boxes = [...pane.querySelectorAll<HTMLElement>('.box')];
+    const labs = [...pane.querySelectorAll<HTMLElement>('.lab')];
+    const items = [...document.querySelectorAll<HTMLElement>('.chlist li')];
+    type Rect = { left: number; top: number; width: number; height: number };
+    let open: number | null = null;
+    let tl: gsap.core.Timeline | null = null;
+    let busy = false;
+    let hovering = false;
+    gsap.set(stage, { transformOrigin: '0 0' });
+    // explicit starting widths, so reversing the zoom returns the lines to hairlines (not to unset)
+    gsap.set(pane, { '--gw': 1 });
+    gsap.set(boxes, { '--sw': 1 });
+
+    // Every box sits at the stage's top-left corner and is placed by transform alone, at rest and in
+    // flight: layout positions are rounded to whole pixels, and the zoom would magnify the error.
+    const place = (b: HTMLElement, r: Rect) => {
+      const W = pane.clientWidth, H = pane.clientHeight, w = parseFloat(getComputedStyle(b).width); // unrounded, unlike offsetWidth
+      return { x: ((r.left + r.width / 2) / 100) * W - w / 2, y: ((r.top + r.height / 2) / 100) * H - w / 2, scale: ((r.width / 100) * W) / w };
+    };
+    const home = (b: HTMLElement) => place(b, JSON.parse(b.dataset.home!));
+    const landing = (b: HTMLElement) => place(b, JSON.parse(b.dataset.slot!));
+    const rest = () => boxes.forEach((b) => gsap.set(b, { left: 0, top: 0, transformOrigin: '50% 50%', ...home(b) }));
+    rest();
+
+    const build = (ci: number) => {
+      const mine = boxes.filter((b) => Number(b.dataset.ch) === ci);
+      const others = boxes.filter((b) => Number(b.dataset.ch) !== ci);
+      const mineLabs = labs.filter((l) => Number(l.dataset.ch) === ci);
+      const W = pane.clientWidth, H = pane.clientHeight;
+      const t = gsap.timeline({ paused: true, defaults: { ease: EASE } });
+      t.set(mineLabs, { display: 'flex' }, 0)
+        .to(others, { autoAlpha: 0, duration: 0.3, ease: 'power1.out' }, 0)
+        .to(stage, { x: (Z.x / 100) * W, y: (Z.y / 100) * H, scale: Z.s, duration: 0.95 }, 0)
+        // grid lines and outlines thin as the map zooms, so they stay hairlines on screen
+        .to(pane, { '--gw': 1 / Z.s, duration: 0.95 }, 0);
+      mine.forEach((b, k) => {
+        const L = landing(b), at = 0.08 + k * 0.06, live = b.classList.contains('live');
+        t.to(b, { ...L, '--sw': 1 / (L.scale * Z.s), duration: 0.9 }, at)
+          .to(b.querySelectorAll('.thumb, .rn'), { opacity: 1, duration: 0.4, ease: 'power1.out' }, at + 0.45)
+          .to(b.querySelector('.n'), live ? { opacity: 0, duration: 0.3 } : { xPercent: 26, yPercent: 26, scale: 0.55, duration: 0.6 }, at + 0.3);
+        if (live) t.to(b, { backgroundColor: 'var(--paper)', duration: 0.45, ease: 'none' }, at + 0.35);
+      });
+      t.fromTo(mineLabs, { autoAlpha: 0, x: -10 }, { autoAlpha: 1, x: 0, duration: 0.42, stagger: 0.07, ease: 'power2.out' }, 0.78);
+      return t;
+    };
+    const run = (t: gsap.core.Timeline, forward: boolean) => new Promise<void>((done) => {
+      if (still) { t.progress(forward ? 1 : 0).pause(); done(); return; }
+      if (forward) t.timeScale(1).eventCallback('onComplete', () => done()).play();
+      else t.timeScale(1.25).eventCallback('onReverseComplete', () => done()).reverse();
+    });
+
+    const mark = (ci: number | null) => items.forEach((li) => {
+      const on = Number(li.dataset.ch) === ci;
+      li.classList.toggle('on', on);
+      li.querySelector('.chb')?.setAttribute('aria-expanded', String(on));
+    });
+    const expand = async (ci: number) => {
+      open = ci;
+      mark(ci);
+      pane.classList.add('open');
+      boxes.forEach((b) => { gsap.killTweensOf(b, 'scale,x,y'); gsap.set(b, home(b)); b.inert = Number(b.dataset.ch) !== ci; });
+      tl = build(ci);
+      history.replaceState(null, '', `#chapter-${ci + 1}`);
+      await run(tl, true);
+    };
+    const collapse = async () => {
+      if (open === null || !tl) return;
+      open = null;
+      mark(null);
+      pane.classList.remove('open');
+      unlift();
+      history.replaceState(null, '', location.pathname);
+      await run(tl, false);
+      tl.kill();
+      tl = null;
+      boxes.forEach((b) => (b.inert = false));
+    };
+    // switching chapters goes all the way back to the scattered city, then opens the next one
+    const choose = async (ci: number | null) => {
+      if (busy) return;
+      busy = true;
+      try {
+        if (ci === null || ci === open) await collapse();
+        else {
+          if (open !== null) { await collapse(); await new Promise((r) => setTimeout(r, still ? 0 : 120)); }
+          await expand(ci);
+        }
+      } finally { busy = false; }
+    };
+
+    // opening: the boxes drop in, one by one in a random order
+    if (!still) gsap.from(boxes, { autoAlpha: 0, y: '-=14', scale: 0.3, duration: 0.55, ease: 'back.out(2.2)', stagger: { each: 0.038, from: 'random' }, delay: 0.15 });
+
+    // at rest, two to four random boxes breathe every second or two, inviting a click (not while a
+    // chapter is open or being chosen, a chapter name is hovered, the tab is hidden, or motion is reduced)
+    const breathe = () => {
+      if (open === null && !busy && !hovering && document.visibilityState === 'visible') {
+        const pick = gsap.utils.shuffle(boxes.filter((b) => !gsap.isTweening(b))).slice(0, 2 + Math.floor(Math.random() * 3));
+        pick.forEach((b, i) => gsap.to(b, { scale: home(b).scale * 1.45, duration: 0.42, ease: 'power2.out', yoyo: true, repeat: 1, repeatDelay: 0.08, delay: i * 0.18 + Math.random() * 0.12 }));
+      }
+      gsap.delayedCall(1.4 + Math.random() * 1.2, breathe);
+    };
+    if (!still) gsap.delayedCall(2.6, breathe);
+
+    // in an open chapter, hovering a square or its label lifts both a little
+    let lifted: string | null = null;
+    const unlift = () => {
+      if (lifted === null) return;
+      boxes.concat(labs).filter((el) => el.dataset.k === lifted).forEach((el) => {
+        if (el.classList.contains('box') && open !== null && Number(el.dataset.ch) === open) gsap.to(el, { scale: landing(el).scale, duration: 0.25, ease: 'power2.out', overwrite: 'auto' });
+        else if (el.classList.contains('lab')) gsap.to(el, { scale: 1, duration: 0.25, ease: 'power2.out', overwrite: 'auto' });
+        el.style.zIndex = '';
+      });
+      lifted = null;
+    };
+    const lift = (t: EventTarget | null) => {
+      const el = (t as Element | null)?.closest<HTMLElement>('.box, .lab');
+      if (!el || open === null || busy || Number(el.dataset.ch) !== open) return;
+      if (lifted === el.dataset.k) return;
+      unlift();
+      lifted = el.dataset.k!;
+      pane.querySelectorAll<HTMLElement>(`[data-ch="${open}"][data-k="${lifted}"]`).forEach((x) => {
+        x.style.zIndex = '2';
+        gsap.to(x, { scale: x.classList.contains('box') ? landing(x).scale * 1.12 : 1.05, duration: 0.25, ease: 'power2.out', overwrite: 'auto' });
+      });
+    };
+    pane.addEventListener('pointerover', (e) => lift(e.target));
+    pane.addEventListener('pointerout', (e) => { if (!(e.relatedTarget as Element | null)?.closest?.(`[data-k="${lifted}"]`)) unlift(); });
+
+    document.querySelector('.chlist')?.addEventListener('click', (e) => {
+      const b = (e.target as Element).closest<HTMLElement>('.chb');
+      if (b) { e.stopPropagation(); choose(Number(b.dataset.ch)); }
+    });
+    pane.addEventListener('click', (e) => {
+      const b = (e.target as Element).closest<HTMLElement>('.box');
+      // a published plate's box opens its page, scattered or stacked; any other box opens its chapter
+      if (b) { e.stopPropagation(); if (b.dataset.href) location.href = b.dataset.href; else if (open === null) choose(Number(b.dataset.ch)); }
+      else if ((e.target as Element).closest('.lab')) e.stopPropagation();
+    });
+    document.addEventListener('click', (e) => { if (open !== null && !(e.target as Element).closest('.box, .lab, .chb')) choose(null); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && open !== null) choose(null); });
+    const list = document.querySelector('.chlist');
+    list?.addEventListener('pointerenter', () => (hovering = true));
+    list?.addEventListener('pointerleave', () => (hovering = false));
+    // hovering a chapter's name shows where its six boxes rest
+    list?.addEventListener('pointerover', (e) => {
+      const b = (e.target as Element).closest<HTMLElement>('.chb');
+      if (!b || open !== null || busy || still) return;
+      const mine = boxes.filter((x) => x.dataset.ch === b.dataset.ch && !gsap.isTweening(x));
+      gsap.to(mine, { scale: (i: number, el: HTMLElement) => home(el).scale * 1.35, duration: 0.26, ease: 'power2.out', yoyo: true, repeat: 1, stagger: 0.04 });
+    });
+
+    // the landed transforms are in pixels: on resize, rebuild the open chapter at its end state
+    let resizing = 0;
+    addEventListener('resize', () => {
+      cancelAnimationFrame(resizing);
+      resizing = requestAnimationFrame(() => {
+        if (busy) return;
+        if (open === null || !tl) { rest(); return; }
+        tl.progress(0).kill();
+        rest();
+        tl = build(open);
+        tl.progress(1).pause();
+      });
+    });
+
+    // a link to #chapter-N opens that chapter, on load or within the page
+    const fromHash = () => {
+      const m = location.hash.match(/^#chapter-([1-5])$/);
+      if (m && Number(m[1]) - 1 !== open) choose(Number(m[1]) - 1);
+    };
+    fromHash();
+    addEventListener('hashchange', fromHash);
+  }
+</script>
+
 <style>
-  .hero { position: relative; display: grid; grid-template-columns: 1fr; padding: 72px 0 56px; border-bottom: 1px solid var(--ink); overflow: hidden; }
-  #hero-animation { position: absolute; inset: 0; opacity: 0.55; pointer-events: none; }
-  #hero-animation svg { width: 100%; height: 100%; }
-  #hero-animation line { stroke: var(--rule); stroke-width: 0.6; }
-  .hero-text { position: relative; max-width: 760px; }
-  h1 { font-weight: 500; font-size: clamp(52px, 9vw, 112px); line-height: 0.95; margin: 12px 0 24px; letter-spacing: -0.01em; }
-  .lede { font-size: 21px; max-width: 46ch; margin: 0; }
+  /* One screen on desktop: the map takes the full height left after the hero's padding and the
+     footer (--chrome), its width following from the map's proportions; the text takes the rest. */
+  .hero { --chrome: 80px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 40px; align-items: start; padding: 28px 0 12px; }
+  :global(body .wrap > .foot) { margin-top: 0; padding: 10px 0 12px; } /* outranks the layout's own footer spacing */
+  .hero-text { max-width: 560px; }
+  h1 { font-weight: 500; font-size: clamp(44px, min(7vw, 9vh), 96px); line-height: 0.95; margin: 10px 0 2.4vh; letter-spacing: -0.01em; }
+  .lede { font-size: clamp(14px, 1.9vh, 17px); line-height: 1.5; margin: 0 0 2.6vh; }
+  .chlist { list-style: none; margin: 0; padding: 0; }
+  .chlist li { border-bottom: 1px solid var(--rule); }
+  .chb {
+    all: unset; box-sizing: border-box; cursor: pointer; display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+    width: 100%; padding: max(9px, 1.1vh) 0;
+    /* set like the plate pages' section headings (Background, Findings, Download) */
+    font-family: var(--mono); font-size: 12.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+  }
+  /* numerals in a fixed column, so the chapter names line up */
+  .chb .name { display: flex; }
+  .chb .num { width: 4.2em; flex: none; }
+  .chb .mono { font-size: 10px; font-weight: 400; color: var(--pencil); }
+  .chb:hover .name, .chb:focus-visible .name { text-decoration: underline; }
+  /* the chosen chapter's description opens beneath its name; the others stay collapsed */
+  .dwrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.6s cubic-bezier(.2,.8,.2,1); }
+  li.on .dwrap { grid-template-rows: 1fr; }
+  .desc { overflow: hidden; }
+  .desc p { margin: 0 0 10px; font-size: clamp(12.5px, 1.8vh, 14px); line-height: 1.45; font-style: italic; color: var(--pencil); }
+  .hint { margin: 14px 0 0; font-size: 13px; font-style: italic; color: var(--pencil); }
+  .chlist:has(li.on) + .hint { display: none; } /* the open description needs the room */
 
-  .chapter { padding: 40px 0 8px; }
-  .chapter h2 { font-weight: 500; font-size: 28px; margin: 0 0 18px; display: flex; gap: 16px; align-items: baseline; }
-  .tiles { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; }
-  .tile { aspect-ratio: 4 / 5; border: 1px solid var(--fog); position: relative; }
-  .tile > a, .tile > div { display: flex; flex-direction: column; height: 100%; padding: 10px; text-decoration: none; }
-  .tile .numeral { font-size: 34px; line-height: 1; color: var(--fog); margin-bottom: auto; }
-  .tile .meta { font-size: 10px; color: var(--pencil); letter-spacing: 0.06em; }
-  .tile .title { font-size: 16px; line-height: 1.2; margin-top: 4px; }
-  .tile .when { font-size: 10px; margin-top: 6px; }
-  .tile.live { border-color: var(--ink); }
-  .tile.live > a { padding: 0; }
-  .tile.live img { display: block; width: 100%; height: auto; flex: 1; min-height: 0; object-fit: cover; object-position: top; }
-  .tile.live .meta, .tile.live .title { position: absolute; left: 0; right: 0; background: var(--paper); padding: 0 10px; }
-  .tile.live .meta { bottom: 34px; padding-top: 6px; border-top: 1px solid var(--ink); }
-  .tile.live .title { bottom: 0; padding-bottom: 10px; }
-  .tile.live a:hover .title { text-decoration: underline; }
+  /* on narrow screens the map gives way so the text column keeps at least 460px */
+  .pane { position: relative; margin: 0; height: calc(100dvh - var(--chrome)); max-height: calc((100vw - 48px - 460px - 40px) * 27.5 / 23); aspect-ratio: 23 / 27.5; overflow: hidden; container-type: inline-size; }
+  .stage { position: absolute; inset: 0; transform-origin: 0 0; }
+  .stage svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .stage svg .city { fill: #e4e2dc; } /* C.ground in src/lib/plate.js */
+  /* Strokes ignore the SVGs' own scaling (non-scaling-stroke) but not CSS transforms, so the landing
+     timeline tweens --gw (grid) and --sw (each box) to undo the zoom and keep hairlines on screen. */
+  .stage svg line { stroke: #d3d1ca; stroke-width: calc(0.5px * var(--gw, 1)); vector-effect: non-scaling-stroke; }
+  .stage svg line.major { stroke: #b9b6af; stroke-width: calc(0.9px * var(--gw, 1)); }
+  .box { all: unset; box-sizing: border-box; position: absolute; background: var(--paper); color: var(--ink); cursor: pointer; }
+  /* the outline is a non-scaling SVG stroke centred on the box edge, so a landed square sits on the
+     grid lines at any zoom (a CSS border thinner than 1px would round up, then scale) */
+  .box .frame { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+  .box .frame rect { fill: none; stroke: var(--ink); stroke-width: calc(1px * var(--sw, 1)); vector-effect: non-scaling-stroke; }
+  .box:hover, .box:focus-visible { outline: 1.5px solid var(--ink); outline-offset: 1px; }
+  .pane.open .box:hover { outline: none; } /* a landed square lifts on hover instead */
+  .lab { transform-origin: left center; }
+  .box.live { background: var(--ink); color: var(--paper); }
+  .box .n { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 1.75cqw; line-height: 1; }
+  .box .rn { position: absolute; left: 8%; top: 4%; overflow: hidden; font-family: var(--serif); font-size: 1.3cqw; color: #b9b6af; opacity: 0; }
+  .box .thumb { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 25% 30%; opacity: 0; }
+  .labels { position: absolute; inset: 0; pointer-events: none; }
+  .lab {
+    position: absolute; right: 10px; display: flex; flex-direction: column; justify-content: center; gap: 2px;
+    pointer-events: auto; text-decoration: none; color: var(--ink);
+  }
+  .lab[hidden] { display: none; }
+  .lab .meta { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pencil); }
+  .lab .ttl { font-size: 17px; line-height: 1.15; }
+  .lab .st { font-size: 13px; line-height: 1.3; font-style: italic; color: var(--pencil); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  a.lab:hover .ttl, a.lab:focus-visible .ttl { text-decoration: underline; }
+  .plain { margin: 0 0 32px; padding-left: 1.2em; }
 
-  @media (max-width: 900px) { .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-  @media (max-width: 520px) {
-    .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-    .hero { padding: 48px 0 40px; }
-    .lede { font-size: 18px; }
+  @media (min-width: 901px) { :global(body) { overflow: hidden; } :global(.wrap) { max-width: none; } }
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr; gap: 24px; padding: 36px 0 24px; }
+    .pane { height: auto; max-height: none; width: 100%; }
+    .lab .ttl { font-size: 15px; }
+    .lab .st { font-size: 12px; }
   }
 </style>

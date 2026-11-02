@@ -12,8 +12,16 @@ export function gridLines({ west, east, south, north }) {
   return { xs, ys: ys.sort((a, b) => a - b) };
 }
 
+// Address-style labels: '3200 W', '800 N'; the zero lines are named.
 export function formatAddress(v, axis) {
-  if (v === 0) return axis === 'x' ? 'STATE 0' : 'MADISON 0';
+  if (v === 0) return axis === 'x' ? 'STATE' : 'MADISON';
   const dir = axis === 'x' ? (v < 0 ? 'W' : 'E') : v < 0 ? 'S' : 'N';
-  return `${dir} ${Math.abs(Math.round(v)).toLocaleString('en-US')}`;
+  return `${Math.abs(Math.round(v))} ${dir}`;
+}
+
+// Address units to miles from State & Madison. Plates plot in miles, so every grid cell is one
+// square mile, and label the lines with addresses (the first mile south carries 1,200 numbers).
+export function toMiles(v, axis) {
+  if (axis === 'x' || v >= 0) return v / 800;
+  return v >= -1200 ? v / 1200 : -1 + (v + 1200) / 800;
 }
