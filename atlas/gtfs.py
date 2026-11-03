@@ -1,4 +1,4 @@
-"""Station order along each 'L' line, from CTA's GTFS schedule feed.
+"""Station order along each 'L' line, and bus service on a given day, from CTA's GTFS schedule feed.
 
 Run from the repository root to refresh ``reference/cta-line-sequences.json``::
 
@@ -10,6 +10,9 @@ segment is the line's longest scheduled pattern, terminal to terminal; any furth
 branch whose stations the main pattern skips (Green's Ashland/63rd and Cottage Grove branches).
 Segments start at the outer terminal: the end farther from State & Madison, or, for lines with two
 outer ends, the north or west end. The feed is large and stays out of git; the JSON is committed.
+
+Bus helpers for the notebooks: :func:`bus_trips` lists every bus trip scheduled on one service day
+with its first and last times, and :func:`shape_paths` returns route shapes in address units.
 """
 
 from __future__ import annotations
@@ -113,6 +116,62 @@ def build(found: dict[str, Counter], stations: pd.DataFrame) -> dict[str, list[l
                     run = []
         lines[line] = segments
     return lines
+
+
+def service_ids(zip_path: Path, day: date) -> set[str]:
+    """Service ids active on ``day``: calendar weekday pattern plus calendar_dates exceptions."""
+    z = zipfile.ZipFile(zip_path)
+    cal = pd.read_csv(z.open('calendar.txt'), dtype=str)
+    stamp = day.strftime('%Y%m%d')
+    weekday = day.strftime('%A').lower()
+    active = cal[(cal['start_date'] <= stamp) & (cal['end_date'] >= stamp) & (cal[weekday] == '1')]
+    ids = set(active['service_id'])
+    exc = pd.read_csv(z.open('calendar_dates.txt'), dtype=str)
+    exc = exc[exc['date'] == stamp]
+    ids |= set(exc.loc[exc['exception_type'] == '1', 'service_id'])
+    ids -= set(exc.loc[exc['exception_type'] == '2', 'service_id'])
+    return ids
+
+
+def _seconds(hms: pd.Series) -> pd.Series:
+    """GTFS 'HH:MM:SS' (hours may pass 24) to seconds after midnight."""
+    parts = hms.str.split(':', expand=True).astype(int)
+    return parts[0] * 3600 + parts[1] * 60 + parts[2]
+
+
+def bus_trips(zip_path: Path, day: date) -> pd.DataFrame:
+    """Every bus trip scheduled on ``day``: route, direction, shape, first departure, last arrival.
+
+    Times are seconds after midnight of the service day. Trips run from first to last stop, so their
+    durations sum to scheduled in-service vehicle time (layover and deadhead excluded).
+    """
+    z = zipfile.ZipFile(zip_path)
+    routes = pd.read_csv(z.open('routes.txt'), dtype=str)
+    bus = set(routes.loc[routes['route_type'] == '3', 'route_id'])
+    trips = pd.read_csv(z.open('trips.txt'), dtype=str,
+                        usecols=['route_id', 'service_id', 'trip_id', 'direction_id', 'shape_id'])
+    trips = trips[trips['route_id'].isin(bus) & trips['service_id'].isin(service_ids(zip_path, day))]
+    wanted = set(trips['trip_id'])
+    parts = []
+    for chunk in pd.read_csv(z.open('stop_times.txt'), dtype=str, chunksize=2_000_000,
+                             usecols=['trip_id', 'arrival_time', 'departure_time']):
+        chunk = chunk[chunk['trip_id'].isin(wanted)]
+        parts.append(chunk.assign(dep=_seconds(chunk['departure_time']), arr=_seconds(chunk['arrival_time']))
+                     .groupby('trip_id').agg(start=('dep', 'min'), end=('arr', 'max')))
+    times = pd.concat(parts).groupby(level=0).agg(start=('start', 'min'), end=('end', 'max'))
+    out = trips.merge(times, left_on='trip_id', right_index=True, how='left')
+    assert out['start'].notna().all(), 'A scheduled bus trip has no stop times'
+    return out.reset_index(drop=True)
+
+
+def shape_paths(zip_path: Path, shape_ids: set[str]) -> dict[str, pd.DataFrame]:
+    """Shape points (x, y in address units, dist in feet along the shape) for each shape id."""
+    z = zipfile.ZipFile(zip_path)
+    shapes = pd.read_csv(z.open('shapes.txt'), dtype={'shape_id': str})
+    shapes = shapes[shapes['shape_id'].isin(shape_ids)].sort_values(['shape_id', 'shape_pt_sequence'])
+    shapes['x'], shapes['y'] = to_address(shapes['shape_pt_lat'], shapes['shape_pt_lon'])
+    return {sid: g[['x', 'y', 'shape_dist_traveled']].rename(columns={'shape_dist_traveled': 'dist'})
+            .reset_index(drop=True) for sid, g in shapes.groupby('shape_id')}
 
 
 def main() -> None:

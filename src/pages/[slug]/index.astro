@@ -34,8 +34,8 @@ const numerals = ['I', 'II', 'III', 'IV', 'V'];
 const chapter = `Chapter ${numerals[chapters.indexOf(d.chapter)]}: ${d.chapter}`;
 const date = new Date(d.date + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 const dl = `${base}downloads/${p.file}`;
-// saved file name, either mode: DAY01-POINTS.svg
-const saveAs = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '')}.svg`;
+// saved file name, either mode: DAY01-POINTS.svg, DAY01-POINTS.png
+const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
 ---
 <Base title={`Plate ${d.plate} · ${d.title} — 800 to the Mile`} description={p.story.findings[0]} app>
   <nav class="daynav" slot="nav" aria-label="Plates">
@@ -56,13 +56,13 @@ const saveAs = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g, 
     </figure>
     <figure class="viz side">
       <div class="chart">
-        <p class="col-title mono">Non-accessible stations by line</p>
-        <p class="col-note">Route order from the outer terminal · Gap indicates a branch · Interchange stations count once per line<span class="only-color"> marked in black</span></p>
+        <p class="col-title mono">{p.page.chart.title}</p>
+        <p class="col-note">{p.page.chart.note}{p.page.chart.colorNote && <span class="only-color">{p.page.chart.colorNote}</span>}</p>
         <div class="only-gray" set:html={charts.gray} />
         <div class="only-color" set:html={charts.color} />
       </div>
       <div class="inset">
-        <p class="col-title mono">Inset · The Loop and River North</p>
+        <p class="col-title mono">{p.page.inset.title}</p>
         <p class="col-note">Shown at <span data-inset-scale>×2</span> the scale of the main map.</p>
         <div class="inset-box">
           <div class="only-gray" set:html={insets.gray} />
@@ -103,8 +103,10 @@ const saveAs = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g, 
       <details name="plate">
         <summary class="mono">Download</summary>
         <ul class="body downloads">
-          <li class="only-gray"><a href={`${dl}.svg`} download={saveAs}>Plate {d.plate}</a><span class="quiet">Vector, fonts embedded</span></li>
-          <li class="only-color"><a href={`${dl}-color.svg`} download={saveAs}>Plate {d.plate}</a><span class="quiet">Vector, fonts embedded</span></li>
+          <li class="only-gray"><a href={`${dl}.svg`} download={`${saveName}.svg`}>Plate {d.plate} (SVG)</a><span class="quiet">Vector, fonts embedded</span></li>
+          <li class="only-color"><a href={`${dl}-color.svg`} download={`${saveName}.svg`}>Plate {d.plate} (SVG)</a><span class="quiet">Vector, fonts embedded</span></li>
+          <li class="only-gray"><a href={`${dl}.png`} download={`${saveName}.png`}>Plate {d.plate} (PNG)</a><span class="quiet">3240 × 4050 px, 300 DPI</span></li>
+          <li class="only-color"><a href={`${dl}-color.png`} download={`${saveName}.png`}>Plate {d.plate} (PNG)</a><span class="quiet">3240 × 4050 px, 300 DPI</span></li>
         </ul>
       </details>
     </aside>
@@ -116,7 +118,9 @@ const saveAs = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g, 
 
 <script>
   // Hover hooks emitted by the map, chart and inset variants of each plate renderer:
-  //   [data-tip][data-name][data-lines][data-ada]  tooltip
+  //   [data-tip][data-name][data-lines][data-ada]  tooltip (a station: dot or ring, line boxes)
+  //   [data-kind=route][data-detail][data-sep][data-dash][data-gray][data-color][data-on-color]
+  //        tooltip for a route: route box and name, a rule data-sep px thick, one sentence
   //   [data-hl] (chart row) / [data-keys] (station, label)  highlight one line set, fade the rest
   // Highlighting spans every page SVG, so a line row in the chart lights its stations on the map.
   const cols = document.querySelector<HTMLElement>('.cols');
@@ -144,10 +148,12 @@ const saveAs = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g, 
       const r = title.getBoundingClientRect();
       const capTop = r.top + (r.height - parseFloat(getComputedStyle(title).fontSize) * 0.7) / 2; // cap height ≈ 0.7 em
       chartBox.style.marginTop = `${Math.max(-12, mapTop - capTop)}px`;
-      // and end the inset box on the map's bottom grid line
+      // and end the inset box on the map's bottom grid line, unless that leaves the inset shorter
+      // than half its width; then it keeps that height and ends below the map
       if (side && insetBox && map.dataset.bottom) {
         const mapBottom = map.getBoundingClientRect().top + Number(map.dataset.bottom) * scale(map);
-        const gap = insetBox.getBoundingClientRect().bottom - mapBottom;
+        const box = insetBox.getBoundingClientRect();
+        const gap = Math.min(box.bottom - mapBottom, Math.max(0, box.height - box.width / 2));
         side.style.paddingBottom = `${Math.max(0, parseFloat(getComputedStyle(side).paddingBottom) + gap)}px`;
       }
     }
@@ -155,6 +161,24 @@ const saveAs = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g, 
     if (map && inset && out && map.dataset.ppm && inset.dataset.ppm) {
       const n = (scale(inset, true) * Number(inset.dataset.ppm)) / (scale(map) * Number(map.dataset.ppm));
       out.textContent = `×${Number(n.toFixed(n < 10 ? 1 : 0))}`;
+    }
+    // A cropped inset (data-north) shows less than the plate's box: move the map's outline to the
+    // miles actually in view, and pin labels marked data-pin-bottom to the crop's bottom edge.
+    if (map && inset && map.dataset.ppm && inset.dataset.ppm && inset.dataset.north) {
+      const vb = inset.viewBox.baseVal;
+      const shown = inset.getBoundingClientRect().height / scale(inset, true); // viewBox units in view
+      const top = (vb.height - shown) / 2;
+      const ki = Number(inset.dataset.ppm);
+      const north = Number(inset.dataset.north) - top / ki;
+      const south = north - shown / ki;
+      // both modes' maps, so the outline is already right when the mode toggle swaps them
+      document.querySelectorAll<SVGRectElement>('.map [data-inset-frame]').forEach((frame) => {
+        const k = Number(frame.closest<SVGSVGElement>('svg')?.dataset.ppm);
+        const y0 = Number(frame.dataset.y0);
+        frame.setAttribute('y', `${y0 - north * k}`);
+        frame.setAttribute('height', `${(north - south) * k}`);
+      });
+      document.querySelectorAll('.inset-box [data-pin-bottom]').forEach((g) => g.setAttribute('transform', `translate(0 ${top + shown})`));
     }
   };
   layout();
@@ -194,8 +218,9 @@ const saveAs = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g, 
   // The tooltip's dot or ring follows the map: ink in grayscale; in color, the station's line color,
   // or ink for stations on two or more lines.
   const lineColors: Record<string, string> = JSON.parse(cols?.dataset.lineColors ?? '{}');
+  const isColor = () => document.documentElement.dataset.mode === 'color';
   const mark = (ada: boolean, lines: string[]) => {
-    const color = document.documentElement.dataset.mode === 'color';
+    const color = isColor();
     const c = color && lines.length === 1 ? lineColors[lines[0]] ?? '#232323' : color ? '#232323' : '#5A5853'; // grayscale marks are softened
     return ada
       ? `<svg viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="4" fill="${c}"/></svg>`
@@ -213,12 +238,11 @@ const saveAs = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g, 
       tip.style.transform = `translate(${x}px, ${y}px)`;
     };
     const show = (g: HTMLElement, e: PointerEvent) => {
+      const route = g.dataset.kind === 'route';
       const head = document.createElement('div');
       head.className = 'tt-head';
-      head.innerHTML = mark(g.dataset.ada === '1', (g.dataset.lines ?? '').split(' ').filter(Boolean));
       const name = document.createElement('strong');
       name.textContent = g.dataset.name ?? g.dataset.tip ?? '';
-      head.append(name);
       const lines = document.createElement('div');
       lines.className = 'tt-lines';
       for (const l of (g.dataset.lines ?? '').split(' ').filter(Boolean)) {
@@ -226,9 +250,34 @@ const saveAs = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g, 
         box.className = 'tt-line';
         box.dataset.line = l;
         box.textContent = l;
+        if (route && isColor() && g.dataset.color) Object.assign(box.style, { background: g.dataset.color, color: g.dataset.onColor ?? '#fff' });
         lines.append(box);
       }
-      tip.replaceChildren(head, lines);
+      if (route) {
+        // route box, then name; a rule as thick as the route's riders; then one sentence
+        head.append(...lines.children, name);
+        const c = (isColor() ? g.dataset.color : g.dataset.gray) ?? '#232323';
+        const w = g.dataset.sep ?? '2';
+        const rule = document.createElement('div');
+        rule.className = 'tt-sep';
+        rule.innerHTML = `<svg viewBox="0 0 200 9" preserveAspectRatio="none" aria-hidden="true"><line x1="0" x2="200" y1="4.5" y2="4.5" stroke="${c}" stroke-width="${w}"${g.dataset.dash ? ' stroke-dasharray="6 4"' : ''} vector-effect="non-scaling-stroke"/></svg>`;
+        const text = document.createElement('span');
+        text.className = 'tt-detail';
+        text.textContent = g.dataset.detail ?? '';
+        tip.replaceChildren(head, rule, text);
+        tip.hidden = false;
+        move(e);
+        return;
+      }
+      head.innerHTML = mark(g.dataset.ada === '1', (g.dataset.lines ?? '').split(' ').filter(Boolean));
+      head.append(name);
+      const rows = (g.dataset.detail ?? '').split('|').filter(Boolean).map((t) => {
+        const row = document.createElement('span');
+        row.className = 'tt-detail';
+        row.textContent = t;
+        return row;
+      });
+      tip.replaceChildren(head, lines, ...rows);
       tip.hidden = false;
       move(e);
     };
@@ -307,7 +356,7 @@ const saveAs = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g, 
   .viz :global([data-keys]), .viz :global([data-hl]) { transition: opacity 0.15s; }
   .viz :global(svg.hl [data-keys]:not(.on)) { opacity: 0.08; }
   .viz :global(g[data-id]) { transform-box: fill-box; transform-origin: center; transition: transform 0.12s; }
-  .viz :global(g[data-id].pick) { transform: scale(1.9); }
+  .viz :global(g[data-id]:not([data-kind]).pick) { transform: scale(1.9); } /* stations grow; routes are only raised */
   .viz :global(svg.hl [data-hl]:not(.on)) { opacity: 0.3; }
   .viz :global(.hl-label) { display: none; }
   .viz :global(svg.hl .hl-label.on) { display: inline; }
@@ -321,6 +370,8 @@ const saveAs = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g, 
   .tip[hidden] { display: none; }
   .tip :global(.tt-head) { display: flex; align-items: center; gap: 6px; }
   .tip :global(.tt-head svg) { width: 10px; height: 10px; flex: none; }
+  .tip :global(.tt-detail) { font-size: 10.5px; color: var(--pencil); }
+  .tip :global(.tt-sep svg) { display: block; width: 100%; height: 9px; }
   .tip :global(strong) { font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
   .tip :global(.tt-lines) { display: flex; flex-wrap: wrap; gap: 4px; }
   .tip :global(.tt-line) {

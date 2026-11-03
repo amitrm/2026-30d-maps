@@ -197,7 +197,7 @@ export function renderDay01(data, { mode = 'gray', variant = 'plate' } = {}) {
       title(uy, 'NON-ACCESSIBLE STATIONS BY LINE');
       // notes: one running text, word-wrapped to the column (serif italic, about 0.45 em a character)
       const budget = Math.floor(cw / (ns * 0.45));
-      const noteLines = wrap('Route order from the outer terminal · Gap indicates a branch · Interchange stations count once per line' + (mode === 'color' ? ' marked in black' : ''), budget);
+      const noteLines = wrap('Route order from the outer terminal · Gap indicates a branch · Interchange stations count once per line' + (mode === 'color' ? ', marked in black' : ''), budget);
       noteLines.forEach((l, i) => note(uy + (i + 1) * nh + 4, l));
       uy += noteLines.length * nh + 30; // 4 below the last note, 26 to the first row
     }

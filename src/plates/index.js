@@ -7,10 +7,14 @@
 //   ledger                     [label, value, url?] rows for the Data and method section;
 //                              value may be a list of [text, url] links
 //   csv()                      the plotted data, offered as a download
+//   page                       the day page's middle-column headings: chart { title, note, colorNote },
+//                              inset { title }
 import cityBoundary from '../../reference/city-boundary.json';
 import lineSequences from '../../reference/cta-line-sequences.json';
 import day01Data from '../../days/day01-points/output/plate.json';
 import { renderDay01 } from './day01.js';
+import day02Data from '../../days/day02-lines/output/plate.json';
+import { renderDay02, monthSpan, pct } from './day02.js';
 
 const csv = (rows) =>
   rows.map((r) => r.map((v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v)).join(',')).join('\n') + '\n';
@@ -38,6 +42,43 @@ const d1Story = {
   ],
 };
 
+const d2 = day02Data.summary;
+const d2NotDrawn = day02Data.notScheduled;
+const d2Top = day02Data.routes.slice(0, d2.halfRoutes);
+const routeName = (r) => `${r.name} (${r.id})`;
+const d2Above = d2Top.filter((r) => r.ridersBench && r.riders > r.ridersBench).map(routeName);
+const fmt = (n) => Math.round(n).toLocaleString('en-US');
+const list = (xs) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
+
+// CTA's Frequent Network as listed on its page (24 routes by the end of 2026, #8 Halsted from December).
+const FREQUENT_NETWORK = ['4', '8', '9', '12', 'J14', '20', '34', '35', '47', '49', '53', '54', '55', '60', '63', '66', '72', '74', '77', '79', '81', '82', '85', '95'];
+const d2Routes = new Map(day02Data.routes.map((r) => [r.id, r]));
+const d2Fn = FREQUENT_NETWORK.map((id) => d2Routes.get(id));
+const d2FnShare = d2Fn.reduce((s, r) => s + r.riders, 0) / d2.riders;
+const d2FnAll = d2Fn.every((r) => r.tier === 'frequent');
+const d2FnPlus = day02Data.routes.filter((r) => r.tier === 'frequent' && !FREQUENT_NETWORK.includes(r.id)).map(routeName);
+
+// Every number below is computed from the plotted data (days/day02-lines/output/plate.json); every
+// CTA statement in the plan is from the CTA pages linked in the ledger.
+const d2Story = {
+  background: [
+    'Chicago’s street grid puts a major street every half mile, and CTA runs a bus along most of them. On paper that means no one in the city is more than a quarter mile from a bus. This plate asks which of those routes actually carry the riders, and how often each bus comes.',
+    'The map is drawn in miles from State & Madison, one square per mile, with no basemap. Each route is drawn on its own streets, heavier and darker where the bus comes more often at midday; where routes share a street, the most frequent shows on top. The ’L’ lines are drawn for context. The chart ranks the routes by weekday riders. Hover a route for its riders and frequency, or a row of the chart to show only that route.',
+  ],
+  findings: [
+    `On an average weekday from ${monthSpan(day02Data.window)}, CTA buses carried ${fmt(d2.riders)} riders on ${d2.routesInData} routes. The busiest ${d2.halfRoutes} routes carried half of them; the top ten alone, led by ${list(d2Top.slice(0, 3).map(routeName))}, carried ${pct(d2.top10Share)}.`,
+    `${d2.tiers.frequent.routes} routes come every 10 minutes or better at midday, and they carry ${pct(d2.tiers.frequent.share)} of riders. ${d2.tiers.basic.routes} routes come less often than every 15 minutes; together they carry ${pct(d2.tiers.basic.share)}.`,
+    `Measured in a straight line, ${pct(day02Data.coverage.anyShare)} of the city lies within a quarter mile of a bus route, but only ${pct(day02Data.coverage.frequentShare)} within a quarter mile of one that comes every 10 minutes.`,
+    `Weekday riders are at ${pct(d2.recovery)} of ${day02Data.benchmarkYear}. Among the busiest routes, ${list(d2Above)} now carry more riders than in ${day02Data.benchmarkYear}.`,
+  ],
+  plan: [
+    'In March 2025 CTA launched its Frequent Network: bus routes that come every 10 minutes or better from 6 a.m. to 9 p.m. on weekdays and 9 a.m. to 9 p.m. on weekends. It reached 20 routes in December 2025. The 31st/35th (35), Fullerton (74) and Central (85) routes joined on 23 August 2026, and Halsted (8) joins in December, for 24. CTA credits the added service to funding under the Northern Illinois Transit Authority (NITA) Act, and estimates that by the end of 2026, 75% of its service area will be within a half mile of a Frequent route.',
+    `In the schedule mapped here, ${d2FnAll ? 'all 24 already come' : 'the 24 come'} every 10 minutes or better at midday, and they carry ${pct(d2FnShare)} of weekday riders. ${list(d2FnPlus)} also do at midday, but are not on the network, which holds that standard all day.`,
+    'Frequency is half the promise; the other half is a bus that is not stuck in traffic. In November 2023 CTA and the Chicago Department of Transportation (CDOT) published Better Streets for Buses, the City’s first citywide framework for improving streets for buses. Its Bus Priority Corridor Study, funded by an Invest in Cook grant, covers Pulaski, Western, Cottage Grove, Fullerton and 55th Street, which carry nearly 74,000 riders on an average weekday across ten routes. Updated designs are expected for public comment in 2027.',
+    'In September 2026 CDOT began installing a bus lane of nearly 1.5 miles on northbound Michigan Avenue, from Roosevelt Road to Wacker Drive. CTA counts 21 routes using at least part of it, and an estimated 22,000 bus riders through the segment every weekday.',
+  ],
+};
+
 export const plates = {
   1: {
     file: 'day01-the-doors',
@@ -59,10 +100,48 @@ export const plates = {
         ['Austin reopens, 7 Aug 2026', 'https://www.transitchicago.com/ctas-austin-green-line-station-reopened-and-fully-accessible/'],
       ]],
     ],
+    page: {
+      chart: { title: 'Non-accessible stations by line', note: 'Route order from the outer terminal · Gap indicates a branch · Interchange stations count once per line', colorNote: ', marked in black' },
+      inset: { title: 'Inset · The Loop and River North' },
+    },
     csv: () =>
       csv([
         ['station_id', 'name', 'lines', 'step_free', 'lat', 'lon', 'x_address', 'y_address'],
         ...day01Data.stations.map((s) => [s.id, s.name, s.lines.join(' '), s.ada, s.lat, s.lon, s.x, s.y]),
+      ]),
+  },
+  2: {
+    file: 'day02-the-half-mile-promise',
+    render: (o) => renderDay02({ ...day02Data, findings: d2Story.findings, boundary: cityBoundary.rings }, o),
+    subtitle: 'Which bus routes carry the city, and how often does the bus come?',
+    finding: day02Data.finding,
+    story: d2Story,
+    ledger: [
+      ['Source', `CTA – Ridership – Bus Routes – Daily Totals by Route, Chicago Data Portal · ${day02Data.ledger.dataset_id} · pulled ${day02Data.ledger.pulled}`, day02Data.ledger.url],
+      ['Units', `Average weekday riders per route, ${monthSpan(day02Data.window)}: weekday rides divided by weekdays. A route that runs part of the year is averaged over the whole year.`],
+      ['Service', `CTA GTFS schedule, feed of ${day02Data.gtfs.feedDate}, on Wednesday ${day02Data.gtfs.refDay}: trips, bus-hours (first to last stop) and the midday interval, 300 minutes divided by the trips each way starting 10:00–15:00. ’L’ lines from the same feed.`, day02Data.gtfs.url],
+      ['Method', 'One shape per route: the longest pattern carrying at least a quarter of its direction’s trips, plus the other direction where it runs on another street (one-way pairs, end loops). Routes on a shared street overlap, most frequent on top.'],
+      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
+      ['Caveat', `Riders are boardings on the whole route, not the load on any one street. Ridership runs to ${day02Data.window[1]}; service is a later schedule. ${d2NotDrawn.length} event and seasonal routes (${d2NotDrawn.map((r) => r.id).join(', ')}) count in the totals but do not run on the reference day and are not drawn. Coverage is straight-line distance, not a walk.`],
+      ['CTA', [
+        ['Frequent Network', 'https://www.transitchicago.com/frequent/'],
+        ['launch, 2 Mar 2025', 'https://www.transitchicago.com/cta-launches-new-frequent-network-for-buses/'],
+        ['20 routes, 17 Dec 2025', 'https://www.transitchicago.com/cta-ready-to-close-out-2025-with-full-frequent-network-and-expanded-service-on-additional-bus-routes/'],
+        ['24 routes, 18 Aug 2026', 'https://www.transitchicago.com/cta-bolsters-frequent-network-with-four-additional-routes-by-end-of-2026/'],
+        ['Better Streets for Buses', 'https://www.transitchicago.com/betterstreetsforbuses/'],
+        ['target corridors, 27 Jun 2024', 'https://www.transitchicago.com/cta-and-cdot-announce-better-streets-for-buses-target-design-corridors/'],
+        ['Michigan Avenue bus lane, 30 Sep 2026', 'https://www.transitchicago.com/mayor-brandon-johnson-cdot-to-install-dedicated-bus-lane-on-michigan-avenue-bringing-more-reliable-cta-bus-service-to-the-loop/'],
+      ]],
+    ],
+    page: {
+      chart: { title: 'Average weekday riders by route', note: `Ridership for the ${d2.halfRoutes} busiest routes, which carry half the riders · Outline shows ${day02Data.benchmarkYear} ridership · Shade shows midday frequency` },
+      inset: { title: 'Inset · The Loop and Michigan Avenue' },
+    },
+    csv: () =>
+      csv([
+        ['route', 'name', 'rank', 'weekday_riders', `weekday_riders_${day02Data.benchmarkYear}`, 'trips', 'bus_hours', 'riders_per_bus_hour', 'midday_interval_min', 'tier', 'length_mi'],
+        ...day02Data.routes.map((r) => [r.id, r.name, r.rank, r.riders, r.ridersBench ?? '', r.trips, r.vehHours, r.perHour, r.interval ?? '', r.tier, r.lengthMi]),
       ]),
   },
 };
