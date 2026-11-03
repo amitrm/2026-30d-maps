@@ -12,8 +12,7 @@ const chapterNames = ['The Grid', 'The Systems', 'The Gaps', 'The Body', 'The Po
 const intros = {
   'The Grid': 'Chapter I starts where Chicago’s promise is written down: the address grid itself. Across six days and six challenge themes, it tests that promise at street level, asking how evenly the grid’s stations, routes and reach are shared, and who is left at the edge of it.',
 };
-// Each published plate's problem statement; unpublished days show only their date.
-const statements = { 1: 'Which ‘L’ stations can a rider who cannot take the stairs use?' };
+// A published plate's problem statement is its registry subtitle; unpublished days show only their date.
 const pad = (n) => String(n).padStart(2, '0');
 const slug = (n) => `day${pad(n)}`;
 const isLive = (d) => d.status === 'published' && plates[d.day];
@@ -81,7 +80,7 @@ const pos = (r) => `left:${r.left.toFixed(3)}%;top:${r.top.toFixed(3)}%;width:${
       <p class="mono quiet">#30DayMapChallenge 2026 · Chicago · {liveCount} of 30 plates</p>
       <h1>800 to the Mile</h1>
       <p class="lede">
-        Chicago’s address grid promises equal distance: 800 numbers to a mile, an arterial every half mile, a bus on every arterial.
+        Chicago’s address grid promises equal distance: 800 numbers to a mile, an arterial every half mile, a bus on nearly every arterial.
         For thirty days in November, this atlas tests that promise with open data and asks one question: who actually gets to cover the mile?
       </p>
       <ol class="chlist">
@@ -125,7 +124,7 @@ const pos = (r) => `left:${r.left.toFixed(3)}%;top:${r.top.toFixed(3)}%;width:${
             <Fragment>
               <span class="meta">Day {pad(d.day)} · {fmt(d.date)} · {d.theme}</span>
               <span class="ttl">{live ? d.title : d.theme}</span>
-              <span class="st">{statements[d.day] ?? `Opens ${fmt(d.date)}.`}</span>
+              <span class="st">{live ? plates[d.day].subtitle : `Opens ${fmt(d.date)}.`}</span>
             </Fragment>
           );
           const style = `left:calc(${l.left.toFixed(3)}% + 14px);top:${l.top.toFixed(3)}%;height:${l.height.toFixed(3)}%`;
