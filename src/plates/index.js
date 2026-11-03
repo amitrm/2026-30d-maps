@@ -3,7 +3,9 @@
 //   render({ mode, variant })  'gray' | 'color'; 'plate' (print and download), or the day page's
 //                              'map', 'chart' (stations by line) and 'inset' (the Loop)
 //   file, subtitle, finding    download name stem, page subtitle, headline finding
-//   story                      background, findings and plan paragraphs for the day page
+//   story                      background, findings and plan paragraphs for the day page; or
+//                              sections [heading, paragraphs, open?] in panel order (findings still
+//                              needed: page description and the plate's findings column)
 //   ledger                     [label, value, url?] rows for the Data and method section;
 //                              value may be a list of [text, url] links
 //   csv()                      the plotted data, offered as a download
@@ -15,6 +17,8 @@ import day01Data from '../../days/day01-points/output/plate.json';
 import { renderDay01 } from './day01.js';
 import day02Data from '../../days/day02-lines/output/plate.json';
 import { renderDay02, monthSpan, pct } from './day02.js';
+import day03Data from '../../days/day03-polygons/output/plate.json';
+import { renderDay03, CHART_NOTE as D3_CHART_NOTE, INSET_TITLE as D3_INSET } from './day03.js';
 
 const csv = (rows) =>
   rows.map((r) => r.map((v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v)).join(',')).join('\n') + '\n';
@@ -79,6 +83,47 @@ const d2Story = {
   ],
 };
 
+// Every number below is computed from the plotted data (days/day03-polygons/output/plate.json);
+// CTA statements are from the ASAP page and the Austin release linked in the ledger.
+const d3 = day03Data.summary;
+const d3Sens = day03Data.sensitivity;
+const d3Line = new Map(day03Data.byLine.map((l) => [l.line, l]));
+const d3Blue = d3Line.get('Blue');
+const d3Top = [...day03Data.stations].sort((a, b) => b.stairs - a.stairs).slice(0, 10);
+const d3Name = (s) => `${s.short} (${s.lines.join('/')})`;
+const hundreds = (n) => fmt(Math.round(n / 100) * 100);
+const thousands = (n) => fmt(Math.round(n / 1000) * 1000);
+const miles1 = (v) => v.toFixed(2).replace(/0$/, '');
+// ASAP Phase One and Phase Two stations, as listed on CTA's ASAP page
+const D3_PHASES = new Set(['Montrose (Blue)', 'California (Blue)', 'Racine (Blue)', 'State/Lake', 'Irving Park (Blue)', 'Belmont (Blue)', 'Pulaski (Blue)', 'Cicero (Blue)', 'Austin (Blue)', 'Oak Park (Green)', 'Ridgeland (Green)', 'North/Clybourn (Red)']);
+const d3InPhase = (s) => D3_PHASES.has(d3Name(s)) || D3_PHASES.has(s.short);
+const d3Unphased = d3Top.filter((s) => !d3InPhase(s));
+const d3Phase2 = d3Top.filter((s) => d3InPhase(s) && !day03Data.phaseOne.includes(s.short));
+const d3Story = {
+  background: [
+    `Plate I counted the doors: ${day01Data.summary.noStepFree} of ${day01Data.summary.total} ‘L’ stations without an elevator or ramp to every platform. This plate turns the doors into territory, the part of the city each station serves. The planning standard for a rail station is a half-mile walk, about ten minutes.`,
+    'Maps usually draw that half mile as a circle. Here it is walked along OpenStreetMap’s streets and paths, twice: once from every station, and once from vertically accessible stations only, on the same network with every flight of stairs taken out. Each 2020 Census block is placed by the walk from its center to the nearest station.',
+    'The map is drawn in miles from State & Madison, one square per mile, with no basemap. Solid tone is a step-free half-mile walk to an accessible station; hatching is a half-mile walk that reaches only a station with stairs. Hover a station or its walkshed for the residents it serves, or a line in the chart to outline its stations’ walksheds.',
+  ],
+  findings: [
+    `${pct(d3.nearShare)} of Chicagoans, ${thousands(d3.near)} people, live within a half-mile walk of an ‘L’ station. ${pct(d3.coveredShare)} live that close to one they can reach without stairs. The other ${thousands(d3.stairs)} live in the stairs-only zone: near the ‘L’, but not near a station they can use if they cannot climb.`,
+    `The Blue Line accounts for ${thousands(d3Blue.stairs)} of them, ${pct(d3Blue.stairs / d3.stairs)}; ${pct(d3Blue.stairs / d3Blue.near)} of the residents near the Blue Line are stairs-only. The largest single area runs along Milwaukee Avenue through West Town and Wicker Park, around Division, Chicago and Damen: ${thousands(day03Data.inset.residents)} residents. On the Red Line, Morse, Jarvis and Sheridan leave ${thousands(['Morse', 'Jarvis', 'Sheridan'].reduce((n, k) => n + day03Data.stations.find((s) => s.short === k && s.lines.includes('Red')).stairs, 0))} more in Rogers Park and Uptown.`,
+    `From the stairs-only zone, the nearest accessible station is a median walk of ${miles1(d3.stairsMedianWalkMi)} mile, and more than a mile for ${pct(d3.stairsBeyondMileShare)} of its residents.`,
+    `Walked rather than drawn as circles, the half mile reaches ${pct(d3.nearShare)} of residents instead of ${pct(d3.crowNearShare)}, and covers ${Math.round(d3.nearSqMi)} square miles of the city instead of ${Math.round(d3.circleSqMi)}.`,
+  ],
+  gap: [
+    `The American Community Survey counts about ${thousands(d3.ambulatory)} Chicagoans with serious difficulty walking or climbing stairs. About ${thousands(d3.ambulatoryNear)} live within a half-mile walk of the ‘L’, and about ${hundreds(d3.ambulatoryStairs)} of them in the stairs-only zone, ${hundreds(d3.ambulatoryStairsOver65)} of those aged 65 or older. These are estimates: tract counts spread over blocks by population.`,
+    `Half a mile is about ten minutes at an average walking pace. At 0.8 m/s, slower than the 3 feet per second (0.9 m/s) that U.S. signal timing allows for slower pedestrians, ten minutes covers 480 m: ${pct(d3Sens['ten minutes at 0.8 m/s'].nearShare)} of Chicagoans live that close to a station, and ${pct(d3Sens['ten minutes at 0.8 m/s'].coveredShare)} that close to an accessible one.`,
+    'The step-free walk is an upper bound. OpenStreetMap records stairs, but not every missing curb ramp, broken sidewalk or elevator out of service.',
+  ],
+  plan: [
+    `CTA’s All Stations Accessibility Program (ASAP) aims to make every rail station vertically accessible by 2038. Phase One, fully funded at $423.5 million and due by 2027, covers Montrose, California and Racine on the Blue Line and State/Lake in the Loop. On this network it would cut the stairs-only zone from ${thousands(d3.stairs)} to ${thousands(d3Sens['ASAP Phase One done'].stairs)} residents.`,
+    `Of the ten stations whose walksheds hold the most stairs-only residents, ${list(d3Phase2.map((s) => s.short))} are in Phase Two, which CTA reports as 45% funded and projected for 2028. ${list(d3Unphased.map((s) => s.short))} are in neither of the first two phases; CTA has no funding yet for Phases Three and Four.`,
+    `The City’s data still flags Austin (Green), reopened fully accessible in August 2026, as non-accessible. Counted as accessible, it moves ${hundreds(d3.stairs - d3Sens['Austin (Green) as accessible'].stairs)} more residents out of the stairs-only zone.`,
+  ],
+};
+d3Story.sections = [['Background', d3Story.background], ['Findings', d3Story.findings, true], ['Who lives in the gap', d3Story.gap], ['The plan', d3Story.plan]];
+
 export const plates = {
   1: {
     file: 'day01-the-doors',
@@ -142,6 +187,35 @@ export const plates = {
       csv([
         ['route', 'name', 'rank', 'weekday_riders', `weekday_riders_${day02Data.benchmarkYear}`, 'trips', 'bus_hours', 'riders_per_bus_hour', 'midday_interval_min', 'tier', 'length_mi'],
         ...day02Data.routes.map((r) => [r.id, r.name, r.rank, r.riders, r.ridersBench ?? '', r.trips, r.vehHours, r.perHour, r.interval ?? '', r.tier, r.lengthMi]),
+      ]),
+  },
+  3: {
+    file: 'day03-the-accessible-city',
+    render: (o) => renderDay03({ ...day03Data, findings: d3Story.findings, boundary: cityBoundary.rings }, o),
+    subtitle: 'How much of Chicago is a short walk from an ‘L’ station a rider who cannot take the stairs can use?',
+    finding: day03Data.finding,
+    story: d3Story,
+    ledger: [
+      ['Source', `CTA – List of 'L' Stops, Chicago Data Portal · ${day03Data.ledger.dataset_id} · pulled ${day03Data.ledger.pulled}`, day03Data.ledger.url],
+      ['Walk', `OpenStreetMap walk network, Geofabrik extract of ${day03Data.osm.extract}, filtered with OSMnx’s walk rules. A half mile is ${Math.round(day03Data.walkM)} m along the network. Step-free: the same network without stairs and ways tagged wheelchair=no. © OpenStreetMap contributors (ODbL).`, day03Data.osm.url],
+      ['People', `2020 Census, Redistricting Data (P.L. 94-171): ${fmt(d3.residents)} residents in ${fmt(day03Data.census.blocks)} blocks, each placed by the walk from its internal point. Ambulatory difficulty: ACS 2020–2024 5-year, table B18105, by tract, spread over blocks by population.`, 'https://www.census.gov/programs-surveys/decennial-census/about/rdo/summary-files.html'],
+      ['Method', `Each station joins the network at its nearest walkway, and the walk to it counts. A station is vertically accessible as on Plate I: every platform flagged accessible. Walksheds are the reached streets widened by 40 m (about one lot depth), clipped to the city limits. The network reaches a mile past the city limits; ${day03Data.leftOut.length - 1} suburban stations beyond it are left out, as is O’Hare, whose station inside the terminal is about 1 km from the nearest mapped walkway. No one in Chicago lives within a half mile of any of them.`],
+      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
+      ['Caveat', 'The step-free walk is an upper bound: OSM records stairs, not every missing curb ramp or elevator outage. The ADA flag lags CTA’s own count (110 of 146 accessible, Aug 2026) and still marks Austin (Green) non-accessible. Ambulatory-difficulty counts are estimates with wide margins.'],
+      ['CTA', [
+        ['ASAP', 'https://www.transitchicago.com/accessibility/asap/'],
+        ['Austin reopens, 7 Aug 2026', 'https://www.transitchicago.com/ctas-austin-green-line-station-reopened-and-fully-accessible/'],
+      ]],
+    ],
+    page: {
+      chart: { title: 'Residents near each line', note: D3_CHART_NOTE },
+      inset: { title: `Inset · ${D3_INSET.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()).replace(' And ', ' and ')}` },
+    },
+    csv: () =>
+      csv([
+        ['station_id', 'name', 'lines', 'step_free', 'residents_nearest_half_mile', 'stairs_only_residents', 'x_address', 'y_address'],
+        ...day03Data.stations.map((s) => [s.id, s.name, s.lines.join(' '), s.ada, s.residents, s.stairs, s.x, s.y]),
       ]),
   },
 };

@@ -32,6 +32,7 @@ Each map uses public open data, and the whole set reads as one story told in fiv
 | --- | --- | --- | --- | --- |
 | 01 | Points | Which 'L' stations can a rider who cannot take the stairs use? | [CTA List of 'L' Stops](https://data.cityofchicago.org/d/8pix-ypme) · [CTA GTFS](https://www.transitchicago.com/developers/gtfs/) · [City boundary](https://data.cityofchicago.org/d/qqq8-j68g) | [The Doors](https://amitrm.github.io/2026-30d-maps/day01/) |
 | 02 | Lines | Which bus routes carry the city, and how often does the bus come? | [CTA Bus Routes, Daily Totals](https://data.cityofchicago.org/d/jyb9-n7fm) · [CTA GTFS](https://www.transitchicago.com/developers/gtfs/) · [City boundary](https://data.cityofchicago.org/d/qqq8-j68g) | [The Half-Mile Promise](https://amitrm.github.io/2026-30d-maps/day02/) |
+| 03 | Polygons | How much of Chicago is a short walk from an 'L' station a rider who cannot take the stairs can use? | [CTA List of 'L' Stops](https://data.cityofchicago.org/d/8pix-ypme) · [OpenStreetMap](https://www.openstreetmap.org/copyright) · [2020 Census](https://www.census.gov/programs-surveys/decennial-census/about/rdo/summary-files.html) · [ACS B18105](https://www.census.gov/programs-surveys/acs) · [City boundary](https://data.cityofchicago.org/d/qqq8-j68g) | [The Accessible City](https://amitrm.github.io/2026-30d-maps/day03/) |
 
 A new row is added on each day of the challenge.
 

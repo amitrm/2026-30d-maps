@@ -34,6 +34,9 @@ const numerals = ['I', 'II', 'III', 'IV', 'V'];
 const chapter = `Chapter ${numerals[chapters.indexOf(d.chapter)]}: ${d.chapter}`;
 const date = new Date(d.date + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 const dl = `${base}downloads/${p.file}`;
+// story sections in panel order: a plate's own list (story.sections: [heading, paragraphs, open?]),
+// or Background, Findings (open) and The plan
+const sections = p.story.sections ?? [['Background', p.story.background], ['Findings', p.story.findings, true], ['The plan', p.story.plan]].filter(([, paras]) => paras);
 // saved file name, either mode: DAY01-POINTS.svg, DAY01-POINTS.png
 const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
 ---
@@ -78,20 +81,12 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
       <p class="subtitle">{p.subtitle}</p>
       <p class="finding">{p.finding}</p>
 
-      <details name="plate">
-        <summary class="mono">Background</summary>
-        <div class="body">{p.story.background.map((t) => <p>{t}</p>)}</div>
-      </details>
-      <details name="plate" open>
-        <summary class="mono">Findings</summary>
-        <div class="body">{p.story.findings.map((t) => <p>{t}</p>)}</div>
-      </details>
-      {p.story.plan && (
-        <details name="plate">
-          <summary class="mono">The plan</summary>
-          <div class="body">{p.story.plan.map((t) => <p>{t}</p>)}</div>
+      {sections.map(([heading, paras, open]) => (
+        <details name="plate" open={open}>
+          <summary class="mono">{heading}</summary>
+          <div class="body">{paras.map((t) => <p>{t}</p>)}</div>
         </details>
-      )}
+      ))}
       <details name="plate">
         <summary class="mono">Data and method</summary>
         <dl class="body ledger">
