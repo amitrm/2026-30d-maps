@@ -26,17 +26,17 @@ const base = import.meta.env.BASE_URL;
         {masthead && <header class="masthead">
           <a href={base} class="brand">
             <span class="brand-name">800 to the Mile</span>
-            <span class="mono quiet">#30DayMapChallenge 2026 · Chicago · Amit Mondal</span>
+            <span class="sans quiet">#30DayMapChallenge 2026 · Chicago · Amit Mondal</span>
           </a>
           <slot name="nav" />
-          <div class="modes mono" role="group" aria-label="Map colors">
+          <div class="modes sans" role="group" aria-label="Map colors">
             <button type="button" data-set-mode="gray" aria-pressed="true">Grayscale</button>
             <button type="button" data-set-mode="color" aria-pressed="false">Color</button>
           </div>
         </header>}
         <slot />
         {!app && (
-          <footer class="foot mono quiet">
+          <footer class="foot sans quiet">
             <span>© Amit Mondal</span>
           </footer>
         )}

@@ -1,5 +1,5 @@
 // Plate III · The Accessible City · Day 03 Polygons
-import { C, LINES, SERIF, esc, text, wrap, frame, svg } from '../lib/plate.js';
+import { C, LINES, SERIF, esc, text, textWidth, legendBox, wrap, frame, svg } from '../lib/plate.js';
 import { gridLines, formatAddress, toMiles } from '../lib/grid.js';
 
 // variant 'plate': the full 1080 x 1350 plate (export, download).
@@ -68,7 +68,7 @@ export function renderDay03(data, { mode = 'gray', variant = 'plate' } = {}) {
   // hatching for the non-accessible-only walkshed: ink lines at 45°, spaced in screen pixels
   const hatch = (id, gap, w) =>
     `<pattern id="${id}" width="${gap}" height="${gap}" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="${gap}" stroke="${AREA.hatch}" stroke-width="${w}"/></pattern>`;
-  // the walksheds, the station catchments (page only: hover targets with an outline on hover or
+  // the walksheds, the station catchments (page only: hover targets, tinted on hover or
   // when their line is highlighted), drawn under the grid lines
   const drawAreas = (fx, fy, gap, w) => {
     out.push(`<defs>${hatch(`${uid}-hatch`, gap, w)}</defs>`);
@@ -77,7 +77,7 @@ export function renderDay03(data, { mode = 'gray', variant = 'plate' } = {}) {
   };
   const drawCatchments = (fx, fy) => {
     if (!hooks) return;
-    out.push(`<style>.${uid}-a path{fill:transparent;stroke:transparent;stroke-width:1.3px;vector-effect:non-scaling-stroke}.${uid}-a:hover path,svg.hl .${uid}-a.on path{stroke:${C.ink}}svg.hl .${uid}-a.on{opacity:1}</style>`);
+    out.push(`<style>.${uid}-a path{fill:${C.ink};fill-opacity:0}.${uid}-a:hover path,svg.hl .${uid}-a.on path{fill-opacity:0.14}svg.hl .${uid}-a.on{opacity:1}</style>`);
     for (const [id, polys] of Object.entries(catchments)) {
       const s = byId.get(id);
       if (!s) continue;
@@ -115,7 +115,7 @@ export function renderDay03(data, { mode = 'gray', variant = 'plate' } = {}) {
   const fx0 = X(ext.west), fx1 = X(ext.east), fy0 = Y(ext.north), fy1 = Y(ext.south);
   const g = gridLines(ext);
   const gl = 8 * T;
-  const labelLen = 7 * (gl * 0.6 + 0.4); // longest grid label, seven characters
+  const labelLen = 7 * (gl * 0.6 + 0.4); // room kept for the grid labels, as on Plate I
   const colX = fx1 + 6 + labelLen; // right edge of the right-hand label column
   const labelTop = fy0 - 6 - labelLen; // top line of the rotated grid labels
   const hatchMap = isMap ? [4.2, 0.8] : [3.2, 0.6];
@@ -166,8 +166,8 @@ export function renderDay03(data, { mode = 'gray', variant = 'plate' } = {}) {
     out.push(text(rx, ry - 9, '0', { size: 7.5 * T, anchor: 'middle' }));
     out.push(text(rx + 4 * k, ry - 9, '4 MI', { size: 7.5 * T, anchor: 'middle' }));
 
-    // legend: on the plate one line under the subtitle; on the page stacked in the map's empty
-    // north-west corner with a paper knock-out
+    // legend: on the plate one line under the subtitle; on the page in a box over the mile ruler,
+    // in the map's empty south-west corner
     const lgs = 9 * T;
     const swatch = (fill) => `<rect x="-6" y="-5" width="12" height="10" fill="${fill}"/>`;
     const legend = [
@@ -184,32 +184,22 @@ export function renderDay03(data, { mode = 'gray', variant = 'plate' } = {}) {
       legend.forEach(([mark, label]) => {
         if (mark === 'head') {
           out.push(text(lx, y, `${label}:`, { size: lgs, fill: C.pencil }));
-          lx += (label.length + 1) * lgs * 0.6 + 6;
+          lx += textWidth(`${label}:`, lgs) + 6;
           return;
         }
         out.push(`<g transform="translate(${lx + 6} ${y - lgs * 0.35})">${mark}</g>`);
         out.push(text(lx + 17, y, label, { size: lgs, fill: C.pencil }));
-        lx += 17 + label.length * lgs * 0.6 + 9;
+        lx += 17 + textWidth(label, lgs) + 9;
       });
     } else {
-      let y = fy0 + 6;
-      legend.forEach(([mark, label], i) => {
-        if (mark === 'head') {
-          out.push(text(fx0 + 6, y + 17, label.toUpperCase(), { size: lgs * 0.85, weight: 600, spacing: 0.6, halo: C.paper }));
-          y += 22;
-          return;
-        }
-        if (i === 3) y += 8; // stations after the walksheds
-        out.push(`<g transform="translate(${fx0 + 16} ${y + 11})">${mark}</g>`);
-        out.push(text(fx0 + 30, y + 11 + lgs * 0.35, label, { size: lgs, halo: C.paper }));
-        y += 20;
-      });
+      // the stations after the walksheds, a little apart
+      out.push(legendBox([...legend.slice(0, 3), ['gap'], ...legend.slice(3)], { x: rx, bottom: Y(ext.south) - k, k, size: lgs }));
     }
   }
 
   if (isMap) {
     return svg(out.join(''), { label: mapLabel(summary), viewBox: `60 184 ${Math.ceil(colX + 4 - 60)} 1114`, align: 'xMinYMin meet' })
-      .replace('<svg ', `<svg data-top="${labelTop - 184}" data-bottom="${fy1 - 184}" data-ppm="${+k.toFixed(3)}" `);
+      .replace('<svg ', `<svg data-top="${labelTop - 184}" data-bottom="${fy1 - 184}" data-ftop="${+(fy0 - 184).toFixed(2)}" data-ppm="${+k.toFixed(3)}" `);
   }
 
   // ---------- margin column (plate), chart or inset (day page) ----------
@@ -248,7 +238,7 @@ export function renderDay03(data, { mode = 'gray', variant = 'plate' } = {}) {
     for (const l of rows) {
       const top = l === rows[0];
       if (hooks) out.push(`<g data-hl="${l.line}"><rect x="${mx - 4}" y="${uy - row + 4}" width="${cw + 8}" height="${row}" fill="transparent"/>`);
-      const bw = l.line.length * (cs * 0.6 + 0.6) + 10;
+      const bw = textWidth(l.line.toUpperCase(), cs, { weight: 600, spacing: 0.6 }) + 10;
       out.push(`<rect x="${mx}" y="${uy - cs * 0.82 - 3}" width="${bw}" height="${cs + 5}" rx="1.5" fill="${mode === 'color' ? LINES[l.line] : soft ? C.rule : C.fog}"/>`);
       out.push(text(mx + 5, uy, l.line.toUpperCase(), { size: cs, weight: 600, spacing: 0.6, fill: mode === 'color' ? '#FFFFFF' : markInk }));
       const by = uy - cs * 0.36 - bar.h / 2;
@@ -303,9 +293,6 @@ export function renderDay03(data, { mode = 'gray', variant = 'plate' } = {}) {
   const halfY = [];
   for (let m = Math.ceil(lbm.south * 2) / 2; m <= lbm.north; m += 0.5) halfY.push(m);
   drawGrid(half, halfY, IXm, IYm, inset.x, inset.x + inset.w, inset.y, inset.y + inset.h);
-  // catchment edges: where one station's walk gives way to the next, a paper hairline
-  const edges = Object.values(catchments).map((polys) => area(polys, IX, IY)).join('');
-  out.push(`<path d="${edges}" fill="none" stroke="${C.paper}" stroke-width="0.9" stroke-linejoin="round"/>`);
   drawCatchments(IX, IY);
   const insetStations = stations.filter(inBox(box));
   for (const s of insetStations) out.push(station(s, IX(s.x), IY(s.y), 4.2));

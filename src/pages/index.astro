@@ -77,7 +77,7 @@ const pos = (r) => `left:${r.left.toFixed(3)}%;top:${r.top.toFixed(3)}%;width:${
 <Base title="800 to the Mile — a Chicago access atlas in 30 plates" masthead={false}>
   <section class="hero">
     <div class="hero-text">
-      <p class="mono quiet">#30DayMapChallenge 2026 · Chicago · {liveCount} of 30 plates</p>
+      <p class="sans quiet">#30DayMapChallenge 2026 · Chicago · {liveCount} of 30 plates</p>
       <h1>800 to the Mile</h1>
       <p class="lede">
         Chicago’s address grid promises equal distance: 800 numbers to a mile, an arterial every half mile, a bus on nearly every arterial.
@@ -87,7 +87,7 @@ const pos = (r) => `left:${r.left.toFixed(3)}%;top:${r.top.toFixed(3)}%;width:${
         {chapterNames.map((name, ci) => (
           <li data-ch={ci}>
             <button type="button" class="chb" data-ch={ci} aria-expanded="false" aria-controls={`chapter-${ci + 1}-text`}>
-              <span class="name"><span class="num">{numerals[ci]}</span>{name}</span><span class="mono">{span(ci)}</span>
+              <span class="name"><span class="num">{numerals[ci]}</span>{name}</span><span class="sans">{span(ci)}</span>
             </button>
             <div class="dwrap" id={`chapter-${ci + 1}-text`}><div class="desc"><p>{intros[name] ?? `Chapter ${numerals[ci]} opens on ${fmt(chapterDays[ci][0].date)}.`}</p></div></div>
           </li>
@@ -347,12 +347,12 @@ const pos = (r) => `left:${r.left.toFixed(3)}%;top:${r.top.toFixed(3)}%;width:${
     all: unset; box-sizing: border-box; cursor: pointer; display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
     width: 100%; padding: max(9px, 1.1vh) 0;
     /* set like the plate pages' section headings (Background, Findings, Download) */
-    font-family: var(--mono); font-size: 12.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+    font-family: var(--sans); font-size: 12.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
   }
   /* numerals in a fixed column, so the chapter names line up */
   .chb .name { display: flex; }
   .chb .num { width: 4.2em; flex: none; }
-  .chb .mono { font-size: 10px; font-weight: 400; color: var(--pencil); }
+  .chb .sans { font-size: 10px; font-weight: 400; color: var(--pencil); }
   .chb:hover .name, .chb:focus-visible .name { text-decoration: underline; }
   /* the chosen chapter's description opens beneath its name; the others stay collapsed */
   .dwrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.6s cubic-bezier(.2,.8,.2,1); }
@@ -380,7 +380,7 @@ const pos = (r) => `left:${r.left.toFixed(3)}%;top:${r.top.toFixed(3)}%;width:${
   .pane.open .box:hover { outline: none; } /* a landed square lifts on hover instead */
   .lab { transform-origin: left center; }
   .box.live { background: var(--ink); color: var(--paper); }
-  .box .n { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 1.75cqw; line-height: 1; }
+  .box .n { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--sans); font-size: 1.75cqw; line-height: 1; }
   .box .rn { position: absolute; left: 8%; top: 4%; overflow: hidden; font-family: var(--serif); font-size: 1.3cqw; color: #b9b6af; opacity: 0; }
   .box .thumb { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 25% 30%; opacity: 0; }
   .labels { position: absolute; inset: 0; pointer-events: none; }
@@ -389,7 +389,7 @@ const pos = (r) => `left:${r.left.toFixed(3)}%;top:${r.top.toFixed(3)}%;width:${
     pointer-events: auto; text-decoration: none; color: var(--ink);
   }
   .lab[hidden] { display: none; }
-  .lab .meta { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pencil); }
+  .lab .meta { font-family: var(--sans); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pencil); }
   .lab .ttl { font-size: 17px; line-height: 1.15; }
   .lab .st { font-size: 13px; line-height: 1.3; font-style: italic; color: var(--pencil); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   a.lab:hover .ttl, a.lab:focus-visible .ttl { text-decoration: underline; }

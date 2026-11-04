@@ -1,5 +1,5 @@
 // Plate I · The Doors · Day 01 Points
-import { W, H, C, LINES, SERIF, MONO, esc, text, paragraph, wrap, frame, svg } from '../lib/plate.js';
+import { W, H, C, LINES, SERIF, esc, text, textWidth, legendBox, paragraph, wrap, frame, svg } from '../lib/plate.js';
 import { gridLines, formatAddress, toMiles } from '../lib/grid.js';
 
 // variant 'plate': the full 1080 x 1350 plate (export, download).
@@ -68,7 +68,7 @@ export function renderDay01(data, { mode = 'gray', variant = 'plate' } = {}) {
   const fx0 = X(ext.west), fx1 = X(ext.east), fy0 = Y(ext.north), fy1 = Y(ext.south);
   const g = gridLines(ext);
   const gl = 8 * T;
-  const labelLen = 7 * (gl * 0.6 + 0.4); // longest grid label, seven characters
+  const labelLen = 7 * (gl * 0.6 + 0.4); // room kept for the grid labels: seven characters at 0.6 em
   const colX = fx1 + 6 + labelLen; // right edge of the right-hand label column
   const labelTop = fy0 - 6 - labelLen; // top line of the rotated grid labels
 
@@ -125,32 +125,30 @@ export function renderDay01(data, { mode = 'gray', variant = 'plate' } = {}) {
     out.push(text(rx, ry - 9, '0', { size: 7.5 * T, anchor: 'middle' }));
     out.push(text(rx + 4 * k, ry - 9, '4 MI', { size: 7.5 * T, anchor: 'middle' }));
 
-    // legend: on the page, stacked in the map's empty north-west corner with a paper knock-out;
-    // on the plate, one line under the subtitle, left-aligned with it
-    const lgs = 9 * T, llh = 22;
+    // legend: on the plate, one line under the subtitle, left-aligned with it; on the page, in a box
+    // over the mile ruler in the map's empty south-west corner
+    const lgs = 9 * T;
     const legend = [
       [stationMark(0, 0, true, 3.6), 'Vertically accessible'],
       [stationMark(0, 0, false, 3.6), 'Non-accessible'],
       ...(boundary.length ? [[`<rect x="-5" y="-5" width="10" height="10" fill="${C.ground}"/>`, 'City of Chicago']] : []),
     ];
-    let lx = 65;
-    legend.forEach(([mark, label], i) => {
-      if (isPlate) {
+    if (isPlate) {
+      let lx = 65;
+      for (const [mark, label] of legend) {
         const y = 203;
         out.push(`<g transform="translate(${lx} ${y - lgs * 0.35})">${mark}</g>`);
         out.push(text(lx + 10, y, label, { size: lgs, fill: C.pencil }));
-        lx += 10 + label.length * lgs * 0.6 + 22;
-        return;
+        lx += 10 + textWidth(label, lgs) + 22;
       }
-      const y = fy0 + 10 + llh * (i + 0.5);
-      out.push(`<g transform="translate(${fx0 + 12} ${y})">${mark}</g>`);
-      out.push(text(fx0 + 24, y + lgs * 0.35, label, { size: lgs, halo: C.paper }));
-    });
+    } else {
+      out.push(legendBox(legend, { x: rx, bottom: Y(ext.south) - k, k, size: lgs }));
+    }
   }
 
   if (isMap) {
     return svg(out.join(''), { label: mapLabel(summary), viewBox: `60 184 ${Math.ceil(colX + 4 - 60)} 1114`, align: 'xMinYMin meet' })
-      .replace('<svg ', `<svg data-top="${labelTop - 184}" data-bottom="${fy1 - 184}" data-ppm="${+k.toFixed(3)}" `);
+      .replace('<svg ', `<svg data-top="${labelTop - 184}" data-bottom="${fy1 - 184}" data-ftop="${+(fy0 - 184).toFixed(2)}" data-ppm="${+k.toFixed(3)}" `);
   }
 
   // ---------- margin column (plate), chart or inset (day page) ----------
@@ -211,11 +209,16 @@ export function renderDay01(data, { mode = 'gray', variant = 'plate' } = {}) {
       // line name in a box: fog with ink text, or the line's color with white text in color mode. On the
       // day page the name and count are set at the route label's size, a step below the chart's title.
       const ns = isChart ? 8 * T : cs;
-      const bw = l.line.length * (ns * 0.6 + 0.6) + 10;
+      const bw = textWidth(l.line.toUpperCase(), ns, { weight: 600, spacing: 0.6 }) + 10;
       out.push(`<rect x="${mx}" y="${uy - ns * 0.82 - 3}" width="${bw}" height="${ns + 5}" rx="1.5" fill="${mode === 'color' ? LINES[l.line] : soft ? C.rule : C.fog}"/>`);
       out.push(text(mx + 5, uy, l.line.toUpperCase(), { size: ns, weight: 600, spacing: 0.6, fill: mode === 'color' ? '#FFFFFF' : markInk }));
       out.push(text(mx + bw + 8, uy, `${l.noStepFree}/${l.total}`, { size: ns, weight: isBlue ? 600 : 400, fill: isBlue ? markInk : C.pencil }));
-      out.push(text(rowEnd, uy, `${first.short} → ${inLoop(last) ? 'Loop' : last.short}`, { size: 8 * T, anchor: 'end', fill: C.pencil }));
+      // terminals, outer → inner; Roboto has no arrow, so it is drawn
+      const rs = 8 * T, to = inLoop(last) ? 'Loop' : last.short;
+      const ax1 = rowEnd - textWidth(to, rs) - rs * 0.35, ax0 = ax1 - rs * 0.9, ay = uy - rs * 0.33;
+      out.push(text(rowEnd, uy, to, { size: rs, anchor: 'end', fill: C.pencil }));
+      out.push(arrow(ax0, ax1, ay, rs, C.pencil));
+      out.push(text(ax0 - rs * 0.35, uy, first.short, { size: rs, anchor: 'end', fill: C.pencil }));
       let cx = mx + dot.r;
       segs.forEach((seg, si) => {
         if (si) cx += dot.gap * 0.9;
@@ -336,6 +339,12 @@ export function renderDay01(data, { mode = 'gray', variant = 'plate' } = {}) {
 
 const mapLabel = (summary) =>
   `Plate I, The Doors: ${summary.noStepFree} of ${summary.total} Chicago ‘L’ stations are not vertically accessible; ${summary.blueNoStepFree} are on the Blue Line.`;
+
+// a right-pointing arrow from x0 to x1 at y, sized to text of size s
+function arrow(x0, x1, y, s, color) {
+  const h = s * 0.22;
+  return `<path d="M${x0.toFixed(1)},${y.toFixed(1)}H${x1.toFixed(1)}M${(x1 - h).toFixed(1)},${(y - h).toFixed(1)}L${x1.toFixed(1)},${y.toFixed(1)}L${(x1 - h).toFixed(1)},${(y + h).toFixed(1)}" fill="none" stroke="${color}" stroke-width="${(s * 0.08).toFixed(2)}" stroke-linecap="round" stroke-linejoin="round"/>`;
+}
 
 function stationMark(x, y, stepFree, r, color = C.ink) {
   return stepFree
