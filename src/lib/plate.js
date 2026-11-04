@@ -26,7 +26,7 @@ export const LINES = {
 };
 
 export const SERIF ="'Source Serif 4', 'Source Serif Pro', Georgia, serif";
-export const MONO = "'IBM Plex Mono', ui-monospace, Menlo, monospace";
+export const MONO = "'Roboto Mono', ui-monospace, Menlo, monospace";
 
 export const esc = (s) =>
   String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');

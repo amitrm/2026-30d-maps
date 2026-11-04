@@ -2,9 +2,9 @@
 @import '@fontsource/source-serif-4/400-italic.css';
 @import '@fontsource/source-serif-4/500.css';
 @import '@fontsource/source-serif-4/600.css';
-@import '@fontsource/ibm-plex-mono/400.css';
-@import '@fontsource/ibm-plex-mono/500.css';
-@import '@fontsource/ibm-plex-mono/600.css';
+@import '@fontsource/roboto-mono/400.css';
+@import '@fontsource/roboto-mono/500.css';
+@import '@fontsource/roboto-mono/600.css';
 
 /* Grayscale by default. Color mode (html[data-mode="color"]) adds hue only to tell data apart. */
 :root {
@@ -14,7 +14,7 @@
   --fog: #cfcdc7;
   --rule: #e1dfd9;
   --serif: 'Source Serif 4', Georgia, serif;
-  --mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+  --mono: 'Roboto Mono', ui-monospace, Menlo, monospace;
   --measure: 62ch;
 }
 
