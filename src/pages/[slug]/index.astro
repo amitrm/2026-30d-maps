@@ -126,7 +126,8 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
 
 <script>
   // Hover hooks emitted by the map, chart and inset variants of each plate renderer:
-  //   [data-tip][data-name][data-lines][data-ada]  tooltip (a station: dot or ring, line boxes)
+  //   [data-tip][data-name][data-lines][data-ada][data-detail]  tooltip (a station, or a walkshed with
+  //        data-kind=area: dot or ring, line boxes, then detail rows split on '|')
   //   [data-kind=route][data-detail][data-sep][data-dash][data-gray][data-color][data-on-color]
   //        tooltip for a route: route box and name, a rule data-sep px thick, one sentence
   //   [data-hl] (chart row) / [data-keys] (station, label)  highlight one line set, fade the rest
@@ -141,7 +142,8 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   };
 
   // Set the chart title on the same line as the top of the map's grid labels, then state the
-  // inset's scale relative to the map.
+  // inset's scale relative to the map. The map SVG gives, in viewBox units from its top: data-top (grid
+  // labels), data-ftop (map field), data-bottom (bottom grid line); and data-ppm, px per mile.
   const chartBox = document.querySelector<HTMLElement>('.side .chart');
   const layout = () => {
     const [map] = visible('.map svg');

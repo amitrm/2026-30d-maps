@@ -40,7 +40,7 @@ export function renderDay03(data, { mode = 'gray', variant = 'plate' } = {}) {
   // non-accessible stations only
   const detail = (s) => {
     if (!s.onNetwork) return 'Off the walking network: no residents within a half mile';
-    const rows = [`${fmt(s.residents)} residents nearest, within a half-mile walk`];
+    const rows = [`Nearest station for ${fmt(s.residents)} residents within a half-mile walk`];
     if (s.nearNonAccessible) rows.push(`${fmt(s.nearNonAccessible)} of them have no accessible station within a step-free half mile`);
     return rows.join('|');
   };
@@ -276,7 +276,7 @@ export function renderDay03(data, { mode = 'gray', variant = 'plate' } = {}) {
   if (isPlate) {
     title(ty, `INSET · ${INSET_TITLE}`);
     note(ty + nh + 4, `Shown at ×${(ki / k).toFixed(1)} the scale of the main map.`);
-    note(ty + 2 * nh + 4, `Largest area near non-accessible stations only: ${hundreds(data.inset.residents)} residents.`);
+    note(ty + 2 * nh + 4, `Largest area near non-accessible stations only: ${fmt(Math.round(data.inset.residents / 1000) * 1000)} residents.`);
   }
   const inset = isInset ? { x: 0, y: 0, w: iw, h: Math.round((lbm.north - lbm.south) * ki) } : { x: mx, y: ty + 2 * nh + 16, w: iw, h: Math.round((lbm.north - lbm.south) * ki) };
   out.push(`<defs><clipPath id="${uid}-inset"><rect x="${inset.x}" y="${inset.y}" width="${inset.w}" height="${inset.h}"/></clipPath></defs>`);

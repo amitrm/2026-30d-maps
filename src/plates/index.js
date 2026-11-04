@@ -1,16 +1,18 @@
 // Registry of built plates. To publish a day: add its module + data here,
 // then set "status": "published" in src/data/days.json.
 //   render({ mode, variant })  'gray' | 'color'; 'plate' (print and download), or the day page's
-//                              'map', 'chart' (stations by line) and 'inset' (the Loop)
-//   file, subtitle, finding    download name stem, page subtitle, headline finding
+//                              'map', 'chart' and 'inset' (with hover hooks; see the day page)
+//   file, subtitle, finding    download name stem, page subtitle (also the landing page's problem
+//                              statement), headline finding
 //   story                      background, findings and plan paragraphs for the day page; or
 //                              sections [heading, paragraphs, open?] in panel order (findings still
 //                              needed: page description and the plate's findings column)
 //   ledger                     [label, value, url?] rows for the Data and method section;
 //                              value may be a list of [text, url] links
 //   csv()                      the plotted data, offered as a download
-//   page                       the day page's middle-column headings: chart { title, note, colorNote },
-//                              inset { title }
+//   page                       the day page's middle-column headings: chart { title, note, colorNote? },
+//                              inset { title } (the page appends the inset's scale)
+// Story numbers are computed from each plate's data below, never typed, so the text cannot drift.
 import cityBoundary from '../../reference/city-boundary.json';
 import lineSequences from '../../reference/cta-line-sequences.json';
 import day01Data from '../../days/day01-points/output/plate.json';
@@ -112,9 +114,9 @@ const share = (v) => {
 const walkMi = (v) => (Math.abs(v - 0.75) < 0.05 ? 'about three-quarters of a mile' : `${miles1(v)} mile`);
 const d3Story = {
   background: [
-    `The usual way to judge transit access is to count how many people live within a half mile of a station. By that measure, ${pct(d3.nearShare)} of Chicagoans are well served. But the count treats every station as equal, and they are not. At ${day01Data.summary.noStepFree} of ${day01Data.summary.total} ‘L’ stations, at least one platform can be reached only by stairs. For a wheelchair user, a parent with a stroller or an older rider who cannot manage stairs, such a station is not really an option. A vertically accessible station has an elevator or ramp from the street to every platform.`,
+    `The usual way to judge transit access is to count how many people live within a half mile of a station. By that measure, ${pct(d3.crowNearShare)} of Chicagoans live close to the ‘L’. But the count treats every station as equal, and they are not. At ${day01Data.summary.noStepFree} of ${day01Data.summary.total} ‘L’ stations, at least one platform can be reached only by stairs. For a wheelchair user, a parent with a stroller or an older rider who cannot manage stairs, such a station is not really an option. A vertically accessible station has an elevator or ramp from the street to every platform.`,
     `This map corrects the count in two ways. First, it walks the half mile instead of drawing a circle: distance runs along OpenStreetMap’s streets and paths, around blocks, and across the river, expressways and rail lines only where there is a way over or under. Circles would claim ${pct(d3.crowNearShare)} of residents; walking gives ${pct(d3.nearShare)}. Second, it walks the half mile again on a step-free copy of the network, to accessible stations only. The copy drops ${fmt(d3Net.stairs)} mapped stair segments and keeps the ${d3Net.elevators} mapped elevators and every ramp. That leaves ${pct(d3.nearAccessibleShare)}.`,
-    'The map is drawn in miles from State & Madison, one square per mile, with no basemap. Solid tone is a step-free half-mile walk to an accessible station; hatching is a half-mile walk that reaches non-accessible stations only. Hover a station or its walkshed for the residents it serves, or a line in the chart to outline its stations’ walksheds.',
+    'The map is drawn in miles from State & Madison, one square per mile, with no basemap. Solid tone is a step-free half-mile walk to an accessible station; hatching is a half-mile walk that reaches non-accessible stations only. Hover a station or its walkshed for the residents it serves, or a line in the chart to shade its stations’ walksheds.',
   ],
   findings: [
     `About ${thousands(d3.nearNonAccessible)} people live near the non-accessible ‘L’ stations. For half of them, the closest accessible station is ${walkMi(d3.nonAccessibleMedianWalkMi)} or more away. For ${share(d3.nonAccessibleBeyondMileShare)} of them, it is more than a mile.`,
@@ -131,7 +133,7 @@ const d3Story = {
     'It covers the ‘L’ only, not buses.',
   ],
   plan: [
-    `Where the gap is points to the stations that would help the most people. CTA’s All Stations Accessibility Program (ASAP) aims to make every rail station vertically accessible by 2038. Phase One, fully funded at $423.5 million and due by 2027, covers Montrose, California and Racine on the Blue Line and State/Lake in the Loop. On this network it would bring the residents near non-accessible stations only from ${thousands(d3.nearNonAccessible)} to ${thousands(d3Sens['ASAP Phase One done'].nearNonAccessible)}.`,
+    `Where the gap is points to the stations that would help the most people. CTA’s All Stations Accessibility Program (ASAP) aims to make every rail station vertically accessible by 2038. Phase One, fully funded at $423.5 million and due by 2027, includes Montrose, California and Racine on the Blue Line and State/Lake in the Loop. On this network it would bring the residents near non-accessible stations only from ${thousands(d3.nearNonAccessible)} to ${thousands(d3Sens['ASAP Phase One done'].nearNonAccessible)}.`,
     `Of the ten non-accessible stations whose walksheds hold the most such residents, ${list(d3Phase2.map((s) => s.short))} are in Phase Two, which CTA reports as 45% funded and projected for 2028. ${list(d3Unphased.map((s) => s.short))} are in neither of the first two phases; CTA has no funding yet for Phases Three and Four.`,
     `The City’s data still flags Austin (Green), reopened fully accessible in August 2026, as non-accessible. Counted as accessible, it would put ${hundreds(d3.nearNonAccessible - d3Sens['Austin (Green) as accessible'].nearNonAccessible)} more residents within a step-free walk of an accessible station.`,
   ],
