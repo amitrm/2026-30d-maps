@@ -1,5 +1,5 @@
 // Plate II · The Half-Mile Promise · Day 02 Lines
-import { C, SERIF, esc, text, wrap, frame, svg } from '../lib/plate.js';
+import { C, SERIF, esc, text, textWidth, legendBox, wrap, frame, svg } from '../lib/plate.js';
 import { gridLines, formatAddress, toMiles } from '../lib/grid.js';
 
 // variant 'plate': the full 1080 x 1350 plate (export, download).
@@ -87,7 +87,7 @@ export function renderDay02(data, { mode = 'gray', variant = 'plate' } = {}) {
   // route number in a box, as Plate I's line-name boxes: fog with ink text, or the tier's color
   // with white text in color mode
   const routeBox = (x, y, id, size, { tier = 'frequent', anchor = 'middle' } = {}) => {
-    const bw = String(id).length * (size * 0.6 + 0.4) + 8;
+    const bw = textWidth(String(id), size, { weight: 600, spacing: 0.4 }) + 8;
     const bx = anchor === 'middle' ? x - bw / 2 : x;
     const fill = mode === 'color' ? TIER.color[tier] : soft ? C.rule : C.fog;
     const fg = mode === 'color' ? (tier === 'basic' || tier === 'none' ? C.ink : '#FFFFFF') : soft ? '#5A5853' : C.ink;
@@ -114,7 +114,7 @@ export function renderDay02(data, { mode = 'gray', variant = 'plate' } = {}) {
   const fx0 = X(ext.west), fx1 = X(ext.east), fy0 = Y(ext.north), fy1 = Y(ext.south);
   const g = gridLines(ext);
   const gl = 8 * T;
-  const labelLen = 7 * (gl * 0.6 + 0.4); // longest grid label, seven characters
+  const labelLen = 7 * (gl * 0.6 + 0.4); // room kept for the grid labels, as on Plate I
   const colX = fx1 + 6 + labelLen; // right edge of the right-hand label column
   const labelTop = fy0 - 6 - labelLen; // top line of the rotated grid labels
   // line width by midday tier, scaled with the map
@@ -190,8 +190,8 @@ export function renderDay02(data, { mode = 'gray', variant = 'plate' } = {}) {
     out.push(text(rx, ry - 9, '0', { size: 7.5 * T, anchor: 'middle' }));
     out.push(text(rx + 4 * k, ry - 9, '4 MI', { size: 7.5 * T, anchor: 'middle' }));
 
-    // legend: on the plate one line under the subtitle; on the page stacked in the map's empty
-    // south-west corner, just above the mile ruler, with a paper knock-out
+    // legend: on the plate one line under the subtitle; on the page in a box over the mile ruler,
+    // in the map's empty south-west corner
     const lgs = 9 * T;
     const sample = (w, tier, len = 18) => `<line x1="${-len / 2}" x2="${len / 2}" y1="0" y2="0" stroke="${ink(tier)}" stroke-width="${w}"${tier === 'none' ? ` stroke-dasharray="${DASH}"` : ''}/>`;
     const legend = [
@@ -210,34 +210,21 @@ export function renderDay02(data, { mode = 'gray', variant = 'plate' } = {}) {
         if (mark === 'head') {
           if (lx > 60) lx += 6;
           out.push(text(lx, y, `${label}:`, { size: lgs, fill: C.pencil }));
-          lx += (label.length + 1) * lgs * 0.6 + 8;
+          lx += textWidth(`${label}:`, lgs) + 8;
           return;
         }
         out.push(`<g transform="translate(${lx + 8} ${y - lgs * 0.35})">${mark}</g>`);
         out.push(text(lx + 20, y, label, { size: lgs, fill: C.pencil }));
-        lx += 20 + label.length * lgs * 0.6 + 9;
+        lx += 20 + textWidth(label, lgs) + 9;
       });
     } else {
-      // stack height first, so the legend ends just above the ruler's labels
-      const height = legend.reduce((h, [mark], i) => h + (mark === 'head' ? (i ? 32 : 22) : 20), 0);
-      let y = ry - 9 - 7.5 * T - 14 - height;
-      legend.forEach(([mark, label], i) => {
-        if (mark === 'head') {
-          y += i ? 10 : 0;
-          out.push(text(fx0 + 6, y + 17, label.toUpperCase(), { size: lgs * 0.85, weight: 600, spacing: 0.6, halo: C.paper }));
-          y += 22;
-          return;
-        }
-        out.push(`<g transform="translate(${fx0 + 16} ${y + 11})">${mark}</g>`);
-        out.push(text(fx0 + 32, y + 11 + lgs * 0.35, label, { size: lgs, halo: C.paper }));
-        y += 20;
-      });
+      out.push(legendBox([...legend.slice(0, 5), ['gap'], ...legend.slice(5)], { x: rx, bottom: Y(ext.south) - k, k, size: lgs }));
     }
   }
 
   if (isMap) {
     return svg(out.join(''), { label: mapLabel(summary), viewBox: `60 184 ${Math.ceil(colX + 4 - 60)} 1114`, align: 'xMinYMin meet' })
-      .replace('<svg ', `<svg data-top="${labelTop - 184}" data-bottom="${fy1 - 184}" data-ppm="${+k.toFixed(3)}" `);
+      .replace('<svg ', `<svg data-top="${labelTop - 184}" data-bottom="${fy1 - 184}" data-ftop="${+(fy0 - 184).toFixed(2)}" data-ppm="${+k.toFixed(3)}" `);
   }
 
   // ---------- margin column (plate), chart or inset (day page) ----------

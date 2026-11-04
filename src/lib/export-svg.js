@@ -9,9 +9,9 @@ const FACES = [
   ['Source Serif 4', 'source-serif-4', 400, 'normal'],
   ['Source Serif 4', 'source-serif-4', 400, 'italic'],
   ['Source Serif 4', 'source-serif-4', 500, 'normal'],
-  ['IBM Plex Mono', 'ibm-plex-mono', 400, 'normal'],
-  ['IBM Plex Mono', 'ibm-plex-mono', 500, 'normal'],
-  ['IBM Plex Mono', 'ibm-plex-mono', 600, 'normal'],
+  ['Roboto', 'roboto', 400, 'normal'],
+  ['Roboto', 'roboto', 500, 'normal'],
+  ['Roboto', 'roboto', 600, 'normal'],
 ];
 
 let fontCss;

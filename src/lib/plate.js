@@ -1,4 +1,6 @@
 // Shared plate primitives. Every plate is a 1080 x 1350 SVG (exported at 2x = 2160 x 2700).
+import { CHARS, WIDTHS } from './roboto-widths.js';
+
 export const W = 1080;
 export const H = 1350;
 
@@ -10,6 +12,7 @@ export const C = {
   rule: '#E1DFD9',
   ground: '#E4E2DC', // land inside the city limits: fill only, no outline
   grid: '#D3D1CA', // mile grid lines: dark enough to read over ground and over paper
+  frame: '#BDBBB4', // legend box outline on the day page: a step darker than the grid
 };
 
 // Color mode only: hue distinguishes elements, never decorates. CTA line colors;
@@ -26,14 +29,24 @@ export const LINES = {
 };
 
 export const SERIF ="'Source Serif 4', 'Source Serif Pro', Georgia, serif";
-export const MONO = "'IBM Plex Mono', ui-monospace, Menlo, monospace";
+export const SANS = "'Roboto', system-ui, sans-serif";
+
+// Width of a line of Roboto, in px, from its advance widths (roboto-widths.js); letter-spacing is
+// added after every character, as SVG does. Characters outside the table count as 0.6 em.
+const AT = new Map([...CHARS].map((c, i) => [c, i]));
+export function textWidth(str, size, { weight = 400, spacing = 0 } = {}) {
+  const widths = WIDTHS[weight] ?? WIDTHS[400];
+  const chars = [...String(str)];
+  const em = chars.reduce((n, c) => n + (widths[AT.get(c)] ?? 600), 0) / 1000;
+  return em * size + spacing * chars.length;
+}
 
 export const esc = (s) =>
   String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');
 
 export function text(x, y, str, o = {}) {
   const {
-    size = 12, font = MONO, fill = C.ink, anchor = 'start', weight = 400,
+    size = 12, font = SANS, fill = C.ink, anchor = 'start', weight = 400,
     italic = false, spacing = 0, rotate = 0, opacity = 1, halo,
   } = o;
   const tr = rotate ? ` transform="rotate(${rotate} ${x} ${y})"` : '';
@@ -86,4 +99,43 @@ export function frame({ plate, chapter, day, theme, title, subtitle }) {
 export function svg(body, { label, viewBox = `0 0 ${W} ${H}`, align }) {
   const par = align ? ` preserveAspectRatio="${align}"` : '';
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}"${par} role="img" aria-label="${esc(label)}">${body}</svg>`;
+}
+
+// The day page's map legend: a paper box four grid cells wide, its sides on the mile ruler's ends
+// (x, x + 4k) and its bottom on the grid line above the ruler's row; it rises by whole cells to fit.
+// items: [mark, label] rows (mark: SVG drawn around 0,0), ['head', text] for a caps heading, or
+// ['gap'] for extra space. Labels wrap to the box.
+export function legendBox(items, { x, bottom, k, size }) {
+  const pad = 8, markW = 24, lh = size * 1.3;
+  const w = 4 * k;
+  const room = w - 2 * pad - markW;
+  const lines = (str, s, o) => {
+    const out = [];
+    for (const word of str.split(' ')) {
+      const last = out.at(-1);
+      if (last && textWidth(`${last} ${word}`, s, o) <= (o.full ? w - 2 * pad : room)) out[out.length - 1] = `${last} ${word}`;
+      else out.push(word);
+    }
+    return out;
+  };
+  const head = { size: size * 0.85, weight: 600, spacing: 0.6 };
+  const rows = items.map(([mark, label]) =>
+    mark === 'gap' ? { gap: 6 } : mark === 'head' ? { head: lines(label.toUpperCase(), head.size, { ...head, full: true }) } : { mark, text: lines(label, size, {}) });
+  const height = rows.reduce((h, r) => h + (r.gap ?? (r.head ? r.head.length * lh + 4 : r.text.length * lh + 3)), 0) - 3;
+  const cells = Math.max(1, Math.ceil((height + 2 * pad) / k));
+  const top = bottom - cells * k;
+  const out = [`<rect x="${x}" y="${top}" width="${w}" height="${cells * k}" fill="${C.paper}" stroke="${C.frame}" stroke-width="0.8"/>`];
+  let y = top + pad + (cells * k - 2 * pad - height) / 2; // centred in its cells
+  for (const r of rows) {
+    if (r.gap) { y += r.gap; continue; }
+    if (r.head) {
+      r.head.forEach((l, i) => out.push(text(x + pad, y + lh * i + size * 0.8, l, { size: head.size, weight: 600, spacing: head.spacing })));
+      y += r.head.length * lh + 4;
+      continue;
+    }
+    out.push(`<g transform="translate(${x + pad + markW / 2 - 2} ${y + lh / 2})">${r.mark}</g>`);
+    r.text.forEach((l, i) => out.push(text(x + pad + markW, y + lh * i + size * 0.8, l, { size })));
+    y += r.text.length * lh + 3;
+  }
+  return out.join('');
 }

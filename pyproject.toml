@@ -9,6 +9,12 @@ dependencies = [
     "numpy>=1.26",
     "requests>=2.32",
     "matplotlib>=3.9",
+    "geopandas>=1.2.0",
+    "shapely>=2",
+    "pyproj>=3.7.2",
+    "osmnx>=2",
+    "networkx>=3.6.1",
+    "scipy>=1.17.1",
 ]
 
 [dependency-groups]
