@@ -17,11 +17,21 @@ const both = (variant) => ({ gray: p.render({ variant }), color: p.render({ mode
 const maps = both('map');
 const charts = both('chart');
 const insets = both('inset');
-// The map column is as wide as the map draws at full height; the middle column as wide as the chart
-// plus a ~330-unit inset would draw at full height; the story takes the rest.
+// Column widths, as multiples of the column height. On Plate I the map column is as wide as the map
+// draws at full height and the middle column as wide as the chart plus a ~330-unit inset would draw
+// at full height; the story takes the rest. Every page keeps Plate I's story width: its map column
+// is as wide as its map draws at full height, and its middle column takes the rest of the width
+// Plate I's two columns take (the chart scales with the column; the inset fills what is left).
 const vb = (svg) => svg.match(/viewBox="([^"]+)"/)[1].split(' ').map(Number);
-const ratio = (svg) => { const [, , w, h] = vb(svg); return (w / h).toFixed(4); };
-const sideRatio = (() => { const [, , w, h] = vb(charts.gray); return (w / (h + 330 + 70)).toFixed(4); })(); // + HTML headers and notes
+const ratios = (map, chart) => {
+  const [, , mw, mh] = vb(map), [, , cw, ch] = vb(chart);
+  return [mw / mh, cw / (ch + 330 + 70)]; // + HTML headers and notes
+};
+const [mapRatio, sideRatio] = (() => {
+  const [m, s] = ratios(maps.gray, charts.gray);
+  const [m1, s1] = d.day === 1 ? [m, s] : ratios(plates[1].render({ variant: 'map' }), plates[1].render({ variant: 'chart' }));
+  return [m.toFixed(4), (m1 + s1 - m).toFixed(4)];
+})();
 // Tooltip line boxes take the line's color in color mode, as in the chart.
 const lineCss = Object.entries(LINES).map(([k, c]) => `html[data-mode='color'] .tt-line[data-line='${k}'] { background: ${c}; color: #fff; }`).join('\n');
 const pad = (n) => String(n).padStart(2, '0');
@@ -51,7 +61,7 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   </nav>
 
   <main class="plate-view">
-   <div class="cols" style={`--map-ratio: ${ratio(maps.gray)}; --side-ratio: ${sideRatio}`} data-line-colors={JSON.stringify(LINES)}>
+   <div class="cols" style={`--map-ratio: ${mapRatio}; --side-ratio: ${sideRatio}`} data-line-colors={JSON.stringify(LINES)}>
     <figure class="viz map">
       <div class="only-gray" set:html={maps.gray} />
       <div class="only-color" set:html={maps.color} />
@@ -322,9 +332,9 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   .daynav a:hover { text-decoration: underline; }
   .daynav .off { color: var(--fog); }
 
-  /* Three columns: the map and the middle column each as wide as they draw at full height (24px of
-     vertical padding; the middle column adds 44px of side padding), the story panel taking the
-     rest, up to a readable 560px. */
+  /* Three columns: the map and the middle column (24px of vertical padding; the middle column adds
+     44px of side padding) at the widths set above, so the story panel takes the same rest on every
+     page as on Plate I, up to a readable 560px. */
   .plate-view { flex: 1; min-height: 0; container-type: size; }
   .cols {
     height: 100%; display: grid;
