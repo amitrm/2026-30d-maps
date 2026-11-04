@@ -101,16 +101,16 @@ def walk_graph(xml: Path) -> nx.MultiDiGraph:
     return g
 
 
-def _has(value, wanted: set[str]) -> bool:
+def has_tag(value, wanted: set[str]) -> bool:
     values = value if isinstance(value, list) else [value]
     return any(v in wanted for v in values)
 
 
 def step_free(g: nx.MultiDiGraph) -> nx.MultiDiGraph:
-    """Copy of ``g`` without stairs and ways tagged ``wheelchair=no``."""
+    """Copy of ``g`` without stairs and ways tagged ``wheelchair=no``; elevators and ramps stay."""
     h = g.copy()
     drop = [(u, v, k) for u, v, k, d in h.edges(keys=True, data=True)
-            if _has(d.get('highway'), {'steps'}) or _has(d.get('wheelchair'), {'no'})]
+            if has_tag(d.get('highway'), {'steps'}) or has_tag(d.get('wheelchair'), {'no'})]
     h.remove_edges_from(drop)
     log.info('Step-free graph: %d edges removed (stairs, wheelchair=no)', len(drop))
     return h

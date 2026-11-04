@@ -89,7 +89,7 @@ const d3 = day03Data.summary;
 const d3Sens = day03Data.sensitivity;
 const d3Line = new Map(day03Data.byLine.map((l) => [l.line, l]));
 const d3Blue = d3Line.get('Blue');
-const d3Top = [...day03Data.stations].sort((a, b) => b.stairs - a.stairs).slice(0, 10);
+const d3Top = [...day03Data.stations].sort((a, b) => b.nearNonAccessible - a.nearNonAccessible).slice(0, 10);
 const d3Name = (s) => `${s.short} (${s.lines.join('/')})`;
 const hundreds = (n) => fmt(Math.round(n / 100) * 100);
 const thousands = (n) => fmt(Math.round(n / 1000) * 1000);
@@ -99,30 +99,44 @@ const D3_PHASES = new Set(['Montrose (Blue)', 'California (Blue)', 'Racine (Blue
 const d3InPhase = (s) => D3_PHASES.has(d3Name(s)) || D3_PHASES.has(s.short);
 const d3Unphased = d3Top.filter((s) => !d3InPhase(s));
 const d3Phase2 = d3Top.filter((s) => d3InPhase(s) && !day03Data.phaseOne.includes(s.short));
+const d3Net = day03Data.network;
+const d3RedNorth = ['Morse', 'Jarvis', 'Sheridan'].reduce((n, k) => n + day03Data.stations.find((s) => s.short === k && s.lines.includes('Red')).nearNonAccessible, 0);
+const d3Slow = d3Sens['ten minutes at 0.8 m/s'];
+// Shares said in words where they are close to a simple fraction, else as a percentage.
+const share = (v) => {
+  const words = [[1 / 4, 'a quarter'], [1 / 3, 'one in three'], [1 / 2, 'half'], [2 / 3, 'two in three'], [3 / 4, 'three in four']];
+  const [f, w] = words.find(([f]) => Math.abs(v - f) < 0.02) ?? [];
+  if (!w) return pct(v);
+  return Math.abs(v - f) < 0.007 ? w : v < f ? `nearly ${w}` : `just over ${w}`;
+};
+const walkMi = (v) => (Math.abs(v - 0.75) < 0.05 ? 'about three-quarters of a mile' : `${miles1(v)} mile`);
 const d3Story = {
   background: [
-    `Plate I counted the doors: ${day01Data.summary.noStepFree} of ${day01Data.summary.total} ‘L’ stations without an elevator or ramp to every platform. This plate turns the doors into territory, the part of the city each station serves. The planning standard for a rail station is a half-mile walk, about ten minutes.`,
-    'Maps usually draw that half mile as a circle. Here it is walked along OpenStreetMap’s streets and paths, twice: once from every station, and once from vertically accessible stations only, on the same network with every flight of stairs taken out. Each 2020 Census block is placed by the walk from its center to the nearest station.',
-    'The map is drawn in miles from State & Madison, one square per mile, with no basemap. Solid tone is a step-free half-mile walk to an accessible station; hatching is a half-mile walk that reaches only a station with stairs. Hover a station or its walkshed for the residents it serves, or a line in the chart to outline its stations’ walksheds.',
+    `The usual way to judge transit access is to count how many people live within a half mile of a station. By that measure, ${pct(d3.nearShare)} of Chicagoans are well served. But the count treats every station as equal, and they are not. At ${day01Data.summary.noStepFree} of ${day01Data.summary.total} ‘L’ stations, at least one platform can be reached only by stairs. For a wheelchair user, a parent with a stroller or an older rider who cannot manage stairs, such a station is not really an option. A vertically accessible station has an elevator or ramp from the street to every platform.`,
+    `This map corrects the count in two ways. First, it walks the half mile instead of drawing a circle: distance runs along OpenStreetMap’s streets and paths, around blocks, and across the river, expressways and rail lines only where there is a way over or under. Circles would claim ${pct(d3.crowNearShare)} of residents; walking gives ${pct(d3.nearShare)}. Second, it walks the half mile again on a step-free copy of the network, to accessible stations only. The copy drops ${fmt(d3Net.stairs)} mapped stair segments and keeps the ${d3Net.elevators} mapped elevators and every ramp. That leaves ${pct(d3.nearAccessibleShare)}.`,
+    'The map is drawn in miles from State & Madison, one square per mile, with no basemap. Solid tone is a step-free half-mile walk to an accessible station; hatching is a half-mile walk that reaches non-accessible stations only. Hover a station or its walkshed for the residents it serves, or a line in the chart to outline its stations’ walksheds.',
   ],
   findings: [
-    `${pct(d3.nearShare)} of Chicagoans, ${thousands(d3.near)} people, live within a half-mile walk of an ‘L’ station. ${pct(d3.coveredShare)} live that close to one they can reach without stairs. The other ${thousands(d3.stairs)} live in the stairs-only zone: near the ‘L’, but not near a station they can use if they cannot climb.`,
-    `The Blue Line accounts for ${thousands(d3Blue.stairs)} of them, ${pct(d3Blue.stairs / d3.stairs)}; ${pct(d3Blue.stairs / d3Blue.near)} of the residents near the Blue Line are stairs-only. The largest single area runs along Milwaukee Avenue through West Town and Wicker Park, around Division, Chicago and Damen: ${thousands(day03Data.inset.residents)} residents. On the Red Line, Morse, Jarvis and Sheridan leave ${thousands(['Morse', 'Jarvis', 'Sheridan'].reduce((n, k) => n + day03Data.stations.find((s) => s.short === k && s.lines.includes('Red')).stairs, 0))} more in Rogers Park and Uptown.`,
-    `From the stairs-only zone, the nearest accessible station is a median walk of ${miles1(d3.stairsMedianWalkMi)} mile, and more than a mile for ${pct(d3.stairsBeyondMileShare)} of its residents.`,
-    `Walked rather than drawn as circles, the half mile reaches ${pct(d3.nearShare)} of residents instead of ${pct(d3.crowNearShare)}, and covers ${Math.round(d3.nearSqMi)} square miles of the city instead of ${Math.round(d3.circleSqMi)}.`,
+    `For the ${thousands(d3.nearNonAccessible)} in between, who live near the ‘L’ but only near non-accessible stations, the nearest accessible station is typically ${walkMi(d3.nonAccessibleMedianWalkMi)} away, and more than a mile for ${share(d3.nonAccessibleBeyondMileShare)} of them.`,
+    `${share(d3Blue.nearNonAccessible / d3.nearNonAccessible).replace(/^./, (c) => c.toUpperCase())} of them, ${thousands(d3Blue.nearNonAccessible)}, live along the Blue Line, where ${share(d3Blue.nearNonAccessible / d3Blue.near)} of the residents near the line are near non-accessible stations only. The largest single area runs along Milwaukee Avenue through West Town and Wicker Park, around Division, Chicago and Damen: ${thousands(day03Data.inset.residents)} residents. Around Morse, Jarvis and Sheridan on the Red Line, in Rogers Park and Uptown, live another ${thousands(d3RedNorth)}.`,
+    'The usual coverage figure has a blind spot: it overstates access, and most of all for the riders who depend on elevators and ramps. Counting by the walk and by the station shows where the gap is and how many people live in it.',
   ],
   gap: [
-    `The American Community Survey counts about ${thousands(d3.ambulatory)} Chicagoans with serious difficulty walking or climbing stairs. About ${thousands(d3.ambulatoryNear)} live within a half-mile walk of the ‘L’, and about ${hundreds(d3.ambulatoryStairs)} of them in the stairs-only zone, ${hundreds(d3.ambulatoryStairsOver65)} of those aged 65 or older. These are estimates: tract counts spread over blocks by population.`,
-    `Half a mile is about ten minutes at an average walking pace. At 0.8 m/s, slower than the 3 feet per second (0.9 m/s) that U.S. signal timing allows for slower pedestrians, ten minutes covers 480 m: ${pct(d3Sens['ten minutes at 0.8 m/s'].nearShare)} of Chicagoans live that close to a station, and ${pct(d3Sens['ten minutes at 0.8 m/s'].coveredShare)} that close to an accessible one.`,
-    'The step-free walk is an upper bound. OpenStreetMap records stairs, but not every missing curb ramp, broken sidewalk or elevator out of service.',
+    `The American Community Survey counts about ${thousands(d3.ambulatory)} Chicagoans with serious difficulty walking or climbing stairs. About ${thousands(d3.ambulatoryNear)} live within a half-mile walk of the ‘L’, and about ${hundreds(d3.ambulatoryNonAccessible)} of them near non-accessible stations only, ${hundreds(d3.ambulatoryNonAccessibleOver65)} of those aged 65 or older. These are estimates: tract counts spread over blocks by population.`,
+    `Half a mile is about ten minutes at an average walking pace. At 0.8 m/s, slower than the 3 feet per second (0.9 m/s) that U.S. signal timing allows for slower pedestrians, ten minutes covers 480 m: ${pct(d3Slow.nearShare)} of Chicagoans live that close to a station, and ${pct(d3Slow.nearAccessibleShare)} that close to an accessible one.`,
+  ],
+  limits: [
+    'The map measures the gap; it does not close it.',
+    `It cannot see broken elevators, missing curb ramps or bad sidewalks, so ${pct(d3.nearAccessibleShare)} is a best case: an accessible station is accessible only while its elevators run.`,
+    'It covers the ‘L’ only, not buses.',
   ],
   plan: [
-    `CTA’s All Stations Accessibility Program (ASAP) aims to make every rail station vertically accessible by 2038. Phase One, fully funded at $423.5 million and due by 2027, covers Montrose, California and Racine on the Blue Line and State/Lake in the Loop. On this network it would cut the stairs-only zone from ${thousands(d3.stairs)} to ${thousands(d3Sens['ASAP Phase One done'].stairs)} residents.`,
-    `Of the ten stations whose walksheds hold the most stairs-only residents, ${list(d3Phase2.map((s) => s.short))} are in Phase Two, which CTA reports as 45% funded and projected for 2028. ${list(d3Unphased.map((s) => s.short))} are in neither of the first two phases; CTA has no funding yet for Phases Three and Four.`,
-    `The City’s data still flags Austin (Green), reopened fully accessible in August 2026, as non-accessible. Counted as accessible, it moves ${hundreds(d3.stairs - d3Sens['Austin (Green) as accessible'].stairs)} more residents out of the stairs-only zone.`,
+    `Where the gap is points to the stations that would help the most people. CTA’s All Stations Accessibility Program (ASAP) aims to make every rail station vertically accessible by 2038. Phase One, fully funded at $423.5 million and due by 2027, covers Montrose, California and Racine on the Blue Line and State/Lake in the Loop. On this network it would bring the residents near non-accessible stations only from ${thousands(d3.nearNonAccessible)} to ${thousands(d3Sens['ASAP Phase One done'].nearNonAccessible)}.`,
+    `Of the ten non-accessible stations whose walksheds hold the most such residents, ${list(d3Phase2.map((s) => s.short))} are in Phase Two, which CTA reports as 45% funded and projected for 2028. ${list(d3Unphased.map((s) => s.short))} are in neither of the first two phases; CTA has no funding yet for Phases Three and Four.`,
+    `The City’s data still flags Austin (Green), reopened fully accessible in August 2026, as non-accessible. Counted as accessible, it would put ${hundreds(d3.nearNonAccessible - d3Sens['Austin (Green) as accessible'].nearNonAccessible)} more residents within a step-free walk of an accessible station.`,
   ],
 };
-d3Story.sections = [['Background', d3Story.background], ['Findings', d3Story.findings, true], ['Who lives in the gap', d3Story.gap], ['The plan', d3Story.plan]];
+d3Story.sections = [['Background', d3Story.background], ['Findings', d3Story.findings, true], ['Who lives in the gap', d3Story.gap], ['What the map cannot see', d3Story.limits], ['The plan', d3Story.plan]];
 
 export const plates = {
   1: {
@@ -192,14 +206,14 @@ export const plates = {
   3: {
     file: 'day03-the-accessible-city',
     render: (o) => renderDay03({ ...day03Data, findings: d3Story.findings, boundary: cityBoundary.rings }, o),
-    subtitle: 'How much of Chicago is a short walk from an ‘L’ station a rider who cannot take the stairs can use?',
+    subtitle: 'How much of Chicago is a short walk from a vertically accessible ‘L’ station?',
     finding: day03Data.finding,
     story: d3Story,
     ledger: [
       ['Source', `CTA – List of 'L' Stops, Chicago Data Portal · ${day03Data.ledger.dataset_id} · pulled ${day03Data.ledger.pulled}`, day03Data.ledger.url],
-      ['Walk', `OpenStreetMap walk network, Geofabrik extract of ${day03Data.osm.extract}, filtered with OSMnx’s walk rules. A half mile is ${Math.round(day03Data.walkM)} m along the network. Step-free: the same network without stairs and ways tagged wheelchair=no. © OpenStreetMap contributors (ODbL).`, day03Data.osm.url],
+      ['Walk', `OpenStreetMap walk network, Geofabrik extract of ${day03Data.osm.extract}, filtered with OSMnx’s walk rules. A half mile is ${Math.round(day03Data.walkM)} m along the network. Step-free: the same network without its ${fmt(day03Data.network.stairs)} mapped stair segments and ${day03Data.network.wheelchairNo} ways tagged wheelchair=no; its ${day03Data.network.elevators} mapped elevators and all ramps are kept. © OpenStreetMap contributors (ODbL).`, day03Data.osm.url],
       ['People', `2020 Census, Redistricting Data (P.L. 94-171): ${fmt(d3.residents)} residents in ${fmt(day03Data.census.blocks)} blocks, each placed by the walk from its internal point. Ambulatory difficulty: ACS 2020–2024 5-year, table B18105, by tract, spread over blocks by population.`, 'https://www.census.gov/programs-surveys/decennial-census/about/rdo/summary-files.html'],
-      ['Method', `Each station joins the network at its nearest walkway, and the walk to it counts. A station is vertically accessible as on Plate I: every platform flagged accessible. Walksheds are the reached streets widened by 40 m (about one lot depth), clipped to the city limits. The network reaches a mile past the city limits; ${day03Data.leftOut.length - 1} suburban stations beyond it are left out, as is O’Hare, whose station inside the terminal is about 1 km from the nearest mapped walkway. No one in Chicago lives within a half mile of any of them.`],
+      ['Method', `Each station joins the network at its nearest walkway, and the walk to it counts. A station is vertically accessible as on Plate I: every platform flagged accessible (an elevator or ramp from the street). Walksheds are the reached streets widened by 40 m (about one lot depth), clipped to the city limits. The network reaches a mile past the city limits; ${day03Data.leftOut.length - 1} suburban stations beyond it are left out, as is O’Hare, whose station inside the terminal is about 1 km from the nearest mapped walkway. No one in Chicago lives within a half mile of any of them.`],
       ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
       ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
       ['Caveat', 'The step-free walk is an upper bound: OSM records stairs, not every missing curb ramp or elevator outage. The ADA flag lags CTA’s own count (110 of 146 accessible, Aug 2026) and still marks Austin (Green) non-accessible. Ambulatory-difficulty counts are estimates with wide margins.'],
@@ -214,8 +228,8 @@ export const plates = {
     },
     csv: () =>
       csv([
-        ['station_id', 'name', 'lines', 'step_free', 'residents_nearest_half_mile', 'stairs_only_residents', 'x_address', 'y_address'],
-        ...day03Data.stations.map((s) => [s.id, s.name, s.lines.join(' '), s.ada, s.residents, s.stairs, s.x, s.y]),
+        ['station_id', 'name', 'lines', 'step_free', 'residents_nearest_half_mile', 'near_non_accessible_only', 'x_address', 'y_address'],
+        ...day03Data.stations.map((s) => [s.id, s.name, s.lines.join(' '), s.ada, s.residents, s.nearNonAccessible, s.x, s.y]),
       ]),
   },
 };

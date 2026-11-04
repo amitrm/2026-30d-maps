@@ -5,16 +5,16 @@ import { gridLines, formatAddress, toMiles } from '../lib/grid.js';
 // variant 'plate': the full 1080 x 1350 plate (export, download).
 // variant 'map': the map alone, with hover hooks, for the day page's left column.
 // variant 'chart': Residents near each line, with hover hooks, for the day page's middle column.
-// variant 'inset': the inset alone, drawn tall around the largest stairs-only area so the page can crop it.
+// variant 'inset': the inset alone, drawn tall around the largest non-accessible-only area so the page can crop it.
 // Map and inset: the half-mile walksheds from the notebook (data.polygons, address units): solid where
-// the walk reaches an accessible station without stairs, hatched where it reaches only a
-// non-accessible one. Stations as on Plate I; in color mode they take their line's color, and
-// interchange stations stay ink. The walksheds stay gray in both modes: value and hatching tell them
+// a step-free walk reaches a vertically accessible station (an elevator or ramp to every platform),
+// hatched where the walk reaches non-accessible stations only (stairs to at least one platform).
+// Stations as on Plate I; in color mode they take their line's color, and interchange stations stay ink. The walksheds stay gray in both modes: value and hatching tell them
 // apart, and line colors are kept for the stations.
 // data.catchments: each station's part of the walkshed, drawn as hover targets on the page.
 // data.boundary: city boundary rings in address units (reference/city-boundary.json).
 
-export const AREA = { covered: '#BDBBB4', hatch: C.ink };
+export const AREA = { accessible: '#BDBBB4', hatch: C.ink };
 
 export function renderDay03(data, { mode = 'gray', variant = 'plate' } = {}) {
   const { stations, byLine, summary, polygons, catchments = {}, boundary = [] } = data;
@@ -36,11 +36,12 @@ export function renderDay03(data, { mode = 'gray', variant = 'plate' } = {}) {
   const hundreds = (n) => fmt(Math.round(n / 100) * 100);
   const byId = new Map(stations.map((s) => [s.id, s]));
 
-  // tooltip rows for a station: residents within its half-mile walk, and how many are stairs-only
+  // tooltip rows for a station: residents within its half-mile walk, and how many of them are near
+  // non-accessible stations only
   const detail = (s) => {
     if (!s.onNetwork) return 'Off the walking network: no residents within a half mile';
     const rows = [`${fmt(s.residents)} residents nearest, within a half-mile walk`];
-    if (s.stairs) rows.push(`${fmt(s.stairs)} of them have no accessible station within a step-free half mile`);
+    if (s.nearNonAccessible) rows.push(`${fmt(s.nearNonAccessible)} of them have no accessible station within a step-free half mile`);
     return rows.join('|');
   };
   const hover = (s, lines, inner, keyed) =>
@@ -57,22 +58,22 @@ export function renderDay03(data, { mode = 'gray', variant = 'plate' } = {}) {
   const city = (fx, fy) => boundary.map((r) => ring(r, fx, fy)).join('');
   const area = (polys, fx, fy) => polys.map((p) => p.map((r) => ring(r, fx, fy)).join('')).join('');
   const miles = (b) => ({ west: toMiles(b.west, 'x'), east: toMiles(b.east, 'x'), south: toMiles(b.south, 'y'), north: toMiles(b.north, 'y') });
-  // the inset: the largest stairs-only area (data.inset.box), widened to whole grid half-miles
+  // the inset: the largest non-accessible-only area (data.inset.box), widened to whole grid half-miles
   const ib = data.inset.box;
   const snap = (v, f) => f(v / 400) * 400;
   const insetBox = { west: snap(ib.west - 200, Math.floor), east: snap(ib.east + 200, Math.ceil), south: snap(ib.south - 200, Math.floor), north: snap(ib.north + 200, Math.ceil) };
   const inBox = (b) => (s) => s.x >= b.west && s.x <= b.east && s.y >= b.south && s.y <= b.north;
   const inInset = inBox(insetBox);
 
-  // hatching for the stairs-only zone: ink lines at 45°, spaced in screen pixels
+  // hatching for the non-accessible-only walkshed: ink lines at 45°, spaced in screen pixels
   const hatch = (id, gap, w) =>
     `<pattern id="${id}" width="${gap}" height="${gap}" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="${gap}" stroke="${AREA.hatch}" stroke-width="${w}"/></pattern>`;
   // the walksheds, the station catchments (page only: hover targets with an outline on hover or
   // when their line is highlighted), drawn under the grid lines
   const drawAreas = (fx, fy, gap, w) => {
     out.push(`<defs>${hatch(`${uid}-hatch`, gap, w)}</defs>`);
-    out.push(`<path d="${area(polygons.covered, fx, fy)}" fill="${AREA.covered}" fill-rule="evenodd"/>`);
-    out.push(`<path d="${area(polygons.stairs, fx, fy)}" fill="url(#${uid}-hatch)" fill-rule="evenodd"/>`);
+    out.push(`<path d="${area(polygons.accessible, fx, fy)}" fill="${AREA.accessible}" fill-rule="evenodd"/>`);
+    out.push(`<path d="${area(polygons.nonAccessible, fx, fy)}" fill="url(#${uid}-hatch)" fill-rule="evenodd"/>`);
   };
   const drawCatchments = (fx, fy) => {
     if (!hooks) return;
@@ -100,7 +101,7 @@ export function renderDay03(data, { mode = 'gray', variant = 'plate' } = {}) {
     day: 3,
     theme: 'Polygons',
     title: 'The Accessible City',
-    subtitle: 'A half-mile walk from every ‘L’ station: solid where it reaches an accessible station without stairs, hatched where only stairs.',
+    subtitle: 'A half-mile walk to every ‘L’ station: solid to accessible stations (elevator or ramp to every platform), hatched to non-accessible only.',
   }));
 
   // ---------- main map: plotted in miles, top-left on the plate's text margin ----------
@@ -140,11 +141,12 @@ export function renderDay03(data, { mode = 'gray', variant = 'plate' } = {}) {
     const shown = stations.filter(inBox(ext));
     for (const s of shown) out.push(station(s, X(s.x), Y(s.y), 3.2));
 
-    // labels for the non-accessible stations whose catchments hold the most stairs-only residents,
+    // labels for the non-accessible stations whose catchments hold the most residents near
+    // non-accessible stations only,
     // outside the inset (it labels its own)
     const ls = 7.5 * T;
     const LEFT = new Set(['40650']); // North/Clybourn: the stations east of it are crowded
-    for (const s of shown.filter((d) => !d.ada && d.stairs >= 1500 && !inInset(d))) {
+    for (const s of shown.filter((d) => !d.ada && d.nearNonAccessible >= 1500 && !inInset(d))) {
       const px = X(s.x), py = Y(s.y);
       // the Forest Park branch runs east-west, so its names run down at 55°, as on Plate I
       const fpBranch = s.lines.includes('Blue') && s.y < 0 && s.y > -1200;
@@ -170,8 +172,8 @@ export function renderDay03(data, { mode = 'gray', variant = 'plate' } = {}) {
     const swatch = (fill) => `<rect x="-6" y="-5" width="12" height="10" fill="${fill}"/>`;
     const legend = [
       ['head', 'Half-mile walk'],
-      [`<defs>${hatch(`${uid}-lh`, hatchMap[0], hatchMap[1])}</defs>${swatch(C.ground)}${swatch(AREA.covered)}`, 'step-free, to an accessible station'],
-      [`${swatch(C.ground)}${swatch(`url(#${uid}-lh)`)}`, 'to a non-accessible station only'],
+      [`<defs>${hatch(`${uid}-lh`, hatchMap[0], hatchMap[1])}</defs>${swatch(C.ground)}${swatch(AREA.accessible)}`, 'to an accessible station'],
+      [`${swatch(C.ground)}${swatch(`url(#${uid}-lh)`)}`, 'to non-accessible stations only'],
       [stationMark(0, 0, true, 3.4), 'Vertically accessible'],
       [stationMark(0, 0, false, 3.4), 'Non-accessible'],
       ...(boundary.length ? [[swatch(C.ground), 'City of Chicago']] : []),
@@ -220,12 +222,12 @@ export function renderDay03(data, { mode = 'gray', variant = 'plate' } = {}) {
 
   if (isPlate || isChart) {
     // Residents near each line: a line-name box, then a bar as long as the residents within a
-    // half-mile walk of its stations, hatched for the stairs-only residents (drawn first, from the
+    // half-mile walk of its stations, hatched for those near non-accessible stations only (drawn first, from the
     // left, so lines compare on one baseline), solid for the rest; then both counts.
     const cs = isChart ? 8 * T : 8;
     const row = isChart ? 21 : 15;
-    const bar = isChart ? { x: 74, w: 170, h: 10 } : { x: 62, w: 128, h: 7.5 };
-    const numW = isChart ? 70 : 52; // the stairs-only column, right of the near column
+    const bar = isChart ? { x: 74, w: 150, h: 10 } : { x: 62, w: 112, h: 7.5 };
+    const numW = isChart ? 104 : 84; // the non-accessible-only column, right of the near column
     if (isChart) {
       uy = Math.round(cs + 2); // the page sets the title and notes in HTML above the rows
     } else {
@@ -236,10 +238,10 @@ export function renderDay03(data, { mode = 'gray', variant = 'plate' } = {}) {
       uy += noteLines.length * nh + 24;
     }
     const hs = cs * 0.8;
-    out.push(text(mx + cw - numW, uy - row * 0.2, 'NEAR', { size: hs, anchor: 'end', spacing: 0.4, fill: C.pencil }));
-    out.push(text(mx + cw, uy - row * 0.2, 'STAIRS ONLY', { size: hs, anchor: 'end', spacing: 0.4, fill: C.pencil }));
+    out.push(text(mx + cw - numW, uy - row * 0.2, 'ALL', { size: hs, anchor: 'end', spacing: 0.4, fill: C.pencil }));
+    out.push(text(mx + cw, uy - row * 0.2, 'NON-ACCESSIBLE ONLY', { size: hs, anchor: 'end', spacing: 0.4, fill: C.pencil }));
     uy += row * 0.8;
-    const rows = [...byLine].sort((a, b) => b.stairs - a.stairs || b.near - a.near);
+    const rows = [...byLine].sort((a, b) => b.nearNonAccessible - a.nearNonAccessible || b.near - a.near);
     const maxNear = Math.max(...rows.map((l) => l.near));
     const bx = (v) => mx + bar.x + (v / maxNear) * bar.w;
     out.push(`<defs>${hatch(`${uid}-ch`, isChart ? 3.4 : 2.8, isChart ? 0.8 : 0.6)}</defs>`);
@@ -250,13 +252,13 @@ export function renderDay03(data, { mode = 'gray', variant = 'plate' } = {}) {
       out.push(`<rect x="${mx}" y="${uy - cs * 0.82 - 3}" width="${bw}" height="${cs + 5}" rx="1.5" fill="${mode === 'color' ? LINES[l.line] : soft ? C.rule : C.fog}"/>`);
       out.push(text(mx + 5, uy, l.line.toUpperCase(), { size: cs, weight: 600, spacing: 0.6, fill: mode === 'color' ? '#FFFFFF' : markInk }));
       const by = uy - cs * 0.36 - bar.h / 2;
-      out.push(`<rect x="${mx + bar.x}" y="${by.toFixed(1)}" width="${(bx(l.near) - mx - bar.x).toFixed(1)}" height="${bar.h}" fill="${AREA.covered}"/>`);
-      if (l.stairs) {
-        out.push(`<rect x="${mx + bar.x}" y="${by.toFixed(1)}" width="${(bx(l.stairs) - mx - bar.x).toFixed(1)}" height="${bar.h}" fill="${C.ground}"/>`);
-        out.push(`<rect x="${mx + bar.x}" y="${by.toFixed(1)}" width="${(bx(l.stairs) - mx - bar.x).toFixed(1)}" height="${bar.h}" fill="url(#${uid}-ch)" stroke="${C.ink}" stroke-width="0.6"/>`);
+      out.push(`<rect x="${mx + bar.x}" y="${by.toFixed(1)}" width="${(bx(l.near) - mx - bar.x).toFixed(1)}" height="${bar.h}" fill="${AREA.accessible}"/>`);
+      if (l.nearNonAccessible) {
+        out.push(`<rect x="${mx + bar.x}" y="${by.toFixed(1)}" width="${(bx(l.nearNonAccessible) - mx - bar.x).toFixed(1)}" height="${bar.h}" fill="${C.ground}"/>`);
+        out.push(`<rect x="${mx + bar.x}" y="${by.toFixed(1)}" width="${(bx(l.nearNonAccessible) - mx - bar.x).toFixed(1)}" height="${bar.h}" fill="url(#${uid}-ch)" stroke="${C.ink}" stroke-width="0.6"/>`);
       }
       out.push(text(mx + cw - numW, uy, hundreds(l.near), { size: cs, anchor: 'end', fill: C.pencil }));
-      out.push(text(mx + cw, uy, l.stairs ? hundreds(l.stairs) : '0', { size: cs, anchor: 'end', fill: top ? C.ink : C.pencil, weight: top ? 600 : 400 }));
+      out.push(text(mx + cw, uy, l.nearNonAccessible ? hundreds(l.nearNonAccessible) : '0', { size: cs, anchor: 'end', fill: top ? C.ink : C.pencil, weight: top ? 600 : 400 }));
       if (hooks) out.push('</g>');
       uy += row;
     }
@@ -266,7 +268,7 @@ export function renderDay03(data, { mode = 'gray', variant = 'plate' } = {}) {
     uy = ry + cs + 6;
     out.push(text(mx, uy, 'ALL LINES, EACH RESIDENT ONCE', { size: cs * 0.85, spacing: 0.3, fill: C.pencil }));
     out.push(text(mx + cw - numW, uy, hundreds(summary.near), { size: cs, anchor: 'end', fill: C.ink }));
-    out.push(text(mx + cw, uy, hundreds(summary.stairs), { size: cs, anchor: 'end', fill: C.ink, weight: 600 }));
+    out.push(text(mx + cw, uy, hundreds(summary.nearNonAccessible), { size: cs, anchor: 'end', fill: C.ink, weight: 600 }));
     if (isChart) {
       return svg(out.join(''), { label: 'Residents within a half-mile walk of each ‘L’ line, and how many have no accessible station within a step-free half mile.', viewBox: `0 0 ${cw + 6} ${Math.ceil(uy + 6)}`, align: 'xMinYMin meet' });
     }
@@ -284,7 +286,7 @@ export function renderDay03(data, { mode = 'gray', variant = 'plate' } = {}) {
   if (isPlate) {
     title(ty, `INSET · ${INSET_TITLE}`);
     note(ty + nh + 4, `Shown at ×${(ki / k).toFixed(1)} the scale of the main map.`);
-    note(ty + 2 * nh + 4, `The largest stairs-only area: ${hundreds(data.inset.residents)} residents.`);
+    note(ty + 2 * nh + 4, `Largest area near non-accessible stations only: ${hundreds(data.inset.residents)} residents.`);
   }
   const inset = isInset ? { x: 0, y: 0, w: iw, h: Math.round((lbm.north - lbm.south) * ki) } : { x: mx, y: ty + 2 * nh + 16, w: iw, h: Math.round((lbm.north - lbm.south) * ki) };
   out.push(`<defs><clipPath id="${uid}-inset"><rect x="${inset.x}" y="${inset.y}" width="${inset.w}" height="${inset.h}"/></clipPath></defs>`);
@@ -317,7 +319,7 @@ export function renderDay03(data, { mode = 'gray', variant = 'plate' } = {}) {
   if (isPlate) out.push(`<rect x="${inset.x}" y="${inset.y}" width="${inset.w}" height="${inset.h}" fill="none" stroke="${C.ink}" stroke-width="0.8"/>`);
 
   if (isInset) {
-    return svg(out.join(''), { label: `${INSET_TITLE}: the largest stairs-only area, around the Blue Line's Division, Chicago and Damen stations.`, viewBox: `0 0 ${inset.w} ${inset.h}`, align: 'xMidYMid slice' })
+    return svg(out.join(''), { label: `${INSET_TITLE}: the largest area near non-accessible stations only, around the Blue Line's Division, Chicago and Damen stations.`, viewBox: `0 0 ${inset.w} ${inset.h}`, align: 'xMidYMid slice' })
       .replace('<svg ', `<svg data-ppm="${+ki.toFixed(3)}" data-north="${+lbm.north.toFixed(3)}" `);
   }
 
@@ -339,9 +341,9 @@ export function renderDay03(data, { mode = 'gray', variant = 'plate' } = {}) {
   const ledger = [
     ['SOURCE', `CTA List of 'L' Stops · Chicago Data Portal · ${data.source.id} · pulled ${data.asOf}`],
     ['WALK', `OpenStreetMap walk network (OSMnx rules), Geofabrik extract of ${data.osm.extract}; half mile = ${Math.round(data.walkM)} m`],
-    ['', 'Step-free: the same network without stairs and ways tagged wheelchair=no'],
+    ['', `Step-free: ${fmt(data.network.stairs)} stair segments and ${data.network.wheelchairNo} ways tagged wheelchair=no removed; ${data.network.elevators} mapped elevators and ramps kept`],
     ['PEOPLE', `2020 Census blocks (P.L. 94-171), ${fmt(summary.residents)} residents, placed by the walk from each block's center`],
-    ['METHOD', 'Walks run on the street network, not as circles; accessible as on Plate I (every platform flagged)'],
+    ['METHOD', 'Walks run on the street network, not as circles; accessible as on Plate I: elevator or ramp to every platform'],
     ['CAVEAT', 'OSM does not record every missing curb ramp, so the step-free walk is an upper bound; the ADA'],
     ['', 'flag lags CTA (110 of 146 accessible, Aug 2026) and still marks Austin (Green) non-accessible'],
     ['LIMITS', 'City of Chicago, Boundaries – City · qqq8-j68g; walks clipped to the city limits'],
@@ -358,14 +360,14 @@ export function renderDay03(data, { mode = 'gray', variant = 'plate' } = {}) {
 
 const W_COL = 300; // plate margin column width, as on Plate I
 export const INSET_TITLE = 'WEST TOWN AND WICKER PARK';
-export const CHART_NOTE = 'Residents within a half-mile walk of the line’s stations · Hatched: no accessible station within a step-free half mile · A resident near two lines counts on both';
+export const CHART_NOTE = 'Residents within a half-mile walk of the line’s stations · Hatched: near non-accessible stations only, with no accessible station within a step-free half mile · A resident near two lines counts on both';
 // inset labels: [dx, dy, anchor], hand-placed to avoid collisions
 const INSET_OFFSET = {
   '40650': [-8, 3, 'end'], // North/Clybourn: Clybourn runs into the stations east of it
 };
 
 const mapLabel = (summary) =>
-  `Plate III, The Accessible City: ${Math.round(summary.nearShare * 100)}% of Chicagoans live within a half-mile walk of an ‘L’ station, ${Math.round(summary.coveredShare * 100)}% within a step-free walk of an accessible one.`;
+  `Plate III, The Accessible City: ${Math.round(summary.nearShare * 100)}% of Chicagoans live within a half-mile walk of an ‘L’ station, ${Math.round(summary.nearAccessibleShare * 100)}% within a step-free walk of an accessible one.`;
 
 function stationMark(x, y, stepFree, r, color = C.ink) {
   return stepFree
