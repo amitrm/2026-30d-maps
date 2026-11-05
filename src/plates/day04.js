@@ -8,17 +8,19 @@ import { gridLines, formatAddress, toMiles } from '../lib/grid.js';
 // variant 'inset': the inset alone, drawn tall around the largest cluster so the page can crop it.
 // data.people: one record per person walking or biking killed or seriously injured, 2021-2025, in
 // address units ({ x, y, m: 'w' | 'b', k: 1 if killed, c: cluster rank or 0 }).
-// data.clusters: the clusters that hold up in resampling, largest first, with concave hulls.
+// data.clusters: the clusters that hold up in resampling, largest first, each with the streets that
+// join its people (polylines in address units).
 // data.hin: CDOT's High Injury Network corridors as lines.
-// Clusters are a solid tint with a pencil outline (the outline tells them from the High Injury
-// Network band, drawn in the same tint underneath). People are dots: killed large, seriously injured
+// Clusters are a band along those streets, a darker tint with a pencil edge (the edge tells them from
+// the High Injury Network band, paler and without one). People are dots: killed large, seriously injured
 // small; in color mode walking and biking take two hues, and clusters and the network stay gray.
 // data.boundary: city boundary rings in address units (reference/city-boundary.json).
 
 export const MARK = {
-  tint: '#BDBBB4', // clusters and the High Injury Network band
-  walk: '#D55E00', // color mode, Okabe-Ito vermilion and blue
-  bike: '#0072B2',
+  tint: '#BDBBB4', // the High Injury Network band
+  band: '#A9A7A0', // clusters: a band along their streets, a step darker, with a pencil edge
+  walk: '#5D3A9B', // color mode: purple walking, orange biking (ColorBrewer PuOr ends)
+  bike: '#E66100',
 };
 
 export function renderDay04(data, { mode = 'gray', variant = 'plate' } = {}) {
@@ -41,7 +43,6 @@ export function renderDay04(data, { mode = 'gray', variant = 'plate' } = {}) {
 
   const ring = (r, fx, fy) => 'M' + r.map(([x, y]) => `${fx(x).toFixed(1)},${fy(y).toFixed(1)}`).join('L') + 'Z';
   const city = (fx, fy) => boundary.map((r) => ring(r, fx, fy)).join('');
-  const area = (polys, fx, fy) => polys.map((p) => p.map((r) => ring(r, fx, fy)).join('')).join('');
   const line = (pts, fx, fy) => 'M' + pts.map(([x, y]) => `${fx(x).toFixed(1)},${fy(y).toFixed(1)}`).join('L');
   const miles = (b) => ({ west: toMiles(b.west, 'x'), east: toMiles(b.east, 'x'), south: toMiles(b.south, 'y'), north: toMiles(b.north, 'y') });
   // the inset: the largest cluster (data.inset.box), widened to whole half-miles
@@ -69,16 +70,18 @@ export function renderDay04(data, { mode = 'gray', variant = 'plate' } = {}) {
   // the network band, under everything but the city
   const drawHin = (fx, fy, w) =>
     out.push(`<path d="${hin.map((h) => line(h.line, fx, fy)).join('')}" fill="none" stroke="${MARK.tint}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`);
-  // clusters: tint and outline; on the page each is a hover target, tinted darker on hover or when
-  // its chart row is highlighted
-  const drawClusters = (fx, fy, outline) => {
-    if (hooks) out.push(`<style>.${uid}-c .t{fill:${C.ink};fill-opacity:0}.${uid}-c:hover .t,svg.hl .${uid}-c.on .t{fill-opacity:0.14}svg.hl .${uid}-c.on{opacity:1}</style>`);
+  // clusters: a band along the streets that join their people, a pencil edge round a darker tint; on
+  // the page each is a hover target (a wider invisible stroke), darkened on hover or when its chart
+  // row is highlighted
+  const drawClusters = (fx, fy, [outer, inner]) => {
+    const stroke = (d, color, w, extra = '') => `<path d="${d}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"${extra}/>`;
+    if (hooks) out.push(`<style>.${uid}-c .t{stroke:${C.ink};stroke-opacity:0}.${uid}-c:hover .t,svg.hl .${uid}-c.on .t{stroke-opacity:0.2}svg.hl .${uid}-c.on{opacity:1}</style>`);
     for (const c of clusters) {
-      const d = area(c.hull, fx, fy);
-      const shape = `<path d="${d}" fill="${MARK.tint}" fill-rule="evenodd" stroke="${C.pencil}" stroke-width="${outline}" stroke-linejoin="round"/>`;
+      const d = c.streets.map((l) => line(l, fx, fy)).join('');
+      const band = stroke(d, C.pencil, outer) + stroke(d, MARK.band, inner);
       out.push(hooks
-        ? `<g class="${uid}-c" data-hl="c${c.rank}" ${tipData(c)}>${shape}<path class="t" d="${d}" fill-rule="evenodd"/></g>`
-        : shape);
+        ? `<g class="${uid}-c" data-hl="c${c.rank}" ${tipData(c)}>${band}${stroke(d, 'transparent', outer + 6)}${stroke(d, C.ink, inner, ' class="t"')}</g>`
+        : band);
     }
   };
   // people, grouped by cluster so a highlighted cluster keeps its own; seriously injured first,
@@ -101,20 +104,20 @@ export function renderDay04(data, { mode = 'gray', variant = 'plate' } = {}) {
     }
   };
   // Cluster numbers in a box, as in the chart, for the largest clusters. Each box goes at the free
-  // spot nearest its cluster's outline: it may not touch a dot (with a 1 px margin), another box, or
-  // leave the field, and one that covers a cluster (its own or another) costs extra.
+  // spot nearest its cluster's band: it may not touch a dot (with a 1 px margin), another box, or
+  // leave the field, and one that covers a cluster band (its own or another) costs extra.
   const rect = (x, y, w, h) => ({ x0: x - w / 2, x1: x + w / 2, y0: y - h / 2, y1: y + h / 2 });
-  const inside = (px, py, ring) => {
-    let hit = false;
-    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-      const [xi, yi] = ring[i], [xj, yj] = ring[j];
-      if (yi > py !== yj > py && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) hit = !hit;
-    }
-    return hit;
+  // distance from a box to a segment [[ax, ay], [bx, by]]: the segment's point nearest the box centre
+  const boxGap = (b, [[ax, ay], [bx, by]]) => {
+    const px = (b.x0 + b.x1) / 2, py = (b.y0 + b.y1) / 2;
+    const L = (bx - ax) ** 2 + (by - ay) ** 2 || 1;
+    const t = Math.max(0, Math.min(1, ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / L));
+    const qx = ax + t * (bx - ax), qy = ay + t * (by - ay);
+    return Math.hypot(Math.max(b.x0 - qx, 0, qx - b.x1), Math.max(b.y0 - qy, 0, qy - b.y1));
   };
-  const drawNumbers = (fx, fy, size, field, [rs, rk], only) => {
+  const drawNumbers = (fx, fy, size, field, [rs, rk], half, only) => {
     const ranks = clusters.filter((c) => c.rank <= TOP && (!only || only.includes(c.rank)));
-    const rings = new Map(clusters.map((c) => [c.rank, c.hull.map((poly) => poly[0].map(([x, y]) => [fx(x), fy(y)]))]));
+    const segs = new Map(clusters.map((c) => [c.rank, c.streets.flatMap((l) => l.slice(1).map((pt, i) => [[fx(l[i][0]), fy(l[i][1])], [fx(pt[0]), fy(pt[1])]]))]));
     const dots = people.map((p) => [fx(p.x), fy(p.y), (p.k ? rk : rs) + 1]).filter(([x, y]) => x > field.x0 - 10 && x < field.x1 + 10 && y > field.y0 - 10 && y < field.y1 + 10);
     const placed = [];
     const clear = (b) =>
@@ -122,33 +125,18 @@ export function renderDay04(data, { mode = 'gray', variant = 'plate' } = {}) {
       !placed.some((o) => b.x0 < o.x1 + 1 && b.x1 > o.x0 - 1 && b.y0 < o.y1 + 1 && b.y1 > o.y0 - 1) &&
       !dots.some(([x, y, r]) => x + r > b.x0 && x - r < b.x1 && y + r > b.y0 && y - r < b.y1 &&
         Math.hypot(x - Math.max(b.x0, Math.min(x, b.x1)), y - Math.max(b.y0, Math.min(y, b.y1))) < r);
-    const covers = (b) => {
-      const probe = [[b.x0, b.y0], [b.x1, b.y0], [b.x0, b.y1], [b.x1, b.y1], [(b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2]];
-      let n = 0;
-      for (const rs_ of rings.values()) for (const r of rs_) n += probe.filter(([x, y]) => inside(x, y, r)).length;
-      return n;
-    };
+    // how many cluster bands the box would sit on
+    const near = [...segs.values()].flat().filter(([[ax, ay], [bx, by]]) => Math.max(ax, bx) > field.x0 - 80 && Math.min(ax, bx) < field.x1 + 80);
+    const covers = (b) => near.filter((sg) => boxGap(b, sg) < half).length;
     for (const c of ranks) {
-      const own = rings.get(c.rank).flat();
-      if (!own.length) continue;
-      const cx = own.reduce((s, [x]) => s + x, 0) / own.length, cy = own.reduce((s, [, y]) => s + y, 0) / own.length;
+      const edges = segs.get(c.rank);
+      if (!edges.length) continue;
       const label = String(c.rank);
       const w = textWidth(label, size, { weight: 600 }) + 8, h = size + 5;
-      // candidates: a 1.5 px grid around the hull; cost is the gap from the box to the hull's
-      // outline, plus a charge for covering a cluster
-      const edges = rings.get(c.rank).flatMap((r) => r.map((pt, i) => [pt, r[(i + 1) % r.length]]));
-      const gap = (b) => {
-        let m = Infinity;
-        for (const [[ax, ay], [bx, by]] of edges) {
-          // nearest point of the segment to the box centre, then its distance to the box
-          const px = (b.x0 + b.x1) / 2, py = (b.y0 + b.y1) / 2;
-          const L = (bx - ax) ** 2 + (by - ay) ** 2 || 1;
-          const t = Math.max(0, Math.min(1, ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / L));
-          const qx = ax + t * (bx - ax), qy = ay + t * (by - ay);
-          m = Math.min(m, Math.hypot(Math.max(b.x0 - qx, 0, qx - b.x1), Math.max(b.y0 - qy, 0, qy - b.y1)));
-        }
-        return m;
-      };
+      // candidates: a 1.5 px grid around the band; cost is the gap from the box to the band's middle
+      // line, plus a charge for sitting on a band
+      const gap = (b) => edges.reduce((m, sg) => Math.min(m, boxGap(b, sg)), Infinity);
+      const own = edges.flat();
       const xs = own.map(([x]) => x), ys = own.map(([, y]) => y);
       const R = 70;
       let best = null;
@@ -158,7 +146,7 @@ export function renderDay04(data, { mode = 'gray', variant = 'plate' } = {}) {
           const g = gap(b);
           if (best && g >= best.cost) continue;
           if (!clear(b)) continue;
-          const cost = g + 6 * covers(b);
+          const cost = g + 6 * Math.min(covers(b), 3);
           if (!best || cost < best.cost) best = { cost, b, x: bx, y: by };
         }
       }
@@ -211,9 +199,9 @@ export function renderDay04(data, { mode = 'gray', variant = 'plate' } = {}) {
     if (boundary.length) out.push(`<path d="${city(X, Y)}" fill="${C.ground}" fill-rule="evenodd"/>`);
     drawGrid(g.xs, g.ys, X, Y, fx0, fx1, fy0, fy1);
     drawHin(X, Y, isMap ? 4.2 : 3.2);
-    drawClusters(X, Y, isMap ? 0.75 : 0.6);
+    drawClusters(X, Y, isMap ? [6, 4.4] : [5, 3.6]);
     drawPeople(X, Y, null, dots);
-    drawNumbers(X, Y, 8 * T, { x0: fx0, x1: fx1, y0: fy0, y1: fy1 }, dots);
+    drawNumbers(X, Y, 8 * T, { x0: fx0, x1: fx1, y0: fy0, y1: fy1 }, dots, isMap ? 3 : 2.5);
     out.push('</g>');
     const gridLabel = (v) => (v === 0 ? { fill: C.ink, weight: 600 } : { fill: C.pencil });
     for (const x of g.xs) out.push(text(X(x) + gl * 0.35, labelTop, formatAddress(x, 'x'), { size: gl, spacing: 0.4, rotate: -90, anchor: 'end', ...gridLabel(x) }));
@@ -237,7 +225,7 @@ export function renderDay04(data, { mode = 'gray', variant = 'plate' } = {}) {
       ...(color
         ? [[pair(MARK.walk, MARK.walk), 'Walking'], [pair(MARK.bike, MARK.bike), 'Biking'], ['', 'Large dot: killed; small: seriously injured']]
         : [[`<circle r="2.6" fill="${C.ink}"/>`, 'Killed'], [`<circle r="1.3" fill="${C.pencil}"/>`, 'Seriously injured']]),
-      [swatch(MARK.tint, C.pencil), 'Cluster'],
+      [`<line x1="-6" x2="6" y1="0" y2="0" stroke="${C.pencil}" stroke-width="5" stroke-linecap="round"/><line x1="-6" x2="6" y1="0" y2="0" stroke="${MARK.band}" stroke-width="3.6" stroke-linecap="round"/>`, 'Cluster, along its streets'],
       [`<line x1="-7" x2="7" y1="0" y2="0" stroke="${MARK.tint}" stroke-width="4" stroke-linecap="round"/>`, 'High Injury Network (CDOT, 2025)'],
       ...(boundary.length ? [[swatch(C.ground), 'City of Chicago']] : []),
     ];
@@ -383,9 +371,9 @@ export function renderDay04(data, { mode = 'gray', variant = 'plate' } = {}) {
   for (let m = Math.ceil(lbm.south * 2) / 2; m <= lbm.north; m += 0.5) halfY.push(m);
   drawGrid(half, halfY, IXm, IYm, inset.x, inset.x + inset.w, inset.y, inset.y + inset.h, minor);
   drawHin(IX, IY, isInset ? 7 : 6);
-  drawClusters(IX, IY, isInset ? 0.9 : 0.8);
+  drawClusters(IX, IY, isInset ? [12, 9.5] : [10, 8]);
   drawPeople(IX, IY, inView, isInset ? [1.7, 3.4] : [1.4, 2.8]);
-  drawNumbers(IX, IY, 8 * TI, { x0: inset.x, x1: inset.x + inset.w, y0: IY(insetBox.north), y1: IY(insetBox.south) }, isInset ? [1.7, 3.4] : [1.4, 2.8], [data.inset.cluster]);
+  drawNumbers(IX, IY, 8 * TI, { x0: inset.x, x1: inset.x + inset.w, y0: IY(insetBox.north), y1: IY(insetBox.south) }, isInset ? [1.7, 3.4] : [1.4, 2.8], isInset ? 6 : 5, [data.inset.cluster]);
   // the half-mile streets, named: across the top of the inset box, and down its left side
   const ls = 7 * TI;
   const yTop = IY(insetBox.north) + 4;
@@ -427,7 +415,7 @@ export function renderDay04(data, { mode = 'gray', variant = 'plate' } = {}) {
     ['SOURCE', `Traffic Crashes – People and Crashes · Chicago Data Portal · ${s.people.id}, ${s.crashes.id} · pulled ${data.asOf}`],
     ['PEOPLE', `Walking or biking, killed or seriously injured (police: fatal or incapacitating), ${data.window.join('–')}; ${fmt(summary.people)} people`],
     ['DEATHS', `CDOT Vision Zero fatality list (${s.visionZero.id}), 30-day rule; ${summary.deathsCodedSerious} of its deaths are still serious injuries in the police data`],
-    ['METHOD', `HDBSCAN on positions; ${summary.clusters} of ${summary.clustersFound} clusters hold in resampling (stability ≥ ${data.params.stable}); hulls widened 40 m`],
+    ['METHOD', `HDBSCAN on positions; ${summary.clusters} of ${summary.clustersFound} clusters hold in resampling (stability ≥ ${data.params.stable}); drawn along the streets that join their people`],
     ['NETWORK', `CDOT High Injury Network, 2025 (34 corridors, annual report p. 13), drawn on OpenStreetMap streets: ${summary.hinMiles.toFixed(1)} mi`],
     ['CAVEAT', 'Counts, not rates: there are no citywide counts of people walking or biking. CPD streets only;'],
     ['', 'expressways excluded. Serious injuries as police recorded them at the scene'],

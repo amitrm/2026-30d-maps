@@ -155,7 +155,7 @@ const titleCase = (str) => str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCa
 const d4Story = {
   background: [
     'Every bus or train trip starts and ends on foot. This map shows where that walk, or a ride on a bike, ended in a death or a serious injury on a Chicago street from 2021 to 2025, and where those places bunch together.',
-    `The map is drawn in miles from State & Madison, one square per mile, with no basemap. Each dot is one person: large dots were killed, small dots seriously injured. The shaded shapes are clusters, places where the dots are packed much closer together than around them. A cluster is kept only if it still shows up when the data is resampled. The pale bands are the City’s High Injury Network, about 100 miles of major streets. Hover a cluster, or a row of the chart, for its numbers.`,
+    `The map is drawn in miles from State & Madison, one square per mile, with no basemap. Each dot is one person: large dots were killed, small dots seriously injured. The dark bands with a pencil edge are clusters: places where the dots are packed much closer together than around them, drawn along the streets that join them. A cluster is kept only if it still shows up when the data is resampled. The pale bands are the City’s High Injury Network, about 100 miles of major streets. Hover a cluster, or a row of the chart, for its numbers.`,
   ],
   findings: [
     `Of the ${fmt(d4.killed)} people who died, ${d4.walkKilled} were walking and ${d4.bikeKilled} were on a bike.`,
@@ -285,7 +285,7 @@ export const plates = {
       ['Source', `Traffic Crashes – People and Traffic Crashes – Crashes, Chicago Data Portal · ${day04Data.sources.people.id}, ${day04Data.sources.crashes.id} · pulled ${day04Data.asOf}`, day04Data.sources.people.url],
       ['People', `Everyone walking or biking whom police recorded as killed or seriously injured (fatal or incapacitating) from ${day04Data.window.join(' to ')}: ${fmt(d4.people)} people. ${day04Data.dropped.noCoordinates + day04Data.dropped.outsideCity} without a usable location are left out.`],
       ['Deaths', `CDOT’s Vision Zero fatality list (${day04Data.sources.visionZero.id}): a death within 30 days of the crash, expressways excluded. Each death on the list is matched to the police record by id, or by time and place; ${d4.deathsAdded} with no police KSI record are added at the list’s location. ${d4.deathsPoliceNotOnList} people police recorded as killed but CDOT does not list stay in the count as seriously injured.`, day04Data.sources.visionZero.url],
-      ['Clusters', `HDBSCAN on each person’s position (minimum ${day04Data.params.minCluster} people, ${day04Data.params.minSamples} samples, leaf selection). ${d4.clusters} of the ${d4.clustersFound} clusters it finds hold in at least half of 200 refits on 80% of the data and are drawn; each is the concave hull of its people, widened 40 m.`],
+      ['Clusters', `HDBSCAN on each person’s position (minimum ${day04Data.params.minCluster} people, ${day04Data.params.minSamples} samples, leaf selection). ${d4.clusters} of the ${d4.clustersFound} clusters it finds hold in at least half of 200 refits on 80% of the data and are drawn. Each is drawn along the streets that join its people: the shortest paths along OpenStreetMap streets that link them all (a minimum spanning tree), ${fmt(d4.clusterMiles)} miles in all.`],
       ['Network', `CDOT High Injury Network, 2025: the 34 corridors listed in its annual report, drawn along OpenStreetMap streets (extract of ${day04Data.sources.osm.extract}) between their cross streets, ${d4.hinMiles.toFixed(1)} miles. A person is on it within 75 feet, CDOT’s own buffer; a cluster is on it when a quarter of its people are.`, CDOT_REPORT],
       ['Bus stops', `CTA GTFS, feed of ${day04Data.sources.gtfs.feedDate}: people walking within 30 m (about 100 ft) of a bus stop, against the share of OpenStreetMap street length that close to one.`, day04Data.sources.gtfs.url],
       ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
@@ -302,8 +302,8 @@ export const plates = {
     },
     csv: () =>
       csv([
-        ['rank', 'name', 'community_area', 'people', 'walking', 'biking', 'killed', 'after_dark_share', 'hit_and_run_share', 'on_hin_share', 'on_hin', 'stability', 'sq_mi'],
-        ...day04Data.clusters.map((c) => [c.rank, c.name, c.community, c.people, c.walk, c.bike, c.killed, c.night, c.hitRun, c.hinShare, c.onHin, c.stability, c.sqMi]),
+        ['rank', 'name', 'community_area', 'people', 'walking', 'biking', 'killed', 'after_dark_share', 'hit_and_run_share', 'on_hin_share', 'on_hin', 'stability', 'street_miles'],
+        ...day04Data.clusters.map((c) => [c.rank, c.name, c.community, c.people, c.walk, c.bike, c.killed, c.night, c.hitRun, c.hinShare, c.onHin, c.stability, c.miles]),
       ]),
   },
 };
