@@ -1,0 +1,36 @@
+corridor,label,street,from,to
+1,Broadway/Sheridan Rd - Bryn Mawr Ave to Howard St,Broadway,Bryn Mawr Ave,Sheridan Rd
+1,Broadway/Sheridan Rd - Bryn Mawr Ave to Howard St,Sheridan Rd,Broadway,Howard St
+2,Devon Ave - Sacramento Ave to Clark St,Devon Ave,Sacramento Ave,Clark St
+3,Cicero Ave - Roosevelt Rd to Addison St,Cicero Ave,Roosevelt Rd,Addison St
+4,Milwaukee Ave - Augusta Blvd to Leavitt Ave,Milwaukee Ave,Augusta Blvd,Leavitt St
+5,North Ave - Austin Ave to Central Park Ave,North Ave,Austin Ave|Austin Blvd,Central Park Ave
+6,Pulaski Rd - 71st St to North Ave,Pulaski Rd,71st St,North Ave
+7,Halsted St - Harrison St to Division St,Halsted St,Harrison St,Division St
+8,Michigan Ave - 9th St to Oak St,Michigan Ave,9th St,Oak St
+9,Chicago Ave - Halsted St to DuSable Lake Shore Dr,Chicago Ave,Halsted St,DuSable Lake Shore Dr
+10,Chicago Ave - Central Ave to Kedzie Ave,Chicago Ave,Central Ave,Kedzie Ave
+11,Central Ave - Harrison St to Chicago Ave,Central Ave,Harrison St,Chicago Ave
+12,Laramie Ave - Harrison St to Chicago Ave,Laramie Ave,Harrison St,Chicago Ave
+13,Ontario St - Orleans St to McClurg Ct,Ontario St,Orleans St,McClurg Ct
+14,Columbus Dr - Ida B Wells Dr to Ontario St,Columbus Dr,Ida B Wells Dr,Ontario St
+15,Ohio St - Orleans St to McClurg Ct,Ohio St,Orleans St,McClurg Ct
+16,Western Ave - 74th St to Grand Ave,Western Ave,74th St,Grand Ave
+17,Lake St - Laramie Ave to Pulaski Rd,Lake St,Laramie Ave,Pulaski Rd
+18,Madison St - Austin Ave to Central Park Ave,Madison St,Austin Ave|Austin Blvd,Central Park Ave
+19,Roosevelt Rd - Cicero Ave to Columbus Dr,Roosevelt Rd,Cicero Ave,Columbus Dr
+20,Kedzie Ave - 59th St to Cermak Rd,Kedzie Ave,59th St,Cermak Rd
+21,Cermak Rd - Halsted St to Indiana Ave,Cermak Rd,Halsted St,Indiana Ave
+22,26th St - Pulaski Rd to Kedzie Ave,26th St,Pulaski Rd,Kedzie Ave
+23,Ashland Ave - 79th St to Pershing Rd,Ashland Ave,79th St,Pershing Rd
+24,Cicero Ave - Archer Ave to 44th St,Cicero Ave,Archer Ave,44th St
+25,47th St - California Ave to Cottage Grove Ave,47th St,California Ave,Cottage Grove Ave
+26,Cottage Grove Ave - 91st St to 59th St,Cottage Grove Ave,91st St,59th St
+27,Martin Luther King Jr Dr - 71st St to 60th St,Martin Luther King Jr Dr,71st St,60th St
+28,63rd St - Morgan St to Cottage Grove Ave,63rd St,Morgan St,Cottage Grove Ave
+29,71st St - Halsted St to Cottage Grove Ave,71st St,Halsted St,Cottage Grove Ave
+30,75th St - Vincennes Ave to Cottage Grove Ave,75th St,Vincennes Ave,Cottage Grove Ave
+31,79th St - Halsted St to Yates Blvd,79th St,Halsted St,Yates Blvd
+32,Stony Island Ave - 95th St to 79th St,Stony Island Ave,95th St,79th St
+33,87th St - Ashland Ave to Stony Island Ave,87th St,Ashland Ave,Stony Island Ave
+34,95th St - Woodlawn Ave to Colfax Ave,95th St,Woodlawn Ave,Colfax Ave

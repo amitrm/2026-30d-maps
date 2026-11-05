@@ -130,6 +130,9 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   //        data-kind=area: dot or ring, line boxes, then detail rows split on '|')
   //   [data-kind=route][data-detail][data-sep][data-dash][data-gray][data-color][data-on-color]
   //        tooltip for a route: route box and name, a rule data-sep px thick, one sentence
+  //   [data-kind=cluster][data-rank][data-ca][data-total][data-walk][data-bike][data-kw][data-kb][data-colors: 'gray four | color four']
+  //        tooltip for a cluster (Plate IV): number box, name and area, total, a walking / biking bar
+  //        with the deaths as dots under their part of it, the counts, then the detail rows
   //   [data-hl] (chart row) / [data-keys] (station, label)  highlight one line set, fade the rest
   // Highlighting spans every page SVG, so a line row in the chart lights its stations on the map.
   const cols = document.querySelector<HTMLElement>('.cols');
@@ -311,6 +314,46 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
         move(e);
         return;
       }
+      if (g.dataset.kind === 'cluster') {
+        const n = (k: string) => Number(g.dataset[k] ?? 0);
+        const [bw, bb, dw, db] = (g.dataset.colors ?? '').split('|')[isColor() ? 1 : 0]?.split(' ') ?? []; // grayscale | color
+        const num = document.createElement('span');
+        num.className = 'tt-num';
+        num.textContent = g.dataset.rank ?? '';
+        const area = document.createElement('span');
+        area.className = 'tt-ca';
+        area.textContent = `· ${g.dataset.ca ?? ''}`;
+        head.append(num, name, area);
+        const total = document.createElement('span');
+        total.textContent = g.dataset.total ?? '';
+        // the bar on the cluster's own scale; deaths as dots under their part of it
+        const W = 200, s = W / (n('walk') + n('bike'));
+        const dots = (count: number, x0: number, fill: string) =>
+          Array.from({ length: count }, (_, i) => `<circle cx="${(x0 + 3.5 + i * 6.5).toFixed(1)}" cy="14" r="2.4" fill="${fill}"/>`).join('');
+        const killed = n('kw') + n('kb');
+        const bar = document.createElement('div');
+        bar.className = 'tt-bar';
+        bar.innerHTML = `<svg viewBox="0 0 ${W} ${killed ? 17.5 : 8}" aria-hidden="true"><rect width="${(n('walk') * s).toFixed(1)}" height="8" fill="${bw}"/><rect x="${(n('walk') * s).toFixed(1)}" width="${(n('bike') * s).toFixed(1)}" height="8" fill="${bb}"/>${dots(n('kw'), 0, dw)}${dots(n('kb'), n('walk') * s, db)}</svg>`;
+        const counts = document.createElement('span');
+        counts.className = 'tt-detail';
+        counts.innerHTML = `<i class="tt-sw" style="background:${bw}"></i>${n('walk')} walking <i class="tt-sw" style="background:${bb}"></i>${n('bike')} biking`;
+        const dead = document.createElement('span');
+        dead.className = 'tt-detail';
+        // the killed dots in the map's colors: ink in grayscale, the mode's color in color
+        const dot = (fill: string) => `<svg class="tt-dot" viewBox="0 0 6 6" aria-hidden="true"><circle cx="3" cy="3" r="2.4" fill="${fill}"/></svg>`;
+        if (killed) dead.innerHTML = `${killed} killed: ${dot(dw)}${n('kw')} walking ${dot(db)}${n('kb')} biking`;
+        else dead.textContent = 'No one killed';
+        const rows = (g.dataset.detail ?? '').split('|').filter(Boolean).map((t) => {
+          const row = document.createElement('span');
+          row.className = 'tt-detail';
+          row.textContent = t;
+          return row;
+        });
+        tip.replaceChildren(head, total, bar, counts, dead, ...rows);
+        tip.hidden = false;
+        move(e);
+        return;
+      }
       head.innerHTML = mark(g.dataset.ada === '1', (g.dataset.lines ?? '').split(' ').filter(Boolean));
       head.append(name);
       const rows = (g.dataset.detail ?? '').split('|').filter(Boolean).map((t) => {
@@ -428,6 +471,13 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   .tip :global(.tt-sep svg) { display: block; width: 100%; height: 9px; }
   .tip :global(strong) { font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
   .tip :global(.tt-lines) { display: flex; flex-wrap: wrap; gap: 4px; }
+  /* cluster tooltip (Plate IV): number box as in the chart, area in pencil, bar with death dots */
+  .tip :global(.tt-num) { display: inline-grid; place-items: center; min-width: 16px; height: 15px; padding: 0 3px; border-radius: 1.5px; background: var(--fog); font-size: 10px; font-weight: 600; }
+  .tip :global(.tt-ca) { color: var(--pencil); }
+  .tip :global(.tt-bar svg) { display: block; width: 200px; height: auto; }
+  .tip :global(.tt-sw) { display: inline-block; width: 8px; height: 8px; margin: 0 3px -1px 0; }
+  .tip :global(.tt-sw ~ .tt-sw) { margin-left: 6px; }
+  .tip :global(.tt-dot) { display: inline-block; width: 6px; height: 6px; margin: 0 3px 0 4px; vertical-align: 0; }
   .tip :global(.tt-line) {
     padding: 1px 5px; border-radius: 1.5px; background: var(--rule); color: #5a5853; /* softened, as in the chart */
     font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
