@@ -1,4 +1,4 @@
-// Plate IV · Where Walking Ends · Day 04 Clusters
+// Plate IV · Where It Keeps Happening · Day 04 Clusters
 import { C, SERIF, SANS, esc, text, textWidth, legendBox, wrap, frame, svg } from '../lib/plate.js';
 import { gridLines, formatAddress, toMiles } from '../lib/grid.js';
 
@@ -173,8 +173,8 @@ export function renderDay04(data, { mode = 'gray', variant = 'plate' } = {}) {
     chapter: 'THE GRID',
     day: 4,
     theme: 'Clusters',
-    title: 'Where Walking Ends',
-    subtitle: 'Every person walking or biking killed or seriously hurt on Chicago streets, 2021–2025, and where they cluster.',
+    title: 'Where It Keeps Happening',
+    subtitle: 'Every person walking or biking killed or seriously hurt on Chicago streets, 2021–2025, and the streets where it keeps happening.',
   }));
 
   // ---------- main map: plotted in miles, top-left on the plate's text margin ----------
@@ -376,18 +376,25 @@ export function renderDay04(data, { mode = 'gray', variant = 'plate' } = {}) {
   drawNumbers(IX, IY, 8 * TI, { x0: inset.x, x1: inset.x + inset.w, y0: IY(insetBox.north), y1: IY(insetBox.south) }, isInset ? [1.7, 3.4] : [1.4, 2.8], isInset ? 6 : 5, [data.inset.cluster]);
   // the half-mile streets, named: across the top of the inset box, and down its left side
   const ls = 7 * TI;
+  // on the page the inset is cropped, so the north-south streets are named, flat, along the crop's
+  // bottom edge (data-pin-bottom: the page moves the group there)
   const yTop = IY(insetBox.north) + 4;
+  const xLabels = [];
   for (const [x, nm] of Object.entries(STREETS_X)) {
     const px = IX(+x);
     if (px < inset.x + 4 || px > inset.x + inset.w - 4) continue;
-    out.push(text(px + ls * 0.35, yTop, `${nm.toUpperCase()} ${formatAddress(+x, 'x')}`, { size: ls, rotate: -90, anchor: 'end', fill: C.pencil, halo: C.ground, spacing: 0.3 }));
+    const str = `${nm.toUpperCase()} ${formatAddress(+x, 'x')}`;
+    const o = { size: ls, rotate: -90, fill: C.pencil, halo: C.ground, spacing: 0.3 };
+    xLabels.push(isInset ? text(px, -6, nm.toUpperCase(), { size: ls, fill: C.pencil, halo: C.ground, spacing: 0.3, anchor: 'middle' }) : text(px + ls * 0.35, yTop, str, { ...o, anchor: 'end' }));
   }
+  if (!isInset) out.push(...xLabels);
   for (const [y, nm] of Object.entries(STREETS_Y)) {
     const py = IY(+y);
     if (py < inset.y + 8 || py > inset.y + inset.h - 4) continue;
     out.push(text(IX(insetBox.west) + 4, py - 3, +y === 0 ? 'MADISON' : `${nm.toUpperCase()} ${formatAddress(+y, 'y')}`, { size: ls, fill: C.pencil, halo: C.ground, spacing: 0.3 }));
   }
   out.push('</g>');
+  if (isInset) out.push(`<g data-pin-bottom>${xLabels.join('')}</g>`);
   if (isPlate) out.push(`<rect x="${inset.x}" y="${inset.y}" width="${inset.w}" height="${inset.h}" fill="none" stroke="${C.ink}" stroke-width="0.8"/>`);
 
   if (isInset) {
@@ -417,7 +424,7 @@ export function renderDay04(data, { mode = 'gray', variant = 'plate' } = {}) {
     ['DEATHS', `CDOT Vision Zero fatality list (${s.visionZero.id}), 30-day rule; ${summary.deathsCodedSerious} of its deaths are still serious injuries in the police data`],
     ['METHOD', `HDBSCAN on positions; ${summary.clusters} of ${summary.clustersFound} clusters hold in resampling (stability ≥ ${data.params.stable}); drawn along the streets that join their people`],
     ['NETWORK', `CDOT High Injury Network, 2025 (34 corridors, annual report p. 13), drawn on OpenStreetMap streets: ${summary.hinMiles.toFixed(1)} mi`],
-    ['CAVEAT', 'Counts, not rates: there are no citywide counts of people walking or biking. CPD streets only;'],
+    ['CAVEAT', 'Counts, not rates: the City has no street-by-street counts of people walking or biking. CPD streets;'],
     ['', 'expressways excluded. Serious injuries as police recorded them at the scene'],
     ['LIMITS', 'City of Chicago, Boundaries – City · qqq8-j68g'],
   ];
@@ -435,10 +442,10 @@ const W_COL = 300; // plate margin column width, as on Plate I
 const PLATE_ROWS = 12;
 const CHART_ROWS = 12;
 export const INSET_TITLE = 'CICERO AVENUE, AUSTIN';
-export const CHART_NOTE = 'People walking or biking killed or seriously hurt in each cluster, 2021–2025 · Band: a quarter or more of them on CDOT’s High Injury Network';
+export const CHART_NOTE = 'People walking or biking killed or seriously hurt in each cluster, 2021–2025 · Pale band: a quarter or more of them on CDOT’s High Injury Network';
 // The half-mile streets in the inset, by address
 const STREETS_X = { '-6000': 'Austin', '-5600': 'Central', '-5200': 'Laramie', '-4800': 'Cicero', '-4400': 'Kostner', '-4000': 'Pulaski' };
 const STREETS_Y = { 1600: 'North', 1200: 'Division', 800: 'Chicago', 400: 'Kinzie', 0: 'Madison', '-600': 'Harrison', '-1200': 'Roosevelt' };
 
 const mapLabel = (summary) =>
-  `Plate IV, Where Walking Ends: ${summary.people.toLocaleString('en-US')} people walking or biking killed or seriously hurt in Chicago, 2021–2025, ${summary.killed} of them killed; ${summary.clusters} clusters.`;
+  `Plate IV, Where It Keeps Happening: ${summary.people.toLocaleString('en-US')} people walking or biking killed or seriously hurt in Chicago, 2021–2025, ${summary.killed} of them killed; ${summary.clusters} clusters.`;

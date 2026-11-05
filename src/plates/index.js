@@ -155,18 +155,18 @@ const titleCase = (str) => str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCa
 const d4Story = {
   background: [
     'Every bus or train trip starts and ends on foot. This map shows where that walk, or a ride on a bike, ended in a death or a serious injury on a Chicago street from 2021 to 2025, and where those places bunch together.',
-    `The map is drawn in miles from State & Madison, one square per mile, with no basemap. Each dot is one person: large dots were killed, small dots seriously injured. The dark bands with a pencil edge are clusters: places where the dots are packed much closer together than around them, drawn along the streets that join them. A cluster is kept only if it still shows up when the data is resampled. The pale bands are the City’s High Injury Network, about 100 miles of major streets. Hover a cluster, or a row of the chart, for its numbers.`,
+    `The map is drawn in miles from State & Madison, one square per mile, with no basemap. Each dot is one person: large dots were killed, small dots seriously injured. The dark bands with a pencil edge are clusters: places where the dots are packed much closer together than around them, drawn along the streets that join them. A cluster is kept only if it still shows up when the analysis is rerun on random samples of the data. The pale bands are the City’s High Injury Network, about 100 miles of major streets. Hover a cluster, or a row of the chart, for its numbers.`,
   ],
   findings: [
     `Of the ${fmt(d4.killed)} people who died, ${d4.walkKilled} were walking and ${d4.bikeKilled} were on a bike.`,
-    `The largest cluster, along ${d4Place(d4First)}, holds ${d4First.people} people; ${d4First.killed} of them were killed.`,
+    `The largest cluster, along ${titleCase(D4_INSET).replace(', ', ' in ')}, holds ${d4First.people} people; ${d4First.killed} of them were killed.`,
     `${words(d4.top10OnHin)} of the ten largest clusters lie on the City’s High Injury Network. ${list(d4Off)} do not.`,
-    `${share(d4.walkNearStop).replace(/^./, (c) => c.toUpperCase())} of the people hurt while walking were within 100 feet of a CTA bus stop. Only ${pct(d4.streetNearStop)} of the city’s street length is that close to one.`,
+    `${share(d4.walkNearStop).replace(/^./, (c) => c.toUpperCase())} of the people hurt while walking were within 100 feet of a CTA bus stop. Only ${pct(d4.streetNearStop)} of the city’s streets are that close to one.`,
   ],
   how: [
-    `${share(d4.night).replace(/^./, (c) => c.toUpperCase())} of all these people were hurt after dark. For ${pct(d4.hitRun)}, the driver who hit them left the scene.`,
+    `${share(d4.night).replace(/^./, (c) => c.toUpperCase())} were hurt after dark. For ${pct(d4.hitRun)}, the driver who hit them drove away.`,
     `Of the people hurt while walking, ${pct(d4.walk65)} were 65 or older. CDOT reports that Chicagoans over 70 are killed or seriously hurt while walking at the highest rate of any age group.`,
-    'CDOT’s review of 2024 found that 38% of the people killed while walking were struck in a crosswalk, and 44% less than a mile from home.',
+    'CDOT’s review of 2024 found that 38% of the people killed while walking were struck in a crosswalk, and 44% were hit less than a mile from home.',
   ],
   limits: [
     'The map counts people; it does not measure risk. The City has no street-by-street counts of people walking or biking, so a busy street can hold many dots and still be safer per trip than a quiet one.',
@@ -175,7 +175,7 @@ const d4Story = {
   ],
   plan: [
     'In 2025 CDOT named a High Injury Network: the 100 miles of major streets with the highest crash scores from 2022 to 2024, with more weight on deaths, serious injuries and people walking or biking. CDOT will use it to guide which projects it chooses and how they are designed.',
-    `The network is 10% of the city’s major street miles. ${pct(d4.onHinOfMajor)} of the people walking or biking hurt on major streets here were on it. CDOT notes that 44% of its miles are under state (IDOT) jurisdiction.`,
+    `The network is 10% of the city’s major street miles. Of the people on this map who were hurt on a major street, ${pct(d4.onHinOfMajor)} were on the network. CDOT notes that 44% of its miles are state roads, run by IDOT.`,
     'CDOT’s toolbox includes bus boarding islands, curb bump-outs, pedestrian refuge islands, raised crosswalks and left-turn traffic calming. In Austin, Garfield Park and North Lawndale, where CDOT has added safety improvements since its 2019 West Side Vision Zero plan, the number of people killed or seriously hurt fell 39% from 2021 to 2024, more than twice the citywide drop of 18.5%.',
   ],
 };
@@ -276,9 +276,9 @@ export const plates = {
       ]),
   },
   4: {
-    file: 'day04-where-walking-ends',
+    file: 'day04-where-it-keeps-happening',
     render: (o) => renderDay04({ ...day04Data, findings: d4Story.findings, boundary: cityBoundary.rings }, o),
-    subtitle: 'Where are people walking or biking killed or seriously hurt in Chicago?',
+    subtitle: 'Which Chicago streets keep hurting the people who walk and bike on them?',
     finding: day04Data.finding,
     story: d4Story,
     ledger: [

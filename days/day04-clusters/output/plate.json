@@ -1,9 +1,9 @@
 {
  "schema": 1,
  "day": 4,
- "generated": "2026-11-05T05:05:08+00:00",
+ "generated": "2026-11-05T05:29:59+00:00",
  "asOf": "2026-11-04",
- "finding": "From 2021 to 2025, about 3,400 people walking or biking were killed or seriously hurt on Chicago streets; 273 of them died. 44% of them were hurt in 58 clusters, along about 140 miles of streets.",
+ "finding": "From 2021 to 2025, about 3,400 people walking or biking were killed or seriously hurt on Chicago streets; 273 of them died. 44% of them were hurt in 58 places where it keeps happening.",
  "ledger": {
   "source": "Traffic Crashes - People; Traffic Crashes - Crashes",
   "dataset_id": "u6pd-qa9d, 85ca-t3if",
