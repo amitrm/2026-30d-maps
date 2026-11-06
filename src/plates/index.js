@@ -23,6 +23,8 @@ import day03Data from '../../days/day03-polygons/output/plate.json';
 import { renderDay03, CHART_NOTE as D3_CHART_NOTE, INSET_TITLE as D3_INSET } from './day03.js';
 import day04Data from '../../days/day04-clusters/output/plate.json';
 import { renderDay04, CHART_NOTE as D4_CHART_NOTE, INSET_TITLE as D4_INSET } from './day04.js';
+import day05Data from '../../days/day05-sight/output/plate.json';
+import { renderDay05, CHART_TITLE as D5_CHART_TITLE, CHART_NOTE as D5_CHART_NOTE, INSET_TITLE as D5_INSET } from './day05.js';
 
 const csv = (rows) =>
   rows.map((r) => r.map((v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v)).join(',')).join('\n') + '\n';
@@ -181,6 +183,49 @@ const d4Story = {
 };
 d4Story.sections = [['Background', d4Story.background], ['Findings', d4Story.findings, true], ['When and how', d4Story.how], ['What the map cannot see', d4Story.limits], ['The plan', d4Story.plan]];
 
+// Every number below is computed from the plotted data (days/day05-sight/output/plate.json). Court
+// terms are from the Remedial Plan Order (Dkt. 365, 29 May 2025); counts of APS and of signalized
+// intersections from CDOT's June 2026 Semi-Annual Report and ChicagoAPS.org; compliance from the
+// court monitor's Plan Year 1 report. All are linked in the ledger.
+const d5 = day05Data.summary;
+const d5Src = day05Data.sources;
+const d5Date = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+const d5Thousands = (n) => fmt(Math.round(n / 1000) * 1000);
+const d5Mile = (m) => {
+  const mi = m / 1609.344;
+  return Math.abs(mi - 1) < 0.05 ? 'about a mile' : Math.abs(mi - 0.5) < 0.05 ? 'about half a mile' : `${mi.toFixed(1)} miles`;
+};
+const d5Min = d5.order.minimums;
+const d5Story = {
+  background: [
+    'A walk sign only helps if you can see it. An accessible pedestrian signal (APS) also tells you when to cross out loud, and with an arrow on the push button that vibrates. A person who is blind or has low vision can then cross with the walk sign, not by guessing.',
+    'In 2023 a federal court ruled that Chicago’s lack of these signals breaks the Americans with Disabilities Act. In 2025 it ordered the City to add them across the city.',
+    `The map is drawn in miles from State & Madison, one square per mile, with no basemap. Each small dot is a signalized crossing where you must see the walk sign; a large dot has an APS. The pale squares are ‘L’ stations, filled where the station is vertically accessible. One block is the court order’s 1/8 mile, walked. Hover a large dot or a station for its details, or a row of the chart to show only that line.`,
+  ],
+  findings: [
+    `At ${fmt(d5.seenOnly)} of the ${fmt(d5.signals)} signalized crossings mapped here, you must see the signal to know when to walk. The City lists ${d5.listedNow} crossings with an APS, about ${pct(d5.listedNow / d5.cdot.signals)} of its ${fmt(d5.cdot.signals)}.`,
+    `Of the ${d5.stations} ‘L’ stations in the city, ${d5.stationsAps} have a crossing with an APS within one block. ${d5.accessibleSeenOnly} of the ${d5.accessible} vertically accessible stations do not: the elevator reaches the platform, but at the corner you must see the signal.`,
+    `About ${d5Thousands(d5.vision)} Chicagoans have a vision difficulty. ${pct(d5.visionFarShare)} of them live more than a block’s walk from a crossing with an APS. Half live ${d5Mile(d5.visionMedianM)} or more from one.`,
+    `The court put crossings within one block of transit first. There are ${fmt(d5.priority)} of them here, and ${pct(d5.priorityAps / d5.priority)} have an APS. Elsewhere, ${pct(d5.otherAps / d5.other)} do.`,
+  ],
+  why: [
+    'Without an APS, a person who cannot see the signal listens for the traffic beside them to start moving, and crosses with it. That works at a busy, simple corner. It fails where traffic is light, where the walk sign comes on a few seconds before the cars move, and where every car stops at once so people can cross in all directions.',
+    'The court’s order names those places. The City must first add APS where all traffic stops for people on foot, at mid-block crossings, at T-shaped corners and where three or more streets meet.',
+  ],
+  limits: [
+    `An APS that is installed is not always one that works as it should. The court’s monitor inspected ${d5.monitor.inspected} of them in the first year and found none in full compliance with the national standard for traffic signals; many had problems with where the button was, how it sounded or how it was kept up.`,
+    `The City has no open list of its signals, so the map takes them from OpenStreetMap: ${fmt(d5.signals)}, against CDOT’s count of ${fmt(d5.cdot.signals)}.`,
+    'The map does not show where the push button stands, whether the curb ramp lines up with the crosswalk, or how a station’s entrance meets the street. One block is measured from the station’s mapped point, so stations in an expressway median can show no crossing within a block.',
+    'The number of people with a vision difficulty is a Census survey estimate, spread over blocks by population.',
+  ],
+  plan: [
+    `The court’s order of ${d5Date(d5.order.entered)} requires APS at about ${pct(d5.order.phase1)} of signalized crossings with walk signals by the end of ${d5.order.phase1By}, and at all of them by the end of ${d5.order.allBy}. The yearly minimum rises from ${d5Min[0]} crossings in the first year to ${d5Min.at(-1)} in the last three.`,
+    `In the first year the City added ${d5.cdot.year1}, ${d5.cdot.year1 - d5Min[0]} more than required. At that pace, reaching ${pct(d5.order.phase1)} would take about ${Math.round(d5.yearsAtYear1Pace)} years; the order requires the pace to reach about ${Math.round(d5Min.at(-1) / d5.cdot.year1)} times as many a year.`,
+    'Anyone can ask for an APS at a crossing on ChicagoAPS.org. The City must answer within six months, and install it within a year where it can.',
+  ],
+};
+d5Story.sections = [['Background', d5Story.background], ['Findings', d5Story.findings, true], ['Why it matters', d5Story.why], ['What the map cannot see', d5Story.limits], ['The plan', d5Story.plan]];
+
 export const plates = {
   1: {
     file: 'day01-the-doors',
@@ -304,6 +349,37 @@ export const plates = {
       csv([
         ['rank', 'name', 'community_area', 'people', 'walking', 'biking', 'killed', 'after_dark_share', 'hit_and_run_share', 'on_hin_share', 'on_hin', 'stability', 'street_miles'],
         ...day04Data.clusters.map((c) => [c.rank, c.name, c.community, c.people, c.walk, c.bike, c.killed, c.night, c.hitRun, c.hinShare, c.onHin, c.stability, c.miles]),
+      ]),
+  },  5: {
+    file: 'day05-the-signal-you-must-see',
+    render: (o) => renderDay05({ ...day05Data, findings: d5Story.findings.slice(1, 3), boundary: cityBoundary.rings, sequences: lineSequences.lines }, o), // the first finding repeats the headline
+    subtitle: 'At how many of Chicago’s crossings must you see the signal to know when to walk?',
+    finding: day05Data.finding,
+    story: d5Story,
+    ledger: [
+      ['APS', `CDOT, Chicago APS Semi-Annual Report, June 2026: ${d5.cdot.aps} intersections with APS and their install dates (Appendix A), as of ${d5Date(d5.cdot.asOf)}; ChicagoAPS.org, list as of ${d5Date(d5.listedAsOf)}: ${d5.listedNow}. Each is placed by its street names, or its address on the grid, on the nearest signalized crossing; two could not be placed.`, d5Src.report],
+      ['Signals', `OpenStreetMap, Geofabrik extract of ${day05Data.osmDate}: signal and signalized-crosswalk nodes within 80 m of each other form one crossing; it counts when a crosswalk there has a walk signal. ${fmt(d5.signals)} crossings, against CDOT’s ${fmt(d5.cdot.signals)}. © OpenStreetMap contributors (ODbL).`, 'https://download.geofabrik.de/north-america/us/illinois.html'],
+      ['Block', 'The court order’s 1/8 mile, 201 m, walked on the OpenStreetMap walk network (as Plate III), from each station’s mapped point.'],
+      ['Track', `‘L’ lines: CTA GTFS rail shapes, feed of ${lineSequences.feed_date}, every shape carrying at least a tenth of its line’s trips (as Plate II).`, 'https://www.transitchicago.com/developers/gtfs/'],
+      ['Transit', 'The order’s transit priority: CTA ‘L’ stations, Metra stations (Metra GTFS), Pace Pulse stops (Pace GTFS), crossings of two CTA bus routes (CTA GTFS), and streets passing under the elevated ‘L’ (OpenStreetMap).'],
+      ['People', 'Vision difficulty: ACS 2020–2024 5-year, table B18103, by tract, spread over 2020 Census blocks by population; each block is placed by the walk from its internal point.', 'https://www.census.gov/programs-surveys/acs/data/summary-file.html'],
+      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
+      ['Caveat', `Installed is not compliant: the court monitor found none of ${d5.monitor.inspected} inspected APS fully compliant. The signal count is OpenStreetMap’s, not the City’s.`],
+      ['Court', [
+        ['Remedial Plan Order, 29 May 2025', d5Src.order],
+        ['Monitor report, Plan Year 1', d5Src.monitor],
+        ['ChicagoAPS.org locations', d5Src.site],
+      ]],
+    ],
+    page: {
+      chart: { title: D5_CHART_TITLE, note: D5_CHART_NOTE },
+      inset: { title: `Inset · ${titleCase(D5_INSET)}` },
+    },
+    csv: () =>
+      csv([
+        ['x_address', 'y_address', 'aps', 'name', 'year_installed', 'transit_priority', 'within_block_of_station', 'added_not_in_osm'],
+        ...day05Data.signals.map((p) => [p.x, p.y, p.aps, p.name ?? '', p.year ?? '', p.priority, p.nearStation, p.added]),
       ]),
   },
 };

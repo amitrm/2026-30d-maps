@@ -127,7 +127,8 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
 <script>
   // Hover hooks emitted by the map, chart and inset variants of each plate renderer:
   //   [data-tip][data-name][data-lines][data-ada][data-detail]  tooltip (a station, or a walkshed with
-  //        data-kind=area: dot or ring, line boxes, then detail rows split on '|')
+  //        data-kind=area: dot or ring, line boxes, then detail rows split on '|'); data-shape=square
+  //        draws the mark as a filled or hollow square instead (Plate V's stations)
   //   [data-kind=route][data-detail][data-sep][data-dash][data-gray][data-color][data-on-color]
   //        tooltip for a route: route box and name, a rule data-sep px thick, one sentence
   //   [data-kind=cluster][data-rank][data-ca][data-total][data-walk][data-bike][data-kw][data-kb][data-colors: 'gray four | color four']
@@ -264,9 +265,13 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   // or ink for stations on two or more lines.
   const lineColors: Record<string, string> = JSON.parse(cols?.dataset.lineColors ?? '{}');
   const isColor = () => document.documentElement.dataset.mode === 'color';
-  const mark = (ada: boolean, lines: string[]) => {
+  const mark = (ada: boolean, lines: string[], shape?: string) => {
     const color = isColor();
     const c = color && lines.length === 1 ? lineColors[lines[0]] ?? '#232323' : color ? '#232323' : '#5A5853'; // grayscale marks are softened
+    if (shape === 'square')
+      return ada
+        ? `<svg viewBox="0 0 10 10" aria-hidden="true"><rect x="1.5" y="1.5" width="7" height="7" fill="${c}"/></svg>`
+        : `<svg viewBox="0 0 10 10" aria-hidden="true"><rect x="2" y="2" width="6" height="6" fill="#F1F0EC" stroke="${c}" stroke-width="1.2"/></svg>`;
     return ada
       ? `<svg viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="4" fill="${c}"/></svg>`
       : `<svg viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="3.6" fill="#F1F0EC" stroke="${c}" stroke-width="1.2"/></svg>`;
@@ -354,7 +359,7 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
         move(e);
         return;
       }
-      head.innerHTML = mark(g.dataset.ada === '1', (g.dataset.lines ?? '').split(' ').filter(Boolean));
+      head.innerHTML = mark(g.dataset.ada === '1', (g.dataset.lines ?? '').split(' ').filter(Boolean), g.dataset.shape);
       head.append(name);
       const rows = (g.dataset.detail ?? '').split('|').filter(Boolean).map((t) => {
         const row = document.createElement('span');
