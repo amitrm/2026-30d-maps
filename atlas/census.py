@@ -12,10 +12,10 @@ Sources, all keyless bulk files:
 - Chicago Data Portal, Boundaries - Census Blocks - 2020 (3aji-w8h2): community area and ward. The
   portal's block list differs from the Census place at the city edge by a few dozen blocks
   (under 100 residents); blocks it lacks get community area and ward 0.
-- ACS 2020-2024 5-year, table B18105 (ambulatory difficulty), tract level, table-based summary file.
-  ``reference/raw/census/acsdt5y2024-b18105.dat``.
+- ACS 2020-2024 5-year, tables B18105 (ambulatory difficulty) and B18103 (vision difficulty), tract
+  level, table-based summary files. ``reference/raw/census/acsdt5y2024-b1810{5,3}.dat``.
 
-Blocks with no residents are left out. Tract ambulatory-difficulty counts are allocated to blocks in
+Blocks with no residents are left out. Tract difficulty counts are allocated to blocks in
 proportion to 2020 population, so block values are estimates for aggregation, not block facts.
 """
 
@@ -39,7 +39,7 @@ OUT_PATH = Path('reference') / 'chicago-blocks-2020.csv'
 PL_URL = ('https://www2.census.gov/programs-surveys/decennial/2020/data/'
           '01-Redistricting_File--PL_94-171/Illinois/il2020.pl.zip')
 ACS_URL = ('https://www2.census.gov/programs-surveys/acs/summary_file/2024/table-based-SF/data/'
-           '5YRData/acsdt5y2024-b18105.dat')
+           '5YRData/acsdt5y2024-{table}.dat')
 BLOCKS_ID = '3aji-w8h2'  # Boundaries - Census Blocks - 2020
 CHICAGO_POP_2020 = 2_746_388
 
@@ -50,6 +50,9 @@ CHICAGO_PLACE = '14000'
 # B18105 'With an ambulatory difficulty' cells: male then female, ages 5-17, 18-34, 35-64, 65-74, 75+
 AMBULATORY = [4, 7, 10, 13, 16, 20, 23, 26, 29, 32]
 AMBULATORY_65 = [13, 16, 29, 32]
+# B18103 'With a vision difficulty' cells: male then female, ages under 5, 5-17, 18-34, 35-64, 65-74, 75+
+VISION = [4, 7, 10, 13, 16, 19, 23, 26, 29, 32, 35, 38]
+VISION_65 = [16, 19, 35, 38]
 
 
 def _download(url: str, path: Path) -> Path:
@@ -78,17 +81,32 @@ def pl_blocks() -> pd.DataFrame:
     return pd.DataFrame(rows, columns=['geoid', 'pop', 'lat', 'lon', 'chicago'])
 
 
-def tract_ambulatory() -> pd.DataFrame:
-    """Cook County tracts: civilian population 5+, with an ambulatory difficulty, and of those 65+."""
-    path = _download(ACS_URL, RAW_DIR / 'acsdt5y2024-b18105.dat')
+def _tracts(table: str) -> tuple[pd.DataFrame, callable]:
+    path = _download(ACS_URL.format(table=table), RAW_DIR / f'acsdt5y2024-{table}.dat')
     acs = pd.read_csv(path, sep='|', dtype=str)
     acs = acs[acs['GEO_ID'].str.startswith('1400000US17031')]
-    num = lambda cells: sum(pd.to_numeric(acs[f'B18105_E{c:03d}']) for c in cells)
+    num = lambda cells: sum(pd.to_numeric(acs[f'{table.upper()}_E{c:03d}']) for c in cells)
+    return acs, num
+
+
+def tract_ambulatory() -> pd.DataFrame:
+    """Cook County tracts: civilian population 5+, with an ambulatory difficulty, and of those 65+."""
+    acs, num = _tracts('b18105')
     return pd.DataFrame({
         'tract': acs['GEO_ID'].str[-11:].values,
         'pop5': pd.to_numeric(acs['B18105_E001']).values,
         'amb': num(AMBULATORY).values,
         'amb65': num(AMBULATORY_65).values,
+    })
+
+
+def tract_vision() -> pd.DataFrame:
+    """Cook County tracts: civilian population with a vision difficulty, and of those 65+."""
+    acs, num = _tracts('b18103')
+    return pd.DataFrame({
+        'tract': acs['GEO_ID'].str[-11:].values,
+        'vis': num(VISION).values,
+        'vis65': num(VISION_65).values,
     })
 
 
@@ -108,21 +126,22 @@ def build() -> pd.DataFrame:
     tracts = tract_ambulatory()
     share = blocks['pop'] / blocks['tract'].map(tract_pop)
     blocks = blocks.merge(tracts[['tract', 'amb', 'amb65']], on='tract', how='left')
-    for col in ('amb', 'amb65'):
+    blocks = blocks.merge(tract_vision(), on='tract', how='left')
+    for col in ('amb', 'amb65', 'vis', 'vis65'):
         blocks[col] = (blocks[col].fillna(0) * share.fillna(0)).round(2)
     blocks = blocks[blocks['pop'] > 0].copy()
     for col in ('commarea', 'ward'):
         blocks[col] = pd.to_numeric(blocks[col]).fillna(0).astype(int)
-    return blocks[['geoid', 'pop', 'lat', 'lon', 'commarea', 'ward', 'amb', 'amb65']]
+    return blocks[['geoid', 'pop', 'lat', 'lon', 'commarea', 'ward', 'amb', 'amb65', 'vis', 'vis65']]
 
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format='%(levelname)s %(name)s: %(message)s')
     blocks = build()
     blocks.to_csv(OUT_PATH, index=False)
-    log.info('Wrote %s: %d blocks, %s residents, ~%s with an ambulatory difficulty (built %s)',
-             OUT_PATH, len(blocks), f'{blocks["pop"].sum():,}', f'{blocks["amb"].sum():,.0f}',
-             date.today())
+    log.info('Wrote %s: %d blocks, %s residents, ~%s with an ambulatory difficulty, ~%s with a vision '
+             'difficulty (built %s)', OUT_PATH, len(blocks), f'{blocks["pop"].sum():,}',
+             f'{blocks["amb"].sum():,.0f}', f'{blocks["vis"].sum():,.0f}', date.today())
 
 
 if __name__ == '__main__':
