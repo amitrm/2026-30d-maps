@@ -55,7 +55,7 @@ export function renderDay06(data, { mode = 'gray', variant = 'plate' } = {}) {
     for (const y of ys) out.push(`<line x1="${x0}" x2="${x1}" y1="${Y(y)}" y2="${Y(y)}" stroke="${y === 0 ? C.pencil : C.grid}" stroke-width="${y === 0 ? 0.8 : 0.6}"/>`);
   };
   // legend marks drawn as the charts draw them: a square-ended band, a line, a line in a band
-  const sw = (b, l) => `${b ? `<rect x="-9" y="-2.75" width="18" height="5.5" fill="${band}"/>` : ''}${l ? `<line x1="-9" x2="9" y1="0" y2="0" stroke="${bus}" stroke-width="1.2"/>` : ''}`;
+  const sw = (b, l) => `${b ? `<rect x="-9" y="-4.5" width="18" height="9" fill="${band}"/>` : ''}${l ? `<line x1="-9" x2="9" y1="0" y2="0" stroke="${bus}" stroke-width="2"/>` : ''}`; // the charts' proportions: line about 0.22 of the band
 
   if (isPlate) out.push(frame({
     plate: 'VI',
@@ -303,7 +303,7 @@ export const INSET_TITLE = 'BRONZEVILLE TO WASHINGTON PARK';
 export const CHART_TITLE = 'Street-miles, CSL and CTA';
 export const CHART_NOTE = 'Share of each network’s street-miles inside today’s city; the CSL as on its 1929 map · Between: within half a mile of a CSL line · Beyond: farther';
 export const CHART2_TITLE = 'By distance from State & Madison';
-export const CHART2_NOTE = 'Street-miles in each 2-mile ring: CSL line only, CSL line and CTA bus, CTA bus only · % of CTA bus miles on a CSL line';
+export const CHART2_NOTE = 'Street-miles in each 2-mile ring: CSL line only · CSL line, CTA bus · CTA bus only · % of CTA bus miles on a CSL line';
 
 const mapLabel = (summary) =>
   `Plate VI, Surface Lines, 1929: ${Math.round(summary.stillServed * 100)}% of the street-miles of the Chicago Surface Lines network on its 1929 map still carry a CTA bus; ${Math.round(summary.onA1929Line * 100)}% of today’s CTA bus street-miles run on a CSL line.`;
