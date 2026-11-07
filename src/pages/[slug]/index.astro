@@ -131,6 +131,8 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   //        draws the mark as a filled or hollow square instead (Plate V's stations)
   //   [data-kind=route][data-detail][data-sep][data-dash][data-gray][data-color][data-on-color]
   //        tooltip for a route: route box and name, a rule data-sep px thick, one sentence
+  //   [data-kind=street][data-detail][data-band][data-line: 'gray|color' colors, empty for none]
+  //        tooltip for a street (Plate VI): name, a band / line swatch as the map legend, one sentence
   //   [data-kind=cluster][data-rank][data-ca][data-total][data-walk][data-bike][data-kw][data-kb][data-colors: 'gray four | color four']
   //        tooltip for a cluster (Plate IV): number box, name and area, total, a walking / biking bar
   //        with the deaths as dots under their part of it, the counts, then the detail rows
@@ -315,6 +317,23 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
         text.className = 'tt-detail';
         text.textContent = g.dataset.detail ?? '';
         tip.replaceChildren(head, rule, text);
+        tip.hidden = false;
+        move(e);
+        return;
+      }
+      if (g.dataset.kind === 'street') {
+        // a street (Plate VI): its name, a swatch drawn as the map legend draws it (band, line in band,
+        // or line), then one sentence
+        head.append(name);
+        const pick = (pair?: string) => (pair ? pair.split('|')[isColor() ? 1 : 0] : '');
+        const band = pick(g.dataset.band), stroke = pick(g.dataset.line);
+        const sw = document.createElement('div');
+        sw.className = 'tt-sep';
+        sw.innerHTML = `<svg viewBox="0 0 200 9" preserveAspectRatio="none" aria-hidden="true">${band ? `<rect width="200" height="9" fill="${band}"/>` : ''}${stroke ? `<line x1="0" x2="200" y1="4.5" y2="4.5" stroke="${stroke}" stroke-width="2" vector-effect="non-scaling-stroke"/>` : ''}</svg>`;
+        const text = document.createElement('span');
+        text.className = 'tt-detail';
+        text.textContent = g.dataset.detail ?? '';
+        tip.replaceChildren(head, sw, text);
         tip.hidden = false;
         move(e);
         return;
