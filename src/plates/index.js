@@ -25,6 +25,8 @@ import day04Data from '../../days/day04-clusters/output/plate.json';
 import { renderDay04, CHART_NOTE as D4_CHART_NOTE, INSET_TITLE as D4_INSET } from './day04.js';
 import day05Data from '../../days/day05-sight/output/plate.json';
 import { renderDay05, CHART_TITLE as D5_CHART_TITLE, CHART_NOTE as D5_CHART_NOTE, INSET_TITLE as D5_INSET } from './day05.js';
+import day06Data from '../../days/day06-vintage/output/plate.json';
+import { renderDay06, CHART_TITLE as D6_CHART_TITLE, CHART_NOTE as D6_CHART_NOTE, INSET_TITLE as D6_INSET } from './day06.js';
 
 const csv = (rows) =>
   rows.map((r) => r.map((v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v)).join(',')).join('\n') + '\n';
@@ -226,6 +228,38 @@ const d5Story = {
 };
 d5Story.sections = [['Background', d5Story.background], ['Findings', d5Story.findings, true], ['Why it matters', d5Story.why], ['What the map cannot see', d5Story.limits], ['The plan', d5Story.plan]];
 
+// Every number below is computed from the plotted data (days/day06-vintage/output/plate.json). CTA
+// statements (accessible buses; the 1947 takeover and the last streetcar; the CSL's "a number of bus
+// lines") are from the CTA pages linked in the ledger; the CSL's 1914 founding from WBEZ, also linked.
+const d6 = day06Data.summary;
+const d6Ring = (from) => day06Data.rings.find((r) => r.from === from);
+const d6Far = day06Data.rings.filter((r) => r.from >= 10);
+const d6FarShare = d6Far.reduce((n, r) => n + r.both, 0) / d6Far.reduce((n, r) => n + r.both + r.new, 0);
+const d6Names = (rows, n) => list(rows.slice(0, n).map((r) => r.name));
+const d6Qa = day06Data.qaRight;
+const d6Story = {
+  background: [
+    'The Chicago Surface Lines (CSL) ran the city’s streetcars, and a number of bus lines, from 1914, when the street railways merged into one company, until 1 October 1947, when the new Chicago Transit Authority (CTA) took it over. The last streetcar ran on 21 June 1958.',
+    'In 1929 the CSL printed a system map of its network, in red over the street grid. That map, now in the public domain, is the source here: 1929 is the date of the map, not of the network. This plate lays it over today’s CTA bus routes, street by street.',
+    'The map is drawn in miles from State & Madison, one square per mile, with no basemap. The wide band is the CSL network as its 1929 map shows it; the thin line is a CTA bus today. Where the line runs in the band, the route stayed. A band alone is a CSL line with no CTA bus today; a line alone is a CTA bus on a street the map shows no CSL line on. Hover a street for its name, or a bar of the charts to show only that kind of street.',
+  ],
+  findings: [
+    `${pct(d6.stillServed)} of the street-miles of the CSL network on its 1929 map still carry a CTA bus.`,
+    `${pct(d6.onA1929Line)} of CTA bus street-miles today run on a CSL line. Most of the rest fill in between the CSL lines: only ${pct(d6.beyondShare)} lie more than half a mile from one.`,
+    `The overlap is closest to the Loop and fades with distance: ${pct(d6Ring(2).onA1929Line)} of CTA bus miles between 2 and 4 miles from State & Madison run on a CSL line, and ${pct(d6FarShare)} beyond 10 miles.`,
+    `The longest CTA bus streets with no CSL line include ${d6Names(day06Data.topNew, 5)}. The longest CSL lines with no CTA bus today include ${d6Names(day06Data.topOld, 3)}.`,
+  ],
+  ride: [
+    'The CSL map shows where a rider could go; it says nothing about who could get on. CTA’s entire bus fleet has been accessible to people with disabilities since 2005, with a ramp at the front door of every bus.',
+    'Where the route stayed, the same street now has a bus with a ramp.',
+  ],
+  limits: [
+    `The 1929 map is the CSL’s own system map, drawn for riders, not an engineering plan, and it shows the network in that one year. It was read off the scan street by street; a check by eye of 80 random streets found ${d6Qa.only1929} of ${d6Qa.of} “CSL only” and ${d6Qa.todayOnly} of ${d6Qa.of} “CTA only” streets right. Where a line was drawn a little off its street, the next street can take it.`,
+    `The plate counts streets, not service: a bus every 8 minutes and one every 30 count the same. ${Math.round(d6.offSheetMiles)} miles of city streets around O’Hare lie off the 1929 map and are left out.`,
+  ],
+};
+d6Story.sections = [['Background', d6Story.background], ['Findings', d6Story.findings, true], ['The ride, then and now', d6Story.ride], ['What the map cannot see', d6Story.limits]];
+
 export const plates = {
   1: {
     file: 'day01-the-doors',
@@ -381,5 +415,41 @@ export const plates = {
         ['x_address', 'y_address', 'aps', 'name', 'year_installed', 'transit_priority', 'within_block_of_station', 'added_not_in_osm'],
         ...day05Data.signals.map((p) => [p.x, p.y, p.aps, p.name ?? '', p.year ?? '', p.priority, p.nearStation, p.added]),
       ]),
+  },
+  6: {
+    file: 'day06-surface-lines-1929',
+    render: (o) => renderDay06({ ...day06Data, findings: d6Story.findings.slice(1, 3), boundary: cityBoundary.rings, qaRight: `${day06Data.qaRight.only1929}/40 and ${day06Data.qaRight.todayOnly}/40 right` }, o),
+    subtitle: 'How much of today’s CTA bus network still runs where the Chicago Surface Lines’ streetcars ran?',
+    finding: day06Data.finding,
+    story: d6Story,
+    ledger: [
+      ['CSL', 'Chicago Surface Lines (CSL): the city’s streetcar company from 1914, when the street railways merged, until the CTA took it over on 1 October 1947. The last streetcar ran on 21 June 1958.', 'https://www.transitchicago.com/facts/'],
+      ['Map', `System of Chicago Surface Lines, the CSL’s system map of 1929, about 1:104,500; scan by the University of Minnesota Borchert Map Library, ${day06Data.scan.size.join(' × ')} px. Published 1929 with notice, so in the public domain in the US. The same map is at the Osher Map Library.`, day06Data.scan.record],
+      ['Fit', 'Georeferenced to the address grid on the sheet’s own margin street numbers, then points along OpenStreetMap’s arterials snapped to the red lines across the street. The Loop is read from the map’s Central District inset.'],
+      ['Streets', `OpenStreetMap, Geofabrik extract of ${day06Data.osmDate}, drivable named streets. A street is a CSL line where red ink runs along it on the 1929 map for at least half its length, over a quarter mile. © OpenStreetMap contributors (ODbL).`, 'https://download.geofabrik.de/north-america/us/illinois.html'],
+      ['Today', `CTA bus routes as on Plate II, GTFS feed of ${day06Data.gtfs.feedDate}, on the street where a route runs along it.`, day06Data.gtfs.url],
+      ['Miles', 'Street-miles inside today’s city, counted so both roadways of a divided street count once. Expressways and Lake Shore Drive are left out.'],
+      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
+      ['Caveat', `Checked by eye on 80 random streets: ${day06Data.qaRight.only1929}/40 “CSL only” and ${day06Data.qaRight.todayOnly}/40 “CTA only” right. The few dashed CSL bus lines can be missed. The map shows the CSL network in 1929 only. ${Math.round(d6.offSheetMiles)} miles of streets around O’Hare are off the map.`],
+      ['Sources', [
+        ['UMN scan', day06Data.scan.record],
+        ['Osher Map Library', day06Data.scan.osher],
+        ['CTA accessibility', day06Data.ctaAccessUrl],
+        ['CTA facts and dates', 'https://www.transitchicago.com/facts/'],
+        ['CTA at 75', 'https://www.transitchicago.com/75th/'],
+        ['WBEZ, The great years of Chicago streetcars', 'https://www.wbez.org/culture/2012/10/03/the-great-years-of-chicago-streetcars'],
+      ]],
+    ],
+    page: {
+      chart: { title: D6_CHART_TITLE, note: D6_CHART_NOTE },
+      inset: { title: `Inset · ${titleCase(D6_INSET).replace(' To ', ' to ')}` },
+    },
+    csv: () => {
+      const len = (p) => p.slice(1).reduce((n, q, i) => n + Math.hypot(q[0] - p[i][0], q[1] - p[i][1]), 0) / 800;
+      const by = new Map();
+      for (const sg of day06Data.segments) by.set(`${sg.name}|${sg.kind}`, (by.get(`${sg.name}|${sg.kind}`) ?? 0) + len(sg.path));
+      return csv([['street', 'kind', 'miles_approx'], ...[...by].map(([k, v]) => [...k.split('|'), v.toFixed(2)])]);
+    },
   },
 };
