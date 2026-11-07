@@ -46,7 +46,9 @@ export function renderDay06(data, { mode = 'gray', variant = 'plate' } = {}) {
     if (!hooks) return;
     for (const s of segs) {
       const nm = s.name || 'Unnamed street'; // a few short OSM pieces under a bus route have no name
-      out.push(`<g data-kind="route" data-tip="${esc(nm)}" data-name="${esc(nm)}" data-lines="" data-detail="${esc(DETAIL[s.kind])}" data-sep="${s.kind === 'new' ? 2 : 5}"${s.kind === 'old' ? ' data-dash="1"' : ''} data-gray="${s.kind === 'new' ? C.ink : C.frame}" data-color="${s.kind === 'new' ? BUS_GREEN : BAND_GOLD}"><path d="${line(s.path, fx, fy)}" fill="none" stroke="transparent" stroke-width="${bw + 4}" stroke-linecap="round"/></g>`);
+      // tooltip swatch as the legend draws it: band, line in band, or line ("gray|color" per mode, empty for none)
+      const bandC = s.kind === 'new' ? '' : `${C.frame}|${BAND_GOLD}`, lineC = s.kind === 'old' ? '' : `${C.ink}|${BUS_GREEN}`;
+      out.push(`<g data-kind="street" data-tip="${esc(nm)}" data-name="${esc(nm)}" data-lines="" data-detail="${esc(DETAIL[s.kind])}" data-band="${bandC}" data-line="${lineC}"><path d="${line(s.path, fx, fy)}" fill="none" stroke="transparent" stroke-width="${bw + 4}" stroke-linecap="round"/></g>`);
     }
   };
   const drawGrid = (xs, ys, X, Y, x0, x1, y0, y1, minor = []) => {
