@@ -128,7 +128,8 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   // Hover hooks emitted by the map, chart and inset variants of each plate renderer:
   //   [data-tip][data-name][data-lines][data-ada][data-detail]  tooltip (a station, or a walkshed with
   //        data-kind=area: dot or ring, line boxes, then detail rows split on '|'); data-shape=square
-  //        draws the mark as a filled or hollow square instead (Plate V's stations)
+  //        draws the mark as a filled or hollow square instead (Plate V's stations); ring / half-ring,
+  //        the dot inside a full or half outage ring (Plate VII)
   //   [data-kind=route][data-detail][data-sep][data-dash][data-gray][data-color][data-on-color]
   //        tooltip for a route: route box and name, a rule data-sep px thick, one sentence
   //   [data-kind=street][data-detail][data-band][data-line: 'gray|color' colors, empty for none]
@@ -270,6 +271,14 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   const mark = (ada: boolean, lines: string[], shape?: string) => {
     const color = isColor();
     const c = color && lines.length === 1 ? lineColors[lines[0]] ?? '#232323' : color ? '#232323' : '#5A5853'; // grayscale marks are softened
+    // Plate VII: an accessible station with an elevator out, drawn as on the map: the dot with an ink
+    // ring around it, full (data-shape=ring) or its right half (data-shape=half-ring), on a paper disc
+    if (shape === 'ring' || shape === 'half-ring') {
+      const ring = shape === 'ring'
+        ? '<circle r="6.4" fill="none" stroke="#232323" stroke-width="1.44"/>'
+        : '<path d="M0,-6.4A6.4,6.4 0 0 1 0,6.4" fill="none" stroke="#232323" stroke-width="1.44"/>';
+      return `<svg viewBox="-8 -8 16 16" style="width:16px;height:16px" aria-hidden="true"><circle r="7.84" fill="#F1F0EC"/>${ring}<circle r="3.2" fill="${c}"/></svg>`;
+    }
     if (shape === 'square')
       return ada
         ? `<svg viewBox="0 0 10 10" aria-hidden="true"><rect x="1.5" y="1.5" width="7" height="7" fill="${c}"/></svg>`
