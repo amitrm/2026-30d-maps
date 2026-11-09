@@ -1,0 +1,404 @@
+{
+ "pulledAt": "2026-11-08T18:42:00-06:00",
+ "url": "https://www.transitchicago.com/api/1.0/alerts.aspx?outputType=JSON&activeonly=true",
+ "data": {
+  "Elevator": [
+   {
+    "AlertId": "117753",
+    "Headline": "Elevator at Chicago Temporarily Out-of-Service",
+    "ShortDescription": "The Kimball- and Linden-bound platform elevator at Chicago (Brown, Purple Lines) is temporarily out-of-service.",
+    "EventStart": "2026-09-28T18:14:00",
+    "EventEnd": null,
+    "ImpactedService": {
+     "Service": [
+      {
+       "ServiceType": "T",
+       "ServiceTypeDescription": "Train Station",
+       "ServiceName": "Chicago",
+       "ServiceId": "40710",
+       "ServiceBackColor": "522398",
+       "ServiceTextColor": "ffffff",
+       "ServiceURL": {
+        "#cdata-section": "http://www.transitchicago.com/travel_information/station.aspx?StopId=37"
+       }
+      },
+      {
+       "ServiceType": "R",
+       "ServiceTypeDescription": "Train Route",
+       "ServiceName": "Purple Line",
+       "ServiceId": "P",
+       "ServiceBackColor": "522398",
+       "ServiceTextColor": "ffffff",
+       "ServiceURL": {
+        "#cdata-section": "http://www.transitchicago.com/purpleline/"
+       }
+      },
+      {
+       "ServiceType": "R",
+       "ServiceTypeDescription": "Train Route",
+       "ServiceName": "Brown Line",
+       "ServiceId": "Brn",
+       "ServiceBackColor": "62361b",
+       "ServiceTextColor": "ffffff",
+       "ServiceURL": {
+        "#cdata-section": "http://www.transitchicago.com/brownline/"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "AlertId": "118264",
+    "Headline": "Elevator at Washington/Wabash Temporarily Out-of-Service",
+    "ShortDescription": "The Brown Line and Harlem-bound Green Line platform elevator at Washington/Wabash is temporarily out-of-service.",
+    "EventStart": "2026-10-26T15:17:00",
+    "EventEnd": null,
+    "ImpactedService": {
+     "Service": [
+      {
+       "ServiceType": "T",
+       "ServiceTypeDescription": "Train Station",
+       "ServiceName": "Washington/Wabash",
+       "ServiceId": "41700",
+       "ServiceBackColor": "522398",
+       "ServiceTextColor": "ffffff",
+       "ServiceURL": {
+        "#cdata-section": "http://www.transitchicago.com/travel_information/station.aspx?StopId=96"
+       }
+      },
+      {
+       "ServiceType": "R",
+       "ServiceTypeDescription": "Train Route",
+       "ServiceName": "Green Line",
+       "ServiceId": "G",
+       "ServiceBackColor": "009b3a",
+       "ServiceTextColor": "FFFFFF",
+       "ServiceURL": {
+        "#cdata-section": "http://www.transitchicago.com/greenline/"
+       }
+      },
+      {
+       "ServiceType": "R",
+       "ServiceTypeDescription": "Train Route",
+       "ServiceName": "Brown Line",
+       "ServiceId": "Brn",
+       "ServiceBackColor": "62361b",
+       "ServiceTextColor": "ffffff",
+       "ServiceURL": {
+        "#cdata-section": "http://www.transitchicago.com/brownline/"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "AlertId": "118423",
+    "Headline": "Elevator at Clark/Lake Temporarily Out-of-Service",
+    "ShortDescription": "The elevator at 203 N. LaSalle (Brown and Harlem-bound Green Line platform from street and subway concourse) at Clark/Lake is temporarily out-of-service.",
+    "EventStart": "2026-11-04T19:13:00",
+    "EventEnd": null,
+    "ImpactedService": {
+     "Service": [
+      {
+       "ServiceType": "T",
+       "ServiceTypeDescription": "Train Station",
+       "ServiceName": "Clark/Lake",
+       "ServiceId": "40380",
+       "ServiceBackColor": "522398",
+       "ServiceTextColor": "ffffff",
+       "ServiceURL": {
+        "#cdata-section": "http://www.transitchicago.com/travel_information/station.aspx?StopId=43"
+       }
+      },
+      {
+       "ServiceType": "R",
+       "ServiceTypeDescription": "Train Route",
+       "ServiceName": "Green Line",
+       "ServiceId": "G",
+       "ServiceBackColor": "009b3a",
+       "ServiceTextColor": "FFFFFF",
+       "ServiceURL": {
+        "#cdata-section": "http://www.transitchicago.com/greenline/"
+       }
+      },
+      {
+       "ServiceType": "R",
+       "ServiceTypeDescription": "Train Route",
+       "ServiceName": "Brown Line",
+       "ServiceId": "Brn",
+       "ServiceBackColor": "62361b",
+       "ServiceTextColor": "ffffff",
+       "ServiceURL": {
+        "#cdata-section": "http://www.transitchicago.com/brownline/"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "AlertId": "118456",
+    "Headline": "Elevator at Cermak-Chinatown Temporarily Out-of-Service\t",
+    "ShortDescription": "The elevator at Cermak-Chinatown (Red Line) is temporarily out-of-service.",
+    "EventStart": "2026-11-06T12:09:00",
+    "EventEnd": null,
+    "ImpactedService": {
+     "Service": [
+      {
+       "ServiceType": "T",
+       "ServiceTypeDescription": "Train Station",
+       "ServiceName": "Cermak-Chinatown",
+       "ServiceId": "41000",
+       "ServiceBackColor": "c60c30",
+       "ServiceTextColor": "ffffff",
+       "ServiceURL": {
+        "#cdata-section": "http://www.transitchicago.com/travel_information/station.aspx?StopId=35"
+       }
+      },
+      {
+       "ServiceType": "R",
+       "ServiceTypeDescription": "Train Route",
+       "ServiceName": "Red Line",
+       "ServiceId": "Red",
+       "ServiceBackColor": "c60c30",
+       "ServiceTextColor": "ffffff",
+       "ServiceURL": {
+        "#cdata-section": "http://www.transitchicago.com/redline/"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "AlertId": "118476",
+    "Headline": "Elevator at Ashland Temporarily Out-of-Service",
+    "ShortDescription": "The elevator to/from street at Ashland (Green, Pink Lines) is temporarily out-of-service.",
+    "EventStart": "2026-11-08T09:03:00",
+    "EventEnd": null,
+    "ImpactedService": {
+     "Service": [
+      {
+       "ServiceType": "T",
+       "ServiceTypeDescription": "Train Station",
+       "ServiceName": "Ashland",
+       "ServiceId": "40170",
+       "ServiceBackColor": "e27ea6",
+       "ServiceTextColor": "ffffff",
+       "ServiceURL": {
+        "#cdata-section": "http://www.transitchicago.com/travel_information/station.aspx?StopId=21"
+       }
+      },
+      {
+       "ServiceType": "R",
+       "ServiceTypeDescription": "Train Route",
+       "ServiceName": "Pink Line",
+       "ServiceId": "Pink",
+       "ServiceBackColor": "e27ea6",
+       "ServiceTextColor": "ffffff",
+       "ServiceURL": {
+        "#cdata-section": "http://www.transitchicago.com/pinkline/"
+       }
+      },
+      {
+       "ServiceType": "R",
+       "ServiceTypeDescription": "Train Route",
+       "ServiceName": "Green Line",
+       "ServiceId": "G",
+       "ServiceBackColor": "009b3a",
+       "ServiceTextColor": "FFFFFF",
+       "ServiceURL": {
+        "#cdata-section": "http://www.transitchicago.com/greenline/"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "AlertId": "118477",
+    "Headline": "Elevator at Davis Temporarily Out-of-Service",
+    "ShortDescription": "The Howard- and Loop- bound platform elevator at Davis (Purple Line) is temporarily out-of-service.",
+    "EventStart": "2026-11-08T09:08:00",
+    "EventEnd": null,
+    "ImpactedService": {
+     "Service": [
+      {
+       "ServiceType": "T",
+       "ServiceTypeDescription": "Train Station",
+       "ServiceName": "Davis",
+       "ServiceId": "40050",
+       "ServiceBackColor": "522398",
+       "ServiceTextColor": "ffffff",
+       "ServiceURL": {
+        "#cdata-section": "http://www.transitchicago.com/travel_information/station.aspx?StopId=51"
+       }
+      },
+      {
+       "ServiceType": "R",
+       "ServiceTypeDescription": "Train Route",
+       "ServiceName": "Purple Line",
+       "ServiceId": "P",
+       "ServiceBackColor": "522398",
+       "ServiceTextColor": "ffffff",
+       "ServiceURL": {
+        "#cdata-section": "http://www.transitchicago.com/purpleline/"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "AlertId": "118479",
+    "Headline": "Elevator at 203 N LaSalle Temporarily Out-of-Service",
+    "ShortDescription": "The elevator at 203 N LaSalle (Brown and Harlem- bound Green Line platform from street and subway concourse) at Clark/Lake is temporarily out-of-service.",
+    "EventStart": "2026-11-08T13:15:00",
+    "EventEnd": null,
+    "ImpactedService": {
+     "Service": [
+      {
+       "ServiceType": "T",
+       "ServiceTypeDescription": "Train Station",
+       "ServiceName": "Clark/Lake",
+       "ServiceId": "40380",
+       "ServiceBackColor": "522398",
+       "ServiceTextColor": "ffffff",
+       "ServiceURL": {
+        "#cdata-section": "http://www.transitchicago.com/travel_information/station.aspx?StopId=43"
+       }
+      },
+      {
+       "ServiceType": "R",
+       "ServiceTypeDescription": "Train Route",
+       "ServiceName": "Purple Line",
+       "ServiceId": "P",
+       "ServiceBackColor": "522398",
+       "ServiceTextColor": "ffffff",
+       "ServiceURL": {
+        "#cdata-section": "http://www.transitchicago.com/purpleline/"
+       }
+      },
+      {
+       "ServiceType": "R",
+       "ServiceTypeDescription": "Train Route",
+       "ServiceName": "Blue Line",
+       "ServiceId": "Blue",
+       "ServiceBackColor": "00a1de",
+       "ServiceTextColor": "FFFFFF",
+       "ServiceURL": {
+        "#cdata-section": "http://www.transitchicago.com/blueline/"
+       }
+      },
+      {
+       "ServiceType": "R",
+       "ServiceTypeDescription": "Train Route",
+       "ServiceName": "Pink Line",
+       "ServiceId": "Pink",
+       "ServiceBackColor": "e27ea6",
+       "ServiceTextColor": "ffffff",
+       "ServiceURL": {
+        "#cdata-section": "http://www.transitchicago.com/pinkline/"
+       }
+      },
+      {
+       "ServiceType": "R",
+       "ServiceTypeDescription": "Train Route",
+       "ServiceName": "Green Line",
+       "ServiceId": "G",
+       "ServiceBackColor": "009b3a",
+       "ServiceTextColor": "FFFFFF",
+       "ServiceURL": {
+        "#cdata-section": "http://www.transitchicago.com/greenline/"
+       }
+      },
+      {
+       "ServiceType": "R",
+       "ServiceTypeDescription": "Train Route",
+       "ServiceName": "Brown Line",
+       "ServiceId": "Brn",
+       "ServiceBackColor": "62361b",
+       "ServiceTextColor": "ffffff",
+       "ServiceURL": {
+        "#cdata-section": "http://www.transitchicago.com/brownline/"
+       }
+      },
+      {
+       "ServiceType": "R",
+       "ServiceTypeDescription": "Train Route",
+       "ServiceName": "Orange Line",
+       "ServiceId": "Org",
+       "ServiceBackColor": "f9461c",
+       "ServiceTextColor": "ffffff",
+       "ServiceURL": {
+        "#cdata-section": "http://www.transitchicago.com/orangeline/"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "AlertId": "118480",
+    "Headline": "Elevator at Kedzie Temporarily Out-of-Service",
+    "ShortDescription": "The elevator needed to access the Harlem-bound platform at Kedzie (Green Line) is temporarily out-of-service.",
+    "EventStart": "2026-11-08T14:13:00",
+    "EventEnd": null,
+    "ImpactedService": {
+     "Service": [
+      {
+       "ServiceType": "T",
+       "ServiceTypeDescription": "Train Station",
+       "ServiceName": "Kedzie",
+       "ServiceId": "41070",
+       "ServiceBackColor": "009b3a",
+       "ServiceTextColor": "FFFFFF",
+       "ServiceURL": {
+        "#cdata-section": "http://www.transitchicago.com/travel_information/station.aspx?StopId=81"
+       }
+      },
+      {
+       "ServiceType": "R",
+       "ServiceTypeDescription": "Train Route",
+       "ServiceName": "Green Line",
+       "ServiceId": "G",
+       "ServiceBackColor": "009b3a",
+       "ServiceTextColor": "FFFFFF",
+       "ServiceURL": {
+        "#cdata-section": "http://www.transitchicago.com/greenline/"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "AlertId": "118482",
+    "Headline": "Elevator at Central Temporarily Out-of-Service",
+    "ShortDescription": "The elevator at Central (Green Line) is temporarily out-of-service",
+    "EventStart": "2026-11-08T16:14:00",
+    "EventEnd": null,
+    "ImpactedService": {
+     "Service": [
+      {
+       "ServiceType": "T",
+       "ServiceTypeDescription": "Train Station",
+       "ServiceName": "Central",
+       "ServiceId": "40280",
+       "ServiceBackColor": "009b3a",
+       "ServiceTextColor": "FFFFFF",
+       "ServiceURL": {
+        "#cdata-section": "http://www.transitchicago.com/travel_information/station.aspx?StopId=33"
+       }
+      },
+      {
+       "ServiceType": "R",
+       "ServiceTypeDescription": "Train Route",
+       "ServiceName": "Green Line",
+       "ServiceId": "G",
+       "ServiceBackColor": "009b3a",
+       "ServiceTextColor": "FFFFFF",
+       "ServiceURL": {
+        "#cdata-section": "http://www.transitchicago.com/greenline/"
+       }
+      }
+     ]
+    }
+   }
+  ]
+ }
+}

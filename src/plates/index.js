@@ -27,6 +27,8 @@ import day05Data from '../../days/day05-sight/output/plate.json';
 import { renderDay05, CHART_TITLE as D5_CHART_TITLE, CHART_NOTE as D5_CHART_NOTE, INSET_TITLE as D5_INSET } from './day05.js';
 import day06Data from '../../days/day06-vintage/output/plate.json';
 import { renderDay06, CHART_TITLE as D6_CHART_TITLE, CHART_NOTE as D6_CHART_NOTE, INSET_TITLE as D6_INSET } from './day06.js';
+import day07Data from '../../days/day07-10min/output/plate.json';
+import { renderDay07, CHART_NOTE as D7_CHART_NOTE, chartTitle as d7ChartTitle, insetTitle as d7InsetTitle, clock as d7Clock, dayLong as d7Day, hundreds as d7Hundreds, sortOutages as d7Sort } from './day07.js';
 
 const csv = (rows) =>
   rows.map((r) => r.map((v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v)).join(',')).join('\n') + '\n';
@@ -260,6 +262,41 @@ const d6Story = {
 };
 d6Story.sections = [['Background', d6Story.background], ['Findings', d6Story.findings, true], ['The ride, then and now', d6Story.ride], ['What the map cannot see', d6Story.limits]];
 
+// Day 07: every number and name below comes from the moment of the pull (plate.json), so the text
+// holds for whatever the ten-minute run finds. CTA statements: ASAP page and the 2024 update (as Plate I).
+const d7 = day07Data.summary;
+const d7Run = day07Data.run;
+const d7At = `${d7Clock(d7Run.pulledAt)} on ${d7Day(d7Run.pulledAt)}`;
+const d7Out = d7Sort(day07Data.outages);
+const d7Cut = d7Out.filter((o) => o.scope === 'station');
+const d7Part = d7Out.filter((o) => o.scope === 'platform');
+const d7Word = (n) => ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'][n] ?? String(n);
+const d7Oldest = [...day07Data.outages].sort((a, b) => b.ageHours - a.ageHours)[0];
+const d7Today = day07Data.outages.filter((o) => o.start.slice(0, 10) === d7Run.pulledAt.slice(0, 10)).length;
+const d7Story = {
+  background: [
+    'CTA counts a station as accessible when an elevator or ramp reaches every platform from the street (Plate I). That holds only while the elevators run. When one stops, CTA posts a customer alert that names the station and, in words, the elevator: the street elevator, or the platform it serves.',
+    `This plate is the challenge’s ten-minute map. Everything that does not change by the minute was prepared beforehand: the map template, the platforms of every station, the step-free walk network and Plate III’s walksheds. The ten minutes held one pull of CTA’s alerts, at ${d7At}, the analysis and the map. It shows that moment only.`,
+    'A full ring marks an accessible station with no working elevator to any train; a half ring, one with a platform out. Hover a station or a row for the elevator, how long it has been out and the residents it affects.',
+  ],
+  findings: [
+    day07Data.finding,
+    d7Cut.length
+      ? `${d7Word(d7Cut.length)[0].toUpperCase() + d7Word(d7Cut.length).slice(1)} ${d7Cut.length === 1 ? 'station' : 'stations'} had no step-free way to any train: ${list(d7Cut.map((o) => o.short))}. Around them, about ${d7Hundreds(d7.lost)} residents lost the step-free half-mile walk to the ‘L’ that Plate III counts${d7Cut.filter((o) => o.inCity).length > 1 ? ` (${list(d7Cut.filter((o) => o.inCity).map((o) => `${o.short} about ${d7Hundreds(o.lost)}`))})` : ''}. About ${d7Hundreds(d7.lostAmbulatory)} of them have difficulty walking, by the Census estimate.`
+      : 'No station had lost every step-free way to a train.',
+    d7Part.length
+      ? `At ${list(d7Part.map((o) => o.short))}, one platform was out, so a rider could go step-free in one direction only.${d7.oneDirection ? ` For about ${d7Hundreds(d7.oneDirection)} residents that station was the only accessible one within a step-free half mile.` : ''}`
+      : '',
+    `The oldest outage, at ${d7Oldest.short}, began on ${d7Day(d7Oldest.start)}, ${Math.round(d7Oldest.ageHours / 24)} days before the pull. ${d7Word(d7Today)[0].toUpperCase() + d7Word(d7Today).slice(1)} of the ${d7Word(d7.elevators)} elevators had gone out that same day.`,
+  ].filter(Boolean),
+  plan: [
+    'ASAP, CTA’s All Stations Accessibility Program, aims to make every rail station vertically accessible by 2038. Its 2024 update includes rehabilitating or replacing all 162 existing station elevators.',
+    ...(day07Data.outages.some((o) => o.estimatedReturn)
+      ? [`CTA gave an estimated return for ${list(day07Data.outages.filter((o) => o.estimatedReturn).map((o) => `${o.short} (${d7Day(o.estimatedReturn + 'T12:00')}${o.reason ? `, ${o.reason}` : ''})`))}. For the others, its alerts said crews were assessing the repair time.`]
+      : []),
+  ],
+};
+
 export const plates = {
   1: {
     file: 'day01-the-doors',
@@ -451,5 +488,36 @@ export const plates = {
       for (const sg of day06Data.segments) by.set(`${sg.name}|${sg.kind}`, (by.get(`${sg.name}|${sg.kind}`) ?? 0) + len(sg.path));
       return csv([['street', 'kind', 'miles_approx'], ...[...by].map(([k, v]) => [...k.split('|'), v.toFixed(2)])]);
     },
+  },
+  7: {
+    file: 'day07-the-doors-right-now',
+    render: (o) => renderDay07({ ...day07Data, findings: d7Story.findings.slice(1, 3), boundary: cityBoundary.rings }, o), // the first finding repeats the headline
+    subtitle: 'At one moment, which accessible ‘L’ stations could a rider who cannot take the stairs not use?',
+    finding: day07Data.finding,
+    story: d7Story,
+    ledger: [
+      ['Alerts', `CTA Customer Alerts API, active alerts at ${d7At} (Chicago time): ${d7.elevatorAlerts} with the impact “Elevator Status”, for ${d7.elevators} elevators at ${d7.stationsWithOutage} stations. No key needed.`, day07Data.source.url],
+      ['Platforms', `CTA List of ‘L’ Stops · ${day07Data.stops.id} · pulled ${day07Data.stops.pulled}. Each stop is one platform direction, named by its terminals. An alert closes the stops its words name (a terminal, or a line without a direction); a street elevator, or an elevator with no platform named, closes every stop.`, day07Data.stops.url],
+      ['Run', d7Run.live ? `Timed: from the pull to the plate data in ${d7Run.minutes.toFixed(1)} minutes, inside the challenge’s ten.` : `Rebuilt from the saved pull of ${d7At}; the timed run is recorded in the notebook.`],
+      ['Walk', `As Plate III: a step-free half mile (${Math.round(day07Data.walkM)} m) on the OpenStreetMap walk network, Geofabrik extract of ${day07Data.osm.extract}, rerun without the stations that lost every platform. © OpenStreetMap contributors (ODbL).`, 'https://download.geofabrik.de/north-america/us/illinois.html'],
+      ['Track', `‘L’ lines: CTA GTFS rail shapes, feed of ${day07Data.gtfs.feedDate}, every shape carrying at least a tenth of its line’s trips (as Plates II and V).`, 'https://www.transitchicago.com/developers/gtfs/'],
+      ['People', '2020 Census blocks, placed by the walk from their internal point. Ambulatory difficulty: ACS 2020–2024 5-year, table B18105, by tract, spread over blocks by population.', 'https://www.census.gov/programs-surveys/acs/data/summary-file.html'],
+      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
+      ['Caveat', 'The alerts describe elevators in words; the match to platforms is a rule, checked by eye on each run. An outage counts from the alert’s start. Residents outside Chicago are not counted.'],
+      ['Sources', [
+        ['CTA alerts API', 'https://www.transitchicago.com/developers/alerts/'],
+        ['CTA accessibility (ASAP)', 'https://www.transitchicago.com/accessibility/asap/'],
+      ]],
+    ],
+    page: {
+      chart: { title: d7ChartTitle(), note: D7_CHART_NOTE },
+      inset: { title: `Inset · ${d7InsetTitle()}` },
+    },
+    csv: () =>
+      csv([
+        ['station_id', 'station', 'lines', 'scope', 'elevator', 'out_since', 'hours_out', 'estimated_return', 'residents_lose_step_free', 'residents_one_direction', 'alert_ids'],
+        ...day07Data.outages.map((o) => [o.id, o.short, o.lines.join(' '), o.scope, o.description, o.start, o.ageHours, o.estimatedReturn ?? '', o.lost, o.oneDirection, o.alerts.join(' ')]),
+      ]),
   },
 };
