@@ -28,6 +28,8 @@ import { renderDay05, CHART_TITLE as D5_CHART_TITLE, CHART_NOTE as D5_CHART_NOTE
 import day06Data from '../../days/day06-vintage/output/plate.json';
 import { renderDay06, CHART_TITLE as D6_CHART_TITLE, CHART_NOTE as D6_CHART_NOTE, INSET_TITLE as D6_INSET } from './day06.js';
 import day07Data from '../../days/day07-10min/output/plate.json';
+import day08Data from '../../days/day08-utopia/output/plate.json';
+import { renderDay08, CHART_NOTE as D8_CHART_NOTE, chartTitle as d8ChartTitle, insetTitle as d8InsetTitle } from './day08.js';
 import { renderDay07, CHART_NOTE as D7_CHART_NOTE, chartTitle as d7ChartTitle, insetTitle as d7InsetTitle, clock as d7Clock, dayLong as d7Day, hundreds as d7Hundreds, sortOutages as d7Sort } from './day07.js';
 
 const csv = (rows) =>
@@ -297,6 +299,40 @@ const d7Story = {
   ],
 };
 
+// Day 08: every number below comes from days/day08-utopia/output/plate.json. CTA statements: the ASAP
+// page, the 2024 Strategic Plan (Table 5), the Austin and Racine releases and the RLE FAQ (ledger).
+const d8 = day08Data.summary;
+const d8Step = new Map(day08Data.steps.map((s) => [s.key, s]));
+const d8Dated = ['P1', 'P2f', 'RLE'].map((k) => d8Step.get(k));
+const d8Undated = day08Data.stations.filter((s) => ['P2u', 'P3', 'P4', 'RPM'].includes(s.phase));
+const d8Rle = day08Data.stations.filter((s) => s.phase === 'RLE');
+const d8Top = [...day08Data.stations].filter((s) => s.phase !== 'today' && s.inCity).sort((a, b) => b.gain - a.gain).slice(0, 5);
+const d8Name = (s) => `${s.short} (${s.lines.join('/')})`;
+const d8Story = {
+  background: [
+    `In 2018 CTA set out to make every ‘L’ station vertically accessible by 2038: an elevator or ramp from the street to every platform. Today 110 of its 146 are, by CTA’s count of August 2026, and the Red Line is being extended four stations south to 130th Street, all of them accessible, to open in 2030. This plate draws the city that promise describes.`,
+    `It starts from Plate III’s step-free half-mile walk to an accessible station and makes the remaining stations accessible in the order of CTA’s plan, rerunning the walk after each step. The walk becomes land: solid where it exists today, stippled where a step is funded and dated, hatched where it is promised without a date or without money. The rest of the city is sea, with a line for every eighth of a mile farther to walk.`,
+    'The map is drawn in miles from State & Madison, one square per mile. Hover a station for its phase and the residents it adds, or a step in the chart to show its stations.',
+  ],
+  findings: [
+    day08Data.finding,
+    `The dated steps, Phase One in 2027, the funded half of Phase Two in 2028 and the Red Line Extension in 2030, add about ${thousands(d8.datedGain)} residents. The other ${thousands(d8.noDateGain)} depend on ${d8Undated.length} stations with no date or no money: three in Phase Two, all of Phases Three and Four, and ten Red and Purple stations on the far North Side and in Evanston.`,
+    `The stations that would add the most residents are ${d8Top.slice(0, -1).map((s) => `${d8Name(s)}, about ${hundreds(s.gain)}`).join('; ')}; and ${d8Name(d8Top.at(-1))}, about ${hundreds(d8Top.at(-1).gain)}. The largest area with no date lies along the Blue Line subway, with about ${hundreds(day08Data.inset.residents)} residents.`,
+    `The Red Line Extension adds about ${hundreds(d8.rleGain)} residents within a step-free half mile of its four stations. CTA plans bus connections and a park and ride at each of them.`,
+    `Accessible doors do not shorten the walk. In 2038, ${pct(d8.beyondShare)} of Chicagoans would still live more than a half-mile step-free walk from a station, and ${pct(1 - d8.withinMileShare)} more than a mile.`,
+  ],
+  promise: [
+    'CTA’s All Stations Accessibility Program (ASAP) counted 42 non-accessible stations in its 2024 update and put the cost at $4.9 billion. Its Table 5 assigns each to a phase. Since then Racine (Blue) reopened accessible in October 2025 and Austin (Green) in August 2026, leaving 36.',
+    'Phase One is fully funded at $423.5 million and due by 2027: Montrose and California on the Blue Line, and State/Lake, closed since January 2026 for a rebuild led by the Chicago Department of Transportation and scheduled to reopen in 2029, so the plate dates it 2029. Phase Two is projected for 2028 and 45% funded: Irving Park, Belmont and Pulaski on the Blue Line and Oak Park and Ridgeland on the Green Line are funded; Cicero, Austin (Blue) and North/Clybourn are not.',
+    'Phases Three and Four have no money and no date: the Blue Line subway from Division to LaSalle, the rest of the Forest Park branch, Damen on the O’Hare branch, Monroe and Harrison on the Red Line, and Adams/Wabash and LaSalle/Van Buren on the Loop. Ten Red and Purple stations wait for a future phase of the Red and Purple Modernization program. CTA calls funding the biggest impediment to a fully accessible system.',
+  ],
+  limits: [
+    `The city of 2038 is drawn with the people of 2020 and today’s sidewalks. OpenStreetMap does not record every missing curb ramp or broken sidewalk, so the step-free walk is an upper bound. The new stations sit where the extension’s mapped alignment crosses their streets; the entrances may differ by a block.`,
+    'The order of the undated steps is CTA’s table order. It changes how the gain is split between steps, not the total. Elevators break: Plate VII shows what one afternoon of outages takes away.',
+  ],
+};
+d8Story.sections = [['Background', d8Story.background], ['Findings', d8Story.findings, true], ['The promise, dated', d8Story.promise], ['What the map cannot see', d8Story.limits]];
+
 export const plates = {
   1: {
     file: 'day01-the-doors',
@@ -518,6 +554,41 @@ export const plates = {
       csv([
         ['station_id', 'station', 'lines', 'scope', 'elevator', 'out_since', 'hours_out', 'estimated_return', 'residents_lose_step_free', 'residents_one_direction', 'alert_ids'],
         ...day07Data.outages.map((o) => [o.id, o.short, o.lines.join(' '), o.scope, o.description, o.start, o.ageHours, o.estimatedReturn ?? '', o.lost, o.oneDirection, o.alerts.join(' ')]),
+      ]),
+  },
+  8: {
+    file: 'day08-chicago-2038',
+    render: (o) => renderDay08({ ...day08Data, findings: d8Story.findings.slice(1, 3), boundary: cityBoundary.rings }, o), // the first finding repeats the headline
+    subtitle: 'If CTA keeps its promise of an accessible ‘L’ by 2038, who gains a step-free walk to a station, and how much of the promise has a date?',
+    finding: day08Data.finding,
+    story: d8Story,
+    ledger: [
+      ['Promise', 'CTA, All Stations Accessibility Program (ASAP) Strategic Plan, 2024 update, Table 5: each non-accessible station by phase. Phase dates and funding from CTA’s ASAP page; Racine (Blue) and Austin (Green) accessible per CTA’s releases of October 2025 and 7 August 2026.', day08Data.asap.plan],
+      ['Extension', 'Red Line Extension: four stations at 103rd, 111th, Michigan Avenue and 130th (CTA RLE FAQ), placed where the extension’s alignment, as mapped in OpenStreetMap (railway=construction), crosses those streets. Opening 2030.', day08Data.asap.rleFaq],
+      ['Stations', `CTA List of ‘L’ Stops · ${day08Data.source.id} · pulled ${day08Data.source.pulled}; accessible as on Plate I, an elevator or ramp to every platform.`, day08Data.source.url],
+      ['Walk', `As Plate III: a step-free half mile (${Math.round(day08Data.walkM)} m) on the OpenStreetMap walk network, Geofabrik extract of ${day08Data.osm.extract}, rerun after each step. © OpenStreetMap contributors (ODbL).`, 'https://download.geofabrik.de/north-america/us/illinois.html'],
+      ['Sea', 'The step-free walk to the nearest station once every station is accessible, on a 40 m grid, with a line every eighth of a mile from 5/8 to 4 miles and an ink line every half mile.'],
+      ['Track', `CTA GTFS rail shapes, feed of ${day08Data.gtfs.feedDate}; the extension dashed.`, 'https://www.transitchicago.com/developers/gtfs/'],
+      ['People', '2020 Census blocks, placed by the walk from their internal point.', 'https://www.census.gov/programs-surveys/decennial-census/about/rdo/summary-files.html'],
+      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
+      ['Sources', [
+        ['CTA accessibility (ASAP)', day08Data.asap.page],
+        ['ASAP Strategic Plan, 2024', day08Data.asap.plan],
+        ['Red Line Extension FAQ', day08Data.asap.rleFaq],
+        ['CTA release on State/Lake, Dec 2025', 'https://www.transitchicago.com/construction-to-begin-in-january-on-new-fully-accessible-statelake-cta-station/'],
+        ['CTA release on Austin (Green), Aug 2026', 'https://www.transitchicago.com/ctas-austin-green-line-station-reopened-and-fully-accessible/'],
+        ['CTA release on Racine (Blue), Oct 2025', 'https://www.transitchicago.com/-racine-blue-line-main-stationhouse-reopens-with-accessibility-improvements-and-vivid-public-artwork-/'],
+      ]],
+    ],
+    page: {
+      chart: { title: d8ChartTitle(), note: D8_CHART_NOTE },
+      inset: { title: `Inset · ${d8InsetTitle()}` },
+    },
+    csv: () =>
+      csv([
+        ['station_id', 'station', 'lines', 'step', 'year', 'residents_gained', 'residents_2038'],
+        ...day08Data.stations.map((s) => [s.id, s.short, s.lines.join(' '), s.phaseLabel, s.year ?? '', s.gain, s.residents]),
       ]),
   },
 };

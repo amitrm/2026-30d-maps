@@ -279,6 +279,12 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
         : '<path d="M0,-6.4A6.4,6.4 0 0 1 0,6.4" fill="none" stroke="#232323" stroke-width="1.44"/>';
       return `<svg viewBox="-8 -8 16 16" style="width:16px;height:16px" aria-hidden="true"><circle r="7.84" fill="#F1F0EC"/>${ring}<circle r="3.2" fill="${c}"/></svg>`;
     }
+    // Plate VIII: a station still to be made accessible, due by a year (ring with a dot) or with no
+    // date (dashed ring)
+    if (shape === 'due')
+      return `<svg viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="3.6" fill="#F1F0EC" stroke="${c}" stroke-width="1.2"/><circle cx="5" cy="5" r="1.4" fill="${c}"/></svg>`;
+    if (shape === 'nodate')
+      return `<svg viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="3.6" fill="#F1F0EC" stroke="${c}" stroke-width="1.2" stroke-dasharray="2.2 1.8"/></svg>`;
     if (shape === 'square')
       return ada
         ? `<svg viewBox="0 0 10 10" aria-hidden="true"><rect x="1.5" y="1.5" width="7" height="7" fill="${c}"/></svg>`
