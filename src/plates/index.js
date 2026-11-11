@@ -30,6 +30,8 @@ import { renderDay06, CHART_TITLE as D6_CHART_TITLE, CHART_NOTE as D6_CHART_NOTE
 import day07Data from '../../days/day07-10min/output/plate.json';
 import day08Data from '../../days/day08-utopia/output/plate.json';
 import { renderDay08, CHART_NOTE as D8_CHART_NOTE, chartTitle as d8ChartTitle, insetTitle as d8InsetTitle } from './day08.js';
+import day09Data from '../../days/day09-urban-rural/output/plate.json';
+import { renderDay09, CHART_TITLE as D9_CHART_TITLE, CHART_NOTE as D9_CHART_NOTE, INSET_TITLE as D9_INSET, dayLong as d9Day } from './day09.js';
 import { renderDay07, CHART_NOTE as D7_CHART_NOTE, chartTitle as d7ChartTitle, insetTitle as d7InsetTitle, clock as d7Clock, dayLong as d7Day, hundreds as d7Hundreds, sortOutages as d7Sort } from './day07.js';
 
 const csv = (rows) =>
@@ -333,6 +335,43 @@ const d8Story = {
 };
 d8Story.sections = [['Background', d8Story.background], ['Findings', d8Story.findings, true], ['The promise, dated', d8Story.promise], ['What the map cannot see', d8Story.limits]];
 
+// Every number below is computed from the plotted data (days/day09-urban-rural/output/plate.json).
+const d9 = day09Data.summary;
+const d9Place = new Map(day09Data.inset.places.map((p) => [p.name, p]));
+const d9Ring = (r) => day09Data.rings.find((d) => d.ring === r);
+const d9Num = (v) => (v >= 10 ? String(Math.round(v)) : v.toFixed(1).replace(/\.0$/, ''));
+const d9List = (a) => `${a.slice(0, -1).join(', ')} and ${a.at(-1)}`;
+const d9Round = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)} million` : thousands(Math.round(n / 1000) * 1000));
+const d9Hours = `${day09Data.window[0]} a.m. and ${day09Data.window[1] - 12} p.m.`;
+const d9Dens = ['Cicero', 'Berwyn', 'Chicago'].map((n) => d9Place.get(n).density);
+const d9Story = {
+  background: [
+    'Chicago’s main streets are laid out one mile apart, and this pattern does not stop at the city limit. The same mile grid continues through the suburbs and out into the farmland at the edge of the region. This map asks a simple question: does bus and train service continue along with it?',
+    `To answer it, the map counts the buses and trains that stop near the home of each of the ${fmt(d9.residents)} people who live in the six counties of the Chicago region. The count is based on the CTA, Metra and Pace schedules for an ordinary weekday, ${d9Day(day09Data.serviceDay)}, between ${d9Hours} A home counts as near a bus stop if it is within a quarter mile, which is about a five-minute walk, and near a train station if it is within half a mile. Each bus or train is counted in one direction only, so the numbers show how often a rider can catch one going their way.`,
+    'Each square on the map stands for one square mile, and its color shows two things at once: how many people live there and how often a bus or train comes. Red squares have many residents but little service, blue squares have good service but few residents, and purple squares have both. In the grayscale version, a darker square means more residents, and the black square inside it grows larger as service improves. You can hover over any square to see its numbers.',
+  ],
+  findings: [
+    day09Data.finding,
+    `The gap is sharpest at the city limit, not in the countryside. There are ${d9.thinSquares} square miles in the suburbs where at least 5,000 people live, yet each of them gets fewer than four buses and trains an hour. About ${d9Round(d9.thinResidents)} people live in these places, which are as crowded as parts of Chicago but have far less transit.`,
+    `The near west side shows how sudden the change can be. Cicero and Berwyn are about as crowded as the Chicago neighborhoods next to them, with between ${hundreds(Math.min(...d9Dens))} and ${hundreds(Math.max(...d9Dens))} people per square mile in all three places. Even so, the Chicago side gets about ${d9Num(d9Place.get('Chicago').tph)} buses and trains an hour, Cicero gets ${d9Num(d9Place.get('Cicero').tph)}, and Berwyn gets only ${d9Num(d9Place.get('Berwyn').tph)}.`,
+    `Service also drops much faster than population as you travel out from the Loop. About ${d9Ring(24).ring} miles out, a square mile has ${Math.round(d9.density25)}% as many residents as a square mile near the Loop, but ${d9.service25 < 1 ? 'less than 1%' : `${Math.round(d9.service25)}%`} as many buses and trains. From about ${Math.round(d9.halfChicagoMile - 1)} miles out, most residents live in the suburbs rather than in Chicago.`,
+    `Across the whole region, about ${d9Round(d9.frequentResidents)} people have a bus or train at least every 15 minutes near their home. Only about ${d9Round(d9.frequentSuburbResidents)} of them live in the suburbs, even though ${d9Round(d9.suburbResidents)} people live there.`,
+  ],
+  edge: [
+    'The black line on the map surrounds the places where a bus or train comes at least every 15 minutes, which means four or more an hour. Service this frequent lets people walk to a stop and expect a short wait without checking the schedule first.',
+    `Inside Chicago, the line stays close to the city limit and includes ${pct(d9.frequentChicago)} of residents. In the suburbs, it reaches only into the towns that border the city, such as Cicero, Evanston and Oak Park, along with a few small areas in Elgin, Aurora, Waukegan and Joliet.`,
+    `Outside the line, people have to plan their trips around the schedule, and many have no transit option nearby at all. For ${pct(d9.noneShare)} of the region’s residents, no bus or train stops near home between ${d9Hours}`,
+  ],
+  limits: [
+    'Distances are measured in a straight line from each home to the nearest stop, so the actual walk along the streets is often longer than the map suggests.',
+    'The count is based on published schedules for a single weekday, so it cannot show buses that run late or never arrive.',
+    'Pace On Demand and Dial-a-Ride are not included, because riders must book those trips in advance instead of catching a scheduled bus.',
+    'Small areas of frequent service, under half a square mile, are left off the black line to keep the map readable, but they are still included in every number.',
+    'Population figures come from the 2020 Census. The map covers only the six Illinois counties of the region, so it does not include the South Shore Line in Indiana or the buses in Kenosha, Wisconsin.',
+  ],
+};
+d9Story.sections = [['Background', d9Story.background], ['Findings', d9Story.findings, true], ['Every 15 minutes', d9Story.edge], ['What the map cannot see', d9Story.limits]];
+
 export const plates = {
   1: {
     file: 'day01-the-doors',
@@ -589,6 +628,29 @@ export const plates = {
       csv([
         ['station_id', 'station', 'lines', 'step', 'year', 'residents_gained', 'residents_2038'],
         ...day08Data.stations.map((s) => [s.id, s.short, s.lines.join(' '), s.phaseLabel, s.year ?? '', s.gain, s.residents]),
+      ]),
+  },
+  9: {
+    file: 'day09-where-the-grid-frays',
+    render: (o) => renderDay09({ ...day09Data, findings: d9Story.findings.slice(1, 3), boundary: cityBoundary.rings }, o), // the first finding repeats the headline
+    subtitle: 'Chicago’s grid runs on past the city limit, a road every mile. Does the bus run on with it?',
+    finding: day09Data.finding,
+    story: d9Story,
+    ledger: [
+      ['Service', `Bus and train schedules (GTFS) from CTA (${day09Data.feeds.cta.snapshot}), Metra (${day09Data.feeds.metra.snapshot}) and Pace (${day09Data.feeds.pace.snapshot}), for ${d9Day(day09Data.serviceDay)}, between ${d9Hours} For each route, the map uses the busiest stop within a quarter mile of a home, or half a mile for trains, and counts its departures per hour in one direction. The counts for all nearby routes are then added together.`, [['CTA', day09Data.feeds.cta.url], ['Metra', day09Data.feeds.metra.url], ['Pace', day09Data.feeds.pace.url]]],
+      ['Black line', 'The line surrounds the places with four or more buses and trains an hour, checked at points spaced a tenth of a mile apart. Areas smaller than half a square mile are not drawn.'],
+      ['People', `Population comes from the 2020 Census, which counts ${fmt(d9.residents)} residents in Cook, DuPage, Kane, Lake, McHenry and Will counties, block by block.`, 'https://www.census.gov/programs-surveys/decennial-census/about/rdo/summary-files.html'],
+      ['Grid', 'Each square is one square mile, measured from State and Madison, where Chicago’s address numbers begin. The grid lines are eight miles apart and are labeled with the addresses they would carry.'],
+      ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
+    ],
+    page: {
+      chart: { title: D9_CHART_TITLE, note: D9_CHART_NOTE },
+      inset: { title: `Inset · ${D9_INSET}` },
+    },
+    csv: () =>
+      csv([
+        ['x_mile', 'y_mile', 'place', 'in_chicago', 'residents', 'vehicles_per_hour', 'last_departure_h', 'frequent_share'],
+        ...day09Data.cells.map((c) => [c.x, c.y, c.where, c.chicago, c.pop, c.tph, c.last ?? '', c.freq]),
       ]),
   },
 };
