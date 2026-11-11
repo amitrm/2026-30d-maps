@@ -105,9 +105,9 @@ export function svg(body, { label, viewBox = `0 0 ${W} ${H}`, align }) {
 // (x, x + 4k) and its bottom on the grid line above the ruler's row; it rises by whole cells to fit.
 // items: [mark, label] rows (mark: SVG drawn around 0,0), ['head', text] for a caps heading, or
 // ['gap'] for extra space. Labels wrap to the box.
-export function legendBox(items, { x, bottom, k, size }) {
+export function legendBox(items, { x, bottom, k, size, span = 4 }) {
   const pad = 8, markW = 24, lh = size * 1.3;
-  const w = 4 * k;
+  const w = span * k; // four cells wide, or span cells (Plate IX's cells are eight miles)
   const room = w - 2 * pad - markW;
   const lines = (str, s, o) => {
     const out = [];

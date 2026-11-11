@@ -130,7 +130,8 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   //        data-kind=area: dot or ring, line boxes, then detail rows split on '|'); data-shape=square
   //        draws the mark as a filled or hollow square instead (Plate V's stations); ring / half-ring,
   //        the dot inside a full or half outage ring (Plate VII); due / nodate, a station still to be
-  //        made accessible, ring with a dot or dashed ring (Plate VIII)
+  //        made accessible, ring with a dot or dashed ring (Plate VIII); tile, a square mile as nested
+//        squares sized by data-size and data-frac, and none, no mark (Plate IX)
   //   [data-kind=route][data-detail][data-sep][data-dash][data-gray][data-color][data-on-color]
   //        tooltip for a route: route box and name, a rule data-sep px thick, one sentence
   //   [data-kind=street][data-detail][data-band][data-line: 'gray|color' colors, empty for none]
@@ -269,7 +270,7 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   // or ink for stations on two or more lines.
   const lineColors: Record<string, string> = JSON.parse(cols?.dataset.lineColors ?? '{}');
   const isColor = () => document.documentElement.dataset.mode === 'color';
-  const mark = (ada: boolean, lines: string[], shape?: string) => {
+  const mark = (ada: boolean, lines: string[], shape?: string, ds: DOMStringMap = {}) => {
     const color = isColor();
     const c = color && lines.length === 1 ? lineColors[lines[0]] ?? '#232323' : color ? '#232323' : '#5A5853'; // grayscale marks are softened
     // Plate VII: an accessible station with an elevator out, drawn as on the map: the dot with an ink
@@ -286,6 +287,13 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
       return `<svg viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="3.6" fill="#F1F0EC" stroke="${c}" stroke-width="1.2"/><circle cx="5" cy="5" r="1.4" fill="${c}"/></svg>`;
     if (shape === 'nodate')
       return `<svg viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="3.6" fill="#F1F0EC" stroke="${c}" stroke-width="1.2" stroke-dasharray="2.2 1.8"/></svg>`;
+    // Plate IX: a square mile, drawn as on the map: its class color (data-fill), and in grayscale an
+    // ink square for its service (data-frac of the square); a 2-mile ring of the chart (none) has no mark
+    if (shape === 'none') return '';
+    if (shape === 'tile') {
+      const s = 10 * Number(ds.size ?? 1), f = s * Number(ds.frac ?? 0);
+      return `<svg viewBox="0 0 10 10" aria-hidden="true"><rect x="${5 - s / 2}" y="${5 - s / 2}" width="${s}" height="${s}" fill="${ds.fill ?? '#BDBBB4'}"/>${f > 0.3 ? `<rect x="${5 - f / 2}" y="${5 - f / 2}" width="${f}" height="${f}" fill="#232323"/>` : ''}</svg>`;
+    }
     if (shape === 'square')
       return ada
         ? `<svg viewBox="0 0 10 10" aria-hidden="true"><rect x="1.5" y="1.5" width="7" height="7" fill="${c}"/></svg>`
@@ -394,7 +402,7 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
         move(e);
         return;
       }
-      head.innerHTML = mark(g.dataset.ada === '1', (g.dataset.lines ?? '').split(' ').filter(Boolean), g.dataset.shape);
+      head.innerHTML = mark(g.dataset.ada === '1', (g.dataset.lines ?? '').split(' ').filter(Boolean), g.dataset.shape, g.dataset);
       head.append(name);
       const rows = (g.dataset.detail ?? '').split('|').filter(Boolean).map((t) => {
         const row = document.createElement('span');
