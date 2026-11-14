@@ -48,3 +48,31 @@ The bracketed notes say what each short answer was answering. They are not part 
     [Housekeeping: the work moved from the separate worktree back to the main folder.]
 
 11. > Yes, commit Day 10
+
+12. > For the color version, can you also find a color shares for the characters staring from the
+    > lighter to the darker? Can you suggest some nice color pallates for that?
+
+    [A side-by-side study of four one-hue ramps for the characters.]
+
+13. > I want colored shade (color map) in the map.
+
+    [A study of color maps filling the blocks: alone, or as a wash under the print.]
+
+14. > Use this
+
+    [Sent with an image of a seven-color palette named AmyRose, olive to cream to rose. It was filled
+    under the print.]
+
+15. > Actualy use this.
+
+    [The image meant to go with this did not come through.]
+
+16. [An image of a seven-color palette named Sunset, yellow to indigo, sent with no text. It became
+    the color mode: one color per class, under the ink characters.]
+
+17. > remove CTA stations from the map.
+
+18. > Yes, commit
+
+19. > Yes, update it
+
