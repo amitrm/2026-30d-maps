@@ -435,8 +435,8 @@ const d12Story = {
   sections: [
     ['Background', [
       `The CTA runs the trains and the buses. The block between a rider’s front door and the stop belongs to the city, and in Chicago much of what gets fixed on it is chosen ward by ward. Each of the 50 aldermen gets the same sum of “menu” money every year (${d12M(d12.alloc['2019'])} in 2019, ${d12M(d12.alloc['2021'])} from 2021) and picks which streets, alleys, lights and sidewalks in the ward it pays for.`,
-      `This plate maps those choices from ${d12.years[0]} to ${d12.years[1]}, the last four full years on one ward map. Each ward is shaded by the share of its menu money that went to sidewalks and crossings, and each dot is one of those projects. The wards are pulled apart, each a quarter farther from State & Madison than it lies, so the city reads as it does in this program: fifty pieces on one grid.`,
-      'Residents have two other ways to get a sidewalk fixed: a 311 request for an inspection, or an application to the Shared Cost Sidewalk Program, in which the owner pays part of the repair. The inset maps both. Hover a ward for its numbers, or a row in the chart to find the ward on the map.',
+      `This plate maps those choices from ${d12.years[0]} to ${d12.years[1]}, the last four full years on one ward map. Each ward is shaded by the share of its menu money that went to sidewalks and crossings, and each dot is one of those projects.`,
+      'Residents have two other ways to get a sidewalk fixed: a 311 request for an inspection, or an application to the Shared Cost Sidewalk Program, in which the owner pays part of the repair. The inset plots the two against each other, each ward a dot. Hover a ward, a dot or a row in the chart for its numbers; the same ward lights up in all three.',
     ]],
     ['Findings', [
       day12Data.finding,
@@ -851,7 +851,7 @@ export const plates = {
       ['Menu', `City of Chicago menu program reports, ${d12.years[0]}–${d12.years[1]}, compiled, categorized and geocoded by Ward Wise, a Chi Hack Night group (MIT licence). Costs as listed. Sidewalks: Ward Wise’s “Sidewalk Repair”; crossings: “Pedestrian Infrastructure” (bump-outs, refuge islands, crosswalk signs, countdown signals).`, day12Data.sources.wardwise],
       ['Reports', 'Office of Budget and Management, Capital Improvement Archive (menu reports).', day12Data.sources.obm],
       ['311', `Chicago Data Portal, 311 Service Requests: “Sidewalk Inspection Request” and “Shared Cost Sidewalk Program Request”, pulled ${day12Data.pulled311}; placed in wards by their location.`, day12Data.sources.sr311],
-      ['Wards', 'The 2015–2023 wards, built from Ward Precincts 2013–2022. Each ward is drawn a quarter farther from State & Madison than it lies; the grid and its labels are not moved.', day12Data.sources.precincts],
+      ['Wards', 'The 2015–2023 wards, in force for all four years, built from Ward Precincts 2013–2022.', day12Data.sources.precincts],
       ['People', `2020 Census: ${fmt(d12.residents)} residents, placed by their block’s internal point; difficulty walking from ACS 2020–2024 (B18105), allocated to blocks by population (an estimate).`, 'https://www.census.gov/programs-surveys/decennial-census/about/rdo/summary-files.html'],
       ['Sources', [
         ['Inspector General, menu program audit (2017)', 'https://devigchicago.igchicago.org/wp-content/uploads/2023/08/CDOT-Aldermanic-Menu-Program-Audit.pdf'],
@@ -860,10 +860,14 @@ export const plates = {
         ['WTTW on the motion to dismiss (June 2026)', 'https://news.wttw.com/2026/06/22/chicago-s-sidewalks-aren-t-accessible-people-mobility-challenges-lawsuit-argues-city'],
       ]],
       ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Colour', `Seven classes of the share spent on sidewalks and crossings: under 2%, 2–5, 5–7, 7–10, 10–15, 15–20 and 20% or more. In colour mode they run from sand to teal in seven even steps of lightness, light for less, dark for more, and the chart’s sidewalk and crossing bars take the same teals. In grayscale the same classes step from light to dark. The city as a whole spent ${pct(d12.walkShare)}.`],
+      ['Scatter', 'In colour mode the inset’s nine cells (thirds of the wards on each axis) use Joshua Stevens’ purple–gold bivariate scheme: purple for more requests, gold for more applications, umber for both.', 'https://www.joshuastevens.net/cartography/make-a-bivariate-choropleth-map/'],
     ],
     page: {
-      chart: { title: D12_CHART_TITLE, note: D12_CHART_NOTE },
-      inset: { title: `Inset · ${D12_INSET}`, note: `Per 1,000 residents, ${d12.years[0]}–${String(d12.years[1]).slice(2)}, in fifths of the wards; the city whole, at a smaller scale.` }, // replaces the page's “Shown at ×N” note
+      // the page chart shows the five wards at each end (all fifty are on the plate, the map and in the
+      // tooltips); one-line notes leave the scatter room
+      chart: { title: D12_CHART_TITLE, note: 'Five wards at each end · ● 311 requests, ○ shared-cost applications, per 1,000 residents.' },
+      inset: { title: D12_INSET, note: `Each ward a dot, per 1,000 residents, ${d12.years[0]}–${String(d12.years[1]).slice(2)}; colours by thirds of the wards on each axis.` }, // replaces the page's “Shown at ×N” note
     },
     csv: () =>
       csv([

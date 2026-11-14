@@ -5,19 +5,43 @@ import { gridLines, formatAddress, toMiles } from '../lib/grid.js';
 // variant 'plate': the full 1080 x 1350 plate (export, download).
 // variant 'map': the map alone, with hover hooks, for the day page's left column.
 // variant 'chart': the fifty wards' menu money, row by row, with hover hooks.
-// variant 'inset': the two small maps (complaints, shared-cost applications), with hover hooks.
-// The fifty wards of 2015-2023, each drawn a quarter farther from State & Madison than it lies, so
-// the city reads as fifty pieces over one grid. Tone = the share of the ward's menu money spent on
-// sidewalks and crossings, 2019-2022; marks = those projects (a dot per address, a line per street
-// segment). The inset repeats the city twice, unexploded: 311 sidewalk inspection requests and
-// Shared Cost Sidewalk Program applications per 1,000 residents, in quintiles. Wards stay gray in
-// color mode; the chart's categories take hue.
+// variant 'inset': the scatter of the fifty wards (requests against applications), with hover hooks.
+// The fifty wards of 2015-2023, split by a thin paper gap. Tone = the share of the ward's menu money
+// spent on sidewalks and crossings, 2019-2022, in seven classes; marks = those projects (a dot per
+// address, a line per street segment). The inset plots each ward's 311 sidewalk inspection requests
+// against its Shared Cost Sidewalk Program applications, per 1,000 residents. Colour mode: sand to
+// teal on the map and on the chart's sidewalk bars, Stevens' purple-gold in the scatter.
 export const W_COL = 300;
-export const CHART_TITLE = 'Fifty wards, fifty choices';
+export const CHART_TITLE = 'Wards and Choices';
 export const CHART_NOTE = 'Each ward’s menu money, 2019–22, as one bar, sorted by the share on sidewalks and crossings · Right: per 1,000 residents, 311 sidewalk requests ● and shared-cost applications ○';
 export const INSET_TITLE = 'The complaint and the wallet';
-export const TONES = ['#E4E2DC', '#C9C7C0', '#A3A19A', '#6F6D67', '#3A3936'];
-export const CLASS_LABELS = ['under 2½%', '2½–7½%', '7½–12½%', '12½–20%', '20% or more'];
+// the map's seven classes of menu share (breaks in plate.json: 2, 5, 7, 10, 15, 20%), light to dark
+export const MAP_TONES = ['#E4E2DC', '#CFCDC6', '#B6B4AD', '#9A9891', '#7C7A74', '#5A5954', '#3A3936'];
+// color mode, chosen 2026-11-14 after a test of 16 palettes (.private/day12-palette-*.png):
+// sand to teal, seven even OKLCH steps (lightness 0.945 to 0.34, hue 85 to 200, chroma at most 0.075),
+// light for less, dark for more, like the grayscale steps. The chart's sidewalk and crossing bars take
+// the ramp's teals, so one colour means sidewalk money across the plate.
+export const PALETTES = {
+  gray: { map: MAP_TONES },
+  sandteal: {
+    map: ['#F8ECD2', '#D1CEA4', '#A3B482', '#72996F', '#477C62', '#2A5D54', '#1F3E3F'],
+    cat: { sidewalks: '#2A5D54', crossings: '#72996F' },
+  },
+};
+export const COLOR_PALETTE = 'sandteal';
+// colour mode, the scatter inset: Joshua Stevens' purple-gold 3 x 3, BIV[applications third][requests
+// third]: requests run to purple (the complaint), applications to gold (the wallet), both to umber
+export const BIV = [
+  ['#E8E8E8', '#CBB8D7', '#9972AF'],
+  ['#E4D9AC', '#C8ADA0', '#976B82'],
+  ['#C8B35A', '#AF8E53', '#804D36'],
+];
+const lum = (hex) => {
+  const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+};
+const isDark = (hex) => lum(hex) < 0.2;
+export const CLASS_LABELS = ['under 2%', '2–5%', '5–7%', '7–10%', '10–15%', '15–20%', '20% or more'];
 const CATS = ['sidewalks', 'crossings', 'streets', 'lights', 'cameras', 'other'];
 const CAT_LABEL = { sidewalks: 'Sidewalks', crossings: 'Crossings', streets: 'Streets, alleys', lights: 'Lights, signals', cameras: 'Cameras', other: 'Other' };
 const CAT_GRAY = { sidewalks: C.ink, crossings: '#5F5D58', streets: C.fog, lights: '#9C9A93', cameras: 'hatch', other: C.ground };
@@ -25,22 +49,35 @@ const CAT_COLOR = { sidewalks: '#1D5B45', crossings: '#6FA287', streets: C.fog, 
 const DOT_MAX = 32; // per 1,000 residents, the chart's dot scale (ticks at 0, 10, 20, 30)
 
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
-const money = (v) => (v >= 1e6 ? `$${(v / 1e6).toFixed(1)} million` : `$${fmt(v / 1000)},000`);
 const pct = (v) => `${Math.round(v * 100)}%`;
 
-export function wardDetail(w, years) {
-  const top = [...CATS].sort((a, b) => w[b] - w[a])[0];
-  return [
-    `Menu money ${years[0]}–${String(years[1]).slice(2)}: ${money(w.total)}; sidewalks and crossings ${pct(w.share)}${top !== 'sidewalks' ? `, ${CAT_LABEL[top].toLowerCase()} ${pct(w[top] / w.total)}` : ''}`,
-    `311 sidewalk requests: ${fmt(w.filed)} filed (${w.filed1k.toFixed(1)} per 1,000 residents)`,
-    `Open today: ${fmt(w.open)}, ${fmt(w.open3)} of them for three years or more`,
-    `Half closed within ${fmt(w.closeDays)} days`,
-    `Shared-cost applications: ${fmt(w.shared)} (${w.shared1k.toFixed(1)} per 1,000)`,
-    `${fmt(w.pop)} residents, about ${fmt(w.amb)} with a difficulty walking`,
-  ].join('|');
+// The ward's tooltip as a sheet (the day page's data-kind=sheet): a header shaded in the ward's map
+// colour with its number box, then the three kinds of power as sections of label / value rows, the
+// menu mix drawn as the chart's bar. `fill` is the ward's colour in this SVG's mode; `cat` the chart's
+// category colours ('hatch' for the gray cameras); `rk` the ward's ranks among the 50.
+export function wardSheet(w, years, fill, cat, rk) {
+  const ord = (n) => `${n}${n % 100 > 10 && n % 100 < 14 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] ?? 'th')}`;
+  const yy = `${years[0]}–${String(years[1]).slice(2)}`;
+  return JSON.stringify({
+    num: String(w.ward), name: `Ward ${w.ward}`, sub: `${pct(w.share)} on sidewalks`, fill, on: isDark(fill) ? '#FFFFFF' : C.ink,
+    blocks: [
+      { sec: `The alderman · menu money ${yy}` },
+      { bar: CATS.map((c) => [+(w[c] / w.total).toFixed(4), cat[c]]) },
+      { row: ['Total', `$${(w.total / 1e6).toFixed(1)}M`] },
+      { row: ['Sidewalks and crossings', pct(w.share), `${ord(rk.share)} of 50`] },
+      { sec: 'The complaint · 311 sidewalk requests' },
+      { row: ['Filed, per 1,000 residents', w.filed1k.toFixed(1), `${ord(rk.filed1k)} of 50`] },
+      { row: ['Open today · 3 years or more', `${fmt(w.open)} · ${fmt(w.open3)}`] },
+      { row: ['Half closed within', `${fmt(w.closeDays)} days`] },
+      { sec: 'The wallet · shared-cost applications' },
+      { row: ['Per 1,000 residents', w.shared1k.toFixed(1), `${ord(rk.shared1k)} of 50`] },
+      { foot: `${fmt(w.pop)} residents · about ${fmt(w.amb)} with a difficulty walking` },
+    ],
+  });
 }
+const attr = (s) => esc(s).replace(/"/g, '&quot;');
 
-export function renderDay12(data, { mode = 'gray', variant = 'plate' } = {}) {
+export function renderDay12(data, { mode = 'gray', variant = 'plate', palette, chartOpts = {}, insetOpts = {} } = {}) {
   const { wards, lines = [], ticks = [], summary } = data;
   const years = summary.years;
   const out = [];
@@ -52,8 +89,14 @@ export function renderDay12(data, { mode = 'gray', variant = 'plate' } = {}) {
   const uid = `d12-${variant}-${mode}`;
   const T = isMap || isChart ? 1.3 : 1.15;
   const color = mode === 'color';
-  const CAT = color ? CAT_COLOR : CAT_GRAY;
+  const PAL = color ? (typeof palette === 'object' ? palette : PALETTES[palette ?? COLOR_PALETTE]) : PALETTES.gray;
+  const CAT = color ? { ...CAT_COLOR, ...(PAL.cat ?? {}) } : CAT_GRAY; // a palette may recolour the chart's sidewalks and crossings
+  const BV = PAL.biv ?? BIV; // the scatter's 3 x 3 scheme: the palette's own, else the default
   const byWard = new Map(wards.map((w) => [w.ward, w]));
+  // ranks among the 50 wards (1 = highest), for the tooltip sheet
+  const rankOf = (key, w) => 1 + wards.filter((x) => x[key] > w[key]).length;
+  // the hover hooks every view of a ward shares: the sheet tooltip, and data-keys to light it up everywhere
+  const hook = (w, id) => `data-id="${id}" data-kind="sheet" data-tip="Ward ${w.ward}" data-name="Ward ${w.ward}" data-lines="" data-keys="w${w.ward}" data-sheet="${attr(wardSheet(w, years, PAL.map[w.cls], CAT, { share: rankOf('share', w), filed1k: rankOf('filed1k', w), shared1k: rankOf('shared1k', w) }))}"`;
 
   const hatch = `<defs><pattern id="${uid}-h" width="2.4" height="2.4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2.4" height="2.4" fill="${C.paper}"/><line x1="0" y1="0" x2="0" y2="2.4" stroke="${C.ink}" stroke-width="0.7"/></pattern></defs>`;
   out.push(hatch);
@@ -62,12 +105,12 @@ export function renderDay12(data, { mode = 'gray', variant = 'plate' } = {}) {
 
   // a ward piece: its tone, a tint for hover, and the hover hooks
   const ring = (r, fx, fy) => 'M' + r.map(([x, y]) => `${fx(x).toFixed(1)},${fy(y).toFixed(1)}`).join('L') + 'Z';
-  const piece = (w, fx, fy, fill, gap = 0) => {
+  const piece = (w, fx, fy, fill, gap = 0, edge = C.paper) => {
     const d = w.rings.map((r) => ring(r, fx, fy)).join('');
-    const st = gap ? ` stroke="${C.paper}" stroke-width="${gap}" stroke-linejoin="round"` : '';
+    const st = gap ? ` stroke="${edge}" stroke-width="${gap}" stroke-linejoin="round"` : '';
     const body = `<path d="${d}" fill="${fill}" fill-rule="evenodd"${st}/>`;
     if (!hooks) return body;
-    return `<g class="${uid}-w" data-id="w${w.ward}" data-kind="area" data-tip="Ward ${w.ward}" data-name="Ward ${w.ward}" data-lines="" data-shape="tile" data-fill="${fill}" data-size="1" data-frac="0" data-keys="w${w.ward}" data-detail="${esc(wardDetail(w, years))}">${body}<path class="tint" d="${d}" fill="${C.ink}" fill-rule="evenodd"/></g>`;
+    return `<g class="${uid}-w" ${hook(w, `w${w.ward}`)}>${body}<path class="tint" d="${d}" fill="${C.ink}" fill-rule="evenodd"/></g>`;
   };
 
   if (isPlate) out.push(frame({
@@ -79,8 +122,8 @@ export function renderDay12(data, { mode = 'gray', variant = 'plate' } = {}) {
     subtitle: 'Fifty aldermen, the same money each. How much went to the sidewalks, and who asks the city instead?',
   }));
 
-  // ---------- main map: the exploded city ----------
-  const ext = { west: -16000, east: 5600, south: -16400, north: 9600 };
+  // ---------- main map: the whole city, O'Hare included ----------
+  const ext = { west: -13600, east: 4800, south: -14000, north: 8000 };
   const mi = { west: toMiles(ext.west, 'x'), east: toMiles(ext.east, 'x'), south: toMiles(ext.south, 'y'), north: toMiles(ext.north, 'y') };
   const field = isMap ? { x: 60, y: 250, w: 860, h: 1040 } : { x: 60, y: 262, w: 575, h: 830 };
   const k = Math.min(field.w / (mi.east - mi.west), field.h / (mi.north - mi.south));
@@ -98,31 +141,37 @@ export function renderDay12(data, { mode = 'gray', variant = 'plate' } = {}) {
   if (isPlate || isMap) {
     for (const x of g.xs) out.push(`<line x1="${X(x)}" x2="${X(x)}" y1="${fy0}" y2="${fy1}" stroke="${x === 0 ? C.pencil : C.grid}" stroke-width="${x === 0 ? 0.8 : 0.6}"/>`);
     for (const y of g.ys) out.push(`<line x1="${fx0}" x2="${fx1}" y1="${Y(y)}" y2="${Y(y)}" stroke="${y === 0 ? C.pencil : C.grid}" stroke-width="${y === 0 ? 0.8 : 0.6}"/>`);
-    // each ward moved by its own offset (grid miles)
-    const WX = (w) => (x) => Xm(toMiles(x, 'x') + w.dx);
-    const WY = (w) => (y) => Ym(toMiles(y, 'y') + w.dy);
-    for (const w of wards) out.push(piece(w, WX(w), WY(w), TONES[w.cls]));
+    // wards in place, split by a thin paper gap
+    const WX = () => X;
+    const WY = () => Y;
+    // ward outlines in light gray (frame), at the user's request: the series' one other exception to
+    // "no outlines" after Plate VIII's coastline
+    for (const w of wards) out.push(piece(w, X, Y, PAL.map[w.cls], isMap ? 0.8 : 0.6, C.frame));
     // projects: ink on the lighter tones, paper on the two darkest
     const rDot = isMap ? 0.95 : 0.75;
     const marks = { ink: [], paper: [] };
     for (const [wn, p] of lines) {
       const w = byWard.get(wn); if (!w) continue;
       const fx = WX(w), fy = WY(w);
-      marks[w.cls >= 3 ? 'paper' : 'ink'].push('M' + p.map(([x, y]) => `${fx(x).toFixed(1)},${fy(y).toFixed(1)}`).join('L'));
+      marks[isDark(PAL.map[w.cls]) ? 'paper' : 'ink'].push('M' + p.map(([x, y]) => `${fx(x).toFixed(1)},${fy(y).toFixed(1)}`).join('L'));
     }
     for (const [wn, x, y] of ticks) {
       const w = byWard.get(wn); if (!w) continue;
-      marks[w.cls >= 3 ? 'paper' : 'ink'].push(`M${WX(w)(x).toFixed(1)} ${WY(w)(y).toFixed(1)}h0.01`);
+      marks[isDark(PAL.map[w.cls]) ? 'paper' : 'ink'].push(`M${WX(w)(x).toFixed(1)} ${WY(w)(y).toFixed(1)}h0.01`);
     }
     for (const [key, col] of [['ink', C.ink], ['paper', C.paper]]) {
       out.push(`<path d="${marks[key].join('')}" fill="none" stroke="${col}" stroke-width="${(2 * rDot).toFixed(2)}" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>`);
     }
-    // ward numbers
-    const ns = (isMap ? 7.5 : 6.5) * (isMap ? 1 : 1);
+    // ward numbers in white boxes, each at the spot the notebook found inside its ward (lx, ly), where a
+    // box of the plate's size clears the ward's boundary by 1.2 px or more; narrow wards (ls < 1) take a
+    // smaller box. Wards do not overlap, so neither do the boxes. The page's map is larger, so its
+    // slightly bigger boxes still fit.
     for (const w of wards) {
-      const x = Xm(toMiles(w.cx, 'x') + w.dx), y = Ym(toMiles(w.cy, 'y') + w.dy);
-      const dark = w.cls >= 3;
-      out.push(text(x, y + ns * 0.36, String(w.ward), { size: ns, anchor: 'middle', weight: 600, fill: dark ? C.paper : C.ink, halo: dark ? TONES[w.cls] : TONES[w.cls] }));
+      const ns = (isMap ? 7.5 : 6.5) * (w.ls ?? 1);
+      const bw = textWidth(String(w.ward), ns, { weight: 600 }) + 4 * (w.ls ?? 1), bh = 9 * (w.ls ?? 1) * (isMap ? 7.5 / 6.5 : 1);
+      const x = X(w.lx), y = Y(w.ly);
+      out.push(`<rect x="${(x - bw / 2).toFixed(2)}" y="${(y - bh / 2).toFixed(2)}" width="${bw.toFixed(2)}" height="${bh.toFixed(2)}" rx="1.5" fill="#FFFFFF" stroke="${C.frame}" stroke-width="0.4" pointer-events="none"/>`);
+      out.push(text(x, y + ns * 0.36, String(w.ward), { size: ns, anchor: 'middle', weight: 600, fill: C.ink }));
     }
     const gridLabel = (v) => (v === 0 ? { fill: C.ink, weight: 600 } : { fill: C.pencil });
     for (const x of g.xs) out.push(text(X(x) + gl * 0.35, labelTop, formatAddress(x, 'x'), { size: gl, spacing: 0.4, rotate: -90, anchor: 'end', ...gridLabel(x) }));
@@ -141,7 +190,7 @@ export function renderDay12(data, { mode = 'gray', variant = 'plate' } = {}) {
     const dotMark = `<circle r="1.4" fill="${C.ink}"/><circle cx="6" r="1.4" fill="${C.ink}"/><circle cx="-6" r="1.4" fill="${C.ink}"/>`;
     if (isPlate) {
       const short = [['head', 'Menu money on sidewalks and crossings']];
-      CLASS_LABELS.forEach((l, i) => short.push([sw(TONES[i]), i === 0 ? 'under 2½%' : i === 4 ? '20%+' : l.replace('%', '')]));
+      CLASS_LABELS.forEach((l, i) => short.push([sw(PAL.map[i]), i === 0 ? 'under 2%' : i === CLASS_LABELS.length - 1 ? '20%+' : l.replace('%', '')]));
       short.push([dotMark, 'a project']);
       let lx = 60;
       const y = 203;
@@ -157,8 +206,8 @@ export function renderDay12(data, { mode = 'gray', variant = 'plate' } = {}) {
         lx += mw + 4 + textWidth(lab, lgs) + 9;
       }
     } else {
-      const items = [['head', `Menu money on sidewalks, ${years[0]}–${String(years[1]).slice(2)}`], ...CLASS_LABELS.map((l, i) => [sw(TONES[i]), l]), ['gap'],
-        [dotMark, 'A sidewalk or crossing project'], [`<text y="3" font-size="9" font-weight="600" text-anchor="middle" fill="${C.ink}">19</text>`, 'Ward, drawn a quarter farther from State & Madison than it lies']];
+      const items = [['head', `Menu money on sidewalks, ${years[0]}–${String(years[1]).slice(2)}`], ...CLASS_LABELS.map((l, i) => [sw(PAL.map[i]), l]), ['gap'],
+        [dotMark, 'A sidewalk or crossing project'], [`<rect x="-6.5" y="-5" width="13" height="10" rx="1.5" fill="#FFFFFF" stroke="${C.frame}" stroke-width="0.5"/><text y="3" font-size="8" font-weight="600" text-anchor="middle" fill="${C.ink}">19</text>`, 'Ward number (2015–2023 wards)']];
       out.push(legendBox(items, { x: rx, bottom: Y(ext.south) - k, k, size: lgs }));
     }
   }
@@ -170,49 +219,73 @@ export function renderDay12(data, { mode = 'gray', variant = 'plate' } = {}) {
 
   // ---------- margin column (plate), chart (page) ----------
   const mx = isPlate ? Math.round(colX + 38) : isChart ? 2 : 0;
-  const cw = isChart ? 390 : W_COL;
   const title = (y, str) => out.push(text(mx, y, str, { size: 10.5 * T, weight: 600, spacing: 1 }));
   const ns = 10.5, nh = 14;
   const note = (y, str, x = mx) => out.push(text(x, y, str, { size: ns, font: SERIF, italic: true, fill: C.pencil }));
   let uy = 0;
 
   if (isPlate || isChart) {
-    const row = isChart ? 11 : 6.8;
-    const cs = isChart ? 9 : 6;
-    const numW = isChart ? 17 : 12;
+    // page chart options (study): width, row, font, cats ('all' | 'three'), dots, top (N wards each end)
+    // the page chart (chosen 2026-11-14, option B of .private/day12-middle-study): drawn 1:1 in the 259 px
+    // column at 10 px, the 5 wards that spent most and the 5 that spent least (user, B2), three categories with the
+    // sidewalk share printed, the dots kept. The plate keeps all 50 rows and six categories.
+    const co = isChart ? { width: 253, row: 14, font: 10, cats: 'three', dots: true, top: 5, ...chartOpts } : { cats: 'all', dots: true, top: 0 };
+    const cw = isChart ? co.width : W_COL;
+    const row = isChart ? co.row : 6.8;
+    const cs = isChart ? co.font : 6;
+    const numW = isChart ? Math.round(cs * 1.9) : 12;
     const barX = mx + numW + 4;
-    const barW = isChart ? 200 : 160;
+    const barW = isChart ? (co.dots ? Math.round((cw - numW) * 0.52) : cw - numW - 6) : 160;
     const dotX0 = barX + barW + 12, dotX1 = mx + cw - 2;
+    const CATS_USED = co.cats === 'three' ? ['walk', 'streets', 'rest'] : CATS;
+    const catVal = (w, c) => (c === 'walk' ? w.sidewalks + w.crossings : c === 'rest' ? w.lights + w.cameras + w.other : w[c]);
+    const fill3 = { walk: catFill('sidewalks'), streets: catFill('streets'), rest: color ? '#B9B29A' : '#9C9A93' };
+    const lab3 = { walk: 'Sidewalks, crossings', streets: 'Streets, alleys', rest: 'Lights, cameras, other' };
     const dx = (v) => dotX0 + Math.min(v, DOT_MAX) / DOT_MAX * (dotX1 - dotX0);
-    if (isChart) uy = 4;
+    if (isChart) uy = co.dots ? Math.ceil(cs + 4) : 4; // room for the dot scale above the rows
     else {
       uy = Math.round(labelTop + 10.5 * T * 0.72);
       title(uy, CHART_TITLE.toUpperCase());
-      const noteLines = wrap(CHART_NOTE, Math.floor(cw / (ns * 0.45)));
+      const noteLines = wrap(CHART_NOTE + (color ? ', each row shaded in the ward’s colour from the scatter' : ''), Math.floor(cw / (ns * 0.45)));
       noteLines.forEach((l, i) => note(uy + (i + 1) * nh + 4, l));
       uy += noteLines.length * nh + 14;
     }
     // dot axis
     const ay = uy;
-    for (const v of [0, 10, 20, 30]) {
+    if (co.dots) for (const v of [0, 10, 20, 30]) {
       out.push(text(dx(v), ay, String(v), { size: cs, anchor: 'middle', fill: C.pencil }));
     }
     uy += 4;
     const rows0 = uy;
-    const order = [...wards].sort((a, b) => b.share - a.share || a.ward - b.ward);
-    for (const v of [0, 10, 20, 30]) out.push(`<line x1="${dx(v)}" x2="${dx(v)}" y1="${rows0}" y2="${rows0 + order.length * row}" stroke="${C.rule}" stroke-width="0.6"/>`);
+    const sorted = [...wards].sort((a, b) => b.share - a.share || a.ward - b.ward);
+    // top: N wards at each end with a gap row between (page study); else all 50
+    const order = co.top ? [...sorted.slice(0, co.top), null, ...sorted.slice(-co.top)] : sorted;
+    if (co.dots) for (const v of [0, 10, 20, 30]) out.push(`<line x1="${dx(v)}" x2="${dx(v)}" y1="${rows0}" y2="${rows0 + order.length * row}" stroke="${C.rule}" stroke-width="0.6"/>`);
     for (const w of order) {
       const cy = uy + row / 2;
-      if (hooks) out.push(`<g class="${uid}-row" data-hl="w${w.ward}" data-keys="w${w.ward}" data-tip="Ward ${w.ward}" data-name="Ward ${w.ward}" data-lines="" data-kind="area" data-shape="tile" data-fill="${TONES[w.cls]}" data-size="1" data-frac="0" data-detail="${esc(wardDetail(w, years))}"><rect class="bg" x="${mx - 2}" y="${uy}" width="${cw + 4}" height="${row}" fill="transparent"/>`);
-      out.push(text(mx + numW, cy + cs * 0.36, String(w.ward), { size: cs, anchor: 'end', fill: w.share < 0.01 ? C.ink : C.pencil, weight: w.share < 0.01 ? 600 : 400 }));
+      if (!w) { // the gap: how many wards it stands for
+        out.push(text(barX, cy + cs * 0.36, `· · · ${50 - 2 * co.top} wards between · · ·`, { size: cs, fill: C.pencil, italic: true, font: SERIF }));
+        uy += row;
+        continue;
+      }
+      if (hooks) out.push(`<g class="${uid}-row" data-hl="w${w.ward}" ${hook(w, `r${w.ward}`)}><rect class="bg" x="${mx - 2}" y="${uy}" width="${cw + 4}" height="${row}" fill="transparent"/>`);
+      // the ward number in an outlined box (no fill in the chart, at the user's request); the wards under 1% in bold
+      const bh = row * 0.88;
+      out.push(`<rect x="${mx}" y="${(cy - bh / 2).toFixed(2)}" width="${numW}" height="${bh.toFixed(2)}" rx="1.5" fill="none" stroke="${C.frame}" stroke-width="0.5"/>`);
+      out.push(text(mx + numW / 2, cy + cs * 0.36, String(w.ward), { size: cs, anchor: 'middle', fill: C.ink, weight: w.share < 0.01 ? 600 : 400 }));
       let x = barX;
-      for (const c of CATS) {
-        const ww = barW * (w[c] / w.total);
-        if (ww > 0.05) out.push(`<rect x="${x.toFixed(2)}" y="${(uy + row * 0.12).toFixed(2)}" width="${ww.toFixed(2)}" height="${(row * 0.76).toFixed(2)}" fill="${catFill(c)}"/>`);
+      for (const c of CATS_USED) {
+        const ww = barW * (catVal(w, c) / w.total);
+        if (ww > 0.05) out.push(`<rect x="${x.toFixed(2)}" y="${(uy + row * 0.14).toFixed(2)}" width="${ww.toFixed(2)}" height="${(row * 0.72).toFixed(2)}" fill="${co.cats === 'three' ? fill3[c] : catFill(c)}"/>`);
         x += ww;
       }
+      if (co.cats === 'three' && isChart) out.push(text(barX + barW * (catVal(w, 'walk') / w.total) + 3, cy + cs * 0.34, pct(w.share), { size: cs * 0.92, fill: C.ink, weight: 500 }));
+      if (!co.dots) { if (hooks) out.push('</g>'); uy += row; continue; }
       const a = dx(w.filed1k), b = dx(w.shared1k), r = row * 0.3;
-      out.push(`<line x1="${Math.min(a, b).toFixed(1)}" x2="${Math.max(a, b).toFixed(1)}" y1="${cy}" y2="${cy}" stroke="${C.fog}" stroke-width="0.8"/>`);
+      // colour mode: the row behind the dots takes the ward's colour in the scatter (its bivariate
+      // cell, at the scatter's background strength)
+      if (color) out.push(`<rect x="${(dotX0 - 4).toFixed(1)}" y="${uy.toFixed(2)}" width="${(dotX1 - dotX0 + 8).toFixed(1)}" height="${row}" fill="${BV[w.tMoney][w.tVoice]}" fill-opacity="0.35"/>`);
+      out.push(`<line x1="${Math.min(a, b).toFixed(1)}" x2="${Math.max(a, b).toFixed(1)}" y1="${cy}" y2="${cy}" stroke="${color ? C.pencil : C.fog}" stroke-width="0.8"/>`);
       out.push(`<circle cx="${b.toFixed(1)}" cy="${cy}" r="${r.toFixed(2)}" fill="${C.paper}" stroke="${C.ink}" stroke-width="${(r * 0.45).toFixed(2)}"/>`);
       out.push(`<circle cx="${a.toFixed(1)}" cy="${cy}" r="${r.toFixed(2)}" fill="${C.ink}"/>`);
       if (hooks) out.push('</g>');
@@ -221,13 +294,14 @@ export function renderDay12(data, { mode = 'gray', variant = 'plate' } = {}) {
     // key for the bar
     uy += 6;
     let kx = mx;
-    const ks = isChart ? 9 : 7;
-    CATS.forEach((c, i) => {
-      const lab = CAT_LABEL[c];
-      if (isChart && i === 3) { kx = mx; uy += 13; } // two lines of key on the page
-      out.push(`<rect x="${kx}" y="${uy}" width="8" height="6" fill="${catFill(c)}"${c === 'other' ? ` stroke="${C.frame}" stroke-width="0.5"` : ''}/>`);
+    const ks = isChart ? cs : 7;
+    CATS_USED.forEach((c, i) => {
+      const lab = co.cats === 'three' ? lab3[c] : CAT_LABEL[c];
+      const kw = 11 + textWidth(lab, ks) + (isChart ? 10 : 6);
+      if (isChart && kx > mx && kx + kw > mx + cw) { kx = mx; uy += ks + 5; } // wrap the key to the width
+      out.push(`<rect x="${kx}" y="${uy}" width="8" height="6" fill="${co.cats === 'three' ? fill3[c] : catFill(c)}"${c === 'other' ? ` stroke="${C.frame}" stroke-width="0.5"` : ''}/>`);
       out.push(text(kx + 11, uy + 6, lab, { size: ks, fill: C.pencil }));
-      kx += 11 + textWidth(lab, ks) + (isChart ? 10 : 6);
+      kx += kw;
     });
     uy += 8;
     if (isChart) {
@@ -236,37 +310,63 @@ export function renderDay12(data, { mode = 'gray', variant = 'plate' } = {}) {
   }
 
   // ---------- inset: the complaint and the wallet ----------
-  const iext = { west: -13600, east: 4800, south: -14000, north: 8000 };
-  const im = { west: toMiles(iext.west, 'x'), east: toMiles(iext.east, 'x'), south: toMiles(iext.south, 'y'), north: toMiles(iext.north, 'y') };
-  const gapX = isInset ? 18 : 12;
-  const iw = isInset ? 390 : W_COL;
-  const each = (iw - gapX) / 2;
-  const ki = each / (im.east - im.west);
-  const ih = Math.round((im.north - im.south) * ki);
+  // a scatter: each ward a dot, 311 sidewalk requests (across) against shared-cost applications (up),
+  // per 1,000 residents, 2019-22. Dashed lines cut each axis into thirds of the wards; in colour mode
+  // the nine cells take a bivariate scheme (BIV) and each dot its cell's colour.
   const ty = uy + 30;
+  let noteH = 0;
   if (isPlate) {
-    title(ty, `INSET · ${INSET_TITLE.toUpperCase()}`);
-    note(ty + nh + 4, 'Per 1,000 residents, 2019–22, in fifths of the wards.');
+    title(ty, INSET_TITLE.toUpperCase());
+    const str = color ? 'Each ward a dot, per 1,000 residents, 2019–22; colours by thirds of the wards on each axis.' : 'Each ward a dot, per 1,000 residents, 2019–22; dashed lines cut each axis into thirds of the wards.';
+    const ls = wrap(str, Math.floor(W_COL / (ns * 0.45)));
+    ls.forEach((l, i) => note(ty + (i + 1) * nh + 4, l));
+    noteH = ls.length * nh;
   }
-  const top0 = isInset ? 18 : ty + nh + 26;
-  const panels = [['qVoice', '311 SIDEWALK REQUESTS'], ['qMoney', 'SHARED-COST APPLICATIONS']];
-  panels.forEach(([key, lab], i) => {
-    const x0 = (isInset ? 0 : mx) + i * (each + gapX);
-    const IX = (x) => x0 + (toMiles(x, 'x') - im.west) * ki;
-    const IY = (y) => top0 + (im.north - toMiles(y, 'y')) * ki;
-    out.push(text(x0, top0 - 6, lab, { size: isInset ? 9 : 7.5, spacing: 0.4, weight: 600 }));
-    for (const w of wards) out.push(piece(w, IX, IY, TONES[w[key]], 0.5));
-  });
-  // shared key: fewest → most
-  const ky = top0 + ih + 12;
-  const kxs = isInset ? 0 : mx;
-  const kfs = isInset ? 9 : 7.5;
-  out.push(text(kxs, ky + 6.5, 'fewest', { size: kfs, fill: C.pencil }));
-  let kx2 = kxs + textWidth('fewest', kfs) + 5;
-  for (const t of TONES) { out.push(`<rect x="${kx2}" y="${ky}" width="12" height="7" fill="${t}"/>`); kx2 += 13; }
-  out.push(text(kx2 + 4, ky + 6.5, 'most', { size: kfs, fill: C.pencil }));
+  const io = { width: 259, height: 380, font: 11, ...insetOpts }; // the page scatter: 1:1 in the 259 px column
+  const iw = isInset ? io.width : W_COL;
+  const fs = isInset ? io.font : 7.5;
+  const padL = isInset ? Math.round(io.font * 3.3) : 24, padB = isInset ? 34 : 28;
+  const top0 = isInset ? 8 : ty + noteH + 18;
+  const x0 = (isInset ? 0 : mx) + padL, x1 = (isInset ? 0 : mx) + iw - 4;
+  const ph = isInset ? io.height : 190;
+  const y1 = top0, y0 = top0 + ph; // y0 = the axis at the bottom
+  const XMAX = 32, YMAX = 14;
+  const sq = isInset && io.scale === 'sqrt'; // page option: square-root axes spread the crowded low corner
+  const tf = (v) => (sq ? Math.sqrt(Math.max(0, v)) : v);
+  const SX = (v) => x0 + (tf(v) / tf(XMAX)) * (x1 - x0);
+  const SY = (v) => y0 - (tf(v) / tf(YMAX)) * (y0 - y1);
+  const bv = data.breaks.voice, bm = data.breaks.money;
+  const xs = [0, ...bv, XMAX], ys = [0, ...bm, YMAX];
+  if (color) {
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+      out.push(`<rect x="${SX(xs[i]).toFixed(1)}" y="${SY(ys[j + 1]).toFixed(1)}" width="${(SX(xs[i + 1]) - SX(xs[i])).toFixed(1)}" height="${(SY(ys[j]) - SY(ys[j + 1])).toFixed(1)}" fill="${BV[j][i]}" fill-opacity="0.35"/>`);
+    }
+  }
+  for (const v of bv) out.push(`<line x1="${SX(v).toFixed(1)}" x2="${SX(v).toFixed(1)}" y1="${y1}" y2="${y0}" stroke="${C.frame}" stroke-width="0.6" stroke-dasharray="2 2"/>`);
+  for (const v of bm) out.push(`<line x1="${x0}" x2="${x1}" y1="${SY(v).toFixed(1)}" y2="${SY(v).toFixed(1)}" stroke="${C.frame}" stroke-width="0.6" stroke-dasharray="2 2"/>`);
+  out.push(`<line x1="${x0}" x2="${x1}" y1="${y0}" y2="${y0}" stroke="${C.ink}" stroke-width="0.6"/><line x1="${x0}" x2="${x0}" y1="${y1}" y2="${y0}" stroke="${C.ink}" stroke-width="0.6"/>`);
+  for (const v of sq ? [0, 2, 5, 10, 20, 30] : [0, 10, 20, 30]) out.push(text(SX(v), y0 + fs + 3, String(v), { size: fs, anchor: 'middle', fill: C.pencil }));
+  for (const v of sq ? [0, 1, 2, 5, 10] : [0, 5, 10]) out.push(text(x0 - 4, SY(v) + fs * 0.36, String(v), { size: fs, anchor: 'end', fill: C.pencil }));
+  out.push(text(x1, y0 + 2 * fs + 7, '311 SIDEWALK REQUESTS PER 1,000', { size: fs * 0.9, anchor: 'end', spacing: 0.3, weight: 600 }));
+  const yt = x0 - padL + fs * 0.8;
+  out.push(text(yt, y1, 'SHARED-COST APPLICATIONS PER 1,000', { size: fs * 0.9, anchor: 'end', spacing: 0.3, weight: 600, rotate: -90 }));
+  const r = isInset ? io.font * 0.47 : 3;
+  const named = new Set([...summary.low, summary.top.ward, [...wards].sort((a, b) => b.filed1k - a.filed1k)[0].ward]);
+  for (const w of [...wards].sort((a, b) => a.filed1k - b.filed1k)) {
+    const cx = SX(Math.min(w.filed1k, XMAX)), cy = SY(Math.min(w.shared1k, YMAX));
+    const fill = color ? BV[w.tMoney][w.tVoice] : C.ink;
+    const dot = `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r}" fill="${fill}" stroke="${color ? C.ink : C.paper}" stroke-width="${color ? 0.5 : 0.7}"/>`;
+    out.push(hooks
+      ? `<g ${hook(w, `s${w.ward}`)}><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r + 3}" fill="transparent"/>${dot}</g>`
+      : dot);
+    if (named.has(w.ward)) {
+      const left = cx + r + 2.5 + textWidth(String(w.ward), fs, { weight: 600 }) > x1; // near the right edge: label on the left
+      out.push(text(left ? cx - r - 2.5 : cx + r + 2.5, cy + fs * 0.36, String(w.ward), { size: fs, weight: 600, fill: C.ink, halo: color ? undefined : C.paper, anchor: left ? 'end' : 'start' }));
+    }
+  }
+  const ky = y0 + 2 * fs + 10;
   if (isInset) {
-    return svg(out.join(''), { label: `${INSET_TITLE}: 311 sidewalk requests and shared-cost applications per 1,000 residents by ward, 2019 to 2022. The same wards lead both.`, viewBox: `0 0 ${iw} ${ky + 12}`, align: 'xMidYMid meet' });
+    return svg(out.join(''), { label: `${INSET_TITLE}: each ward's 311 sidewalk requests against its shared-cost applications, per 1,000 residents, 2019 to 2022. The same wards lead both.`, viewBox: `0 0 ${iw} ${Math.ceil(ky + 4)}`, align: 'xMidYMid meet' });
   }
 
   // plate: Findings close the column
@@ -287,13 +387,14 @@ export function renderDay12(data, { mode = 'gray', variant = 'plate' } = {}) {
   const ledger = [
     ['MENU', `City of Chicago menu program reports, ${years[0]}–${years[1]}, as compiled and categorized by Ward Wise (Chi Hack Night); costs as listed`],
     ['311', `Sidewalk inspection requests and Shared Cost Sidewalk Program applications, Chicago Data Portal v6vf-nfxy, pulled ${data.pulled311}`],
-    ['WARDS', 'The 2015–2023 wards, from Ward Precincts 2013–2022 (nvke-umup); each ward drawn a quarter farther from State & Madison'],
+    ['WARDS', 'The 2015–2023 wards, in force for all four years, from Ward Precincts 2013–2022 (nvke-umup)'],
     ['PEOPLE', `2020 Census blocks, ${fmt(summary.residents)} residents; difficulty walking from ACS 2020–2024 (B18105), an estimate`],
     ['MARKS', 'Sidewalk and crossing projects as placed by Ward Wise: a dot per address, a line per street segment; a few could not be placed'],
     ['SHARED', 'Shared Cost Sidewalk Program, 2026 overview: the owner pays part; applications on one day in January, first come, first served'],
     ['AUDIT', 'Office of Inspector General, audit of the Aldermanic Menu Program, April 2017'],
     ['LAWSUIT', 'Lane v. City of Chicago, filed September 2025 (Disability Rights Advocates); the city has moved to dismiss'],
     ['GRID', 'Each square one mile from State & Madison; the first mile south of Madison runs to Roosevelt Road (1200 S)'],
+    ...(color && PAL === PALETTES.sandteal ? [['COLOUR', 'Sand to teal, light for less, dark for more; scatter in Joshua Stevens’ purple–gold bivariate scheme']] : []),
   ];
   dy += 18;
   for (const [kk, v] of ledger) {
