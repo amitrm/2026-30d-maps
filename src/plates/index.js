@@ -36,6 +36,8 @@ import day10Data from '../../days/day10-prompting/output/plate.json';
 import { renderDay10, CHART_TITLE as D10_CHART_TITLE, CHART_NOTE as D10_CHART_NOTE, COLOR_NOTE as D10_COLOR_NOTE, dayLong as d10Day } from './day10.js';
 import day11Data from '../../days/day11-sound/output/plate.json';
 import { renderDay11, CHART_TITLE as D11_CHART_TITLE, CHART_NOTE as D11_CHART_NOTE, INSET_TITLE as D11_INSET } from './day11.js';
+import day12Data from '../../days/day12-power/output/plate.json';
+import { renderDay12, CHART_TITLE as D12_CHART_TITLE, CHART_NOTE as D12_CHART_NOTE, INSET_TITLE as D12_INSET } from './day12.js';
 import { renderDay07, CHART_NOTE as D7_CHART_NOTE, chartTitle as d7ChartTitle, insetTitle as d7InsetTitle, clock as d7Clock, dayLong as d7Day, hundreds as d7Hundreds, sortOutages as d7Sort } from './day07.js';
 
 const csv = (rows) =>
@@ -418,6 +420,47 @@ const d11Story = {
 };
 d11Story.findings = d11Story.sections[1][1];
 
+// Day 12: every number below comes from days/day12-power/output/plate.json. External facts: the
+// Shared Cost Sidewalk Program overview for 2026 (CDOT, as posted by the 19th Ward), the Inspector
+// General's 2017 audit of the menu program, and Disability Rights Advocates on Lane v. City of Chicago.
+const d12 = day12Data.summary;
+const d12W = new Map(day12Data.wards.map((w) => [w.ward, w]));
+const d12List = (a) => (a.length > 1 ? `${a.slice(0, -1).join(', ')} and ${a.at(-1)}` : String(a[0]));
+const d12M = (v) => `$${(v / 1e6).toFixed(v >= 1e8 ? 0 : 2).replace(/0$/, '')} million`;
+const d12Ord = (n) => ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'][n - 1] ?? `${n}th`;
+const d12Num = (n) => ['none', 'one', 'two', 'three', 'four', 'five'][n] ?? String(n);
+const d12LowPop = d12.low.reduce((a, w) => a + d12W.get(w).pop, 0) / d12.residents;
+const d12Pulled = new Date(`${day12Data.pulled311}T12:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+const d12Story = {
+  sections: [
+    ['Background', [
+      `The CTA runs the trains and the buses. The block between a rider’s front door and the stop belongs to the city, and in Chicago much of what gets fixed on it is chosen ward by ward. Each of the 50 aldermen gets the same sum of “menu” money every year (${d12M(d12.alloc['2019'])} in 2019, ${d12M(d12.alloc['2021'])} from 2021) and picks which streets, alleys, lights and sidewalks in the ward it pays for.`,
+      `This plate maps those choices from ${d12.years[0]} to ${d12.years[1]}, the last four full years on one ward map. Each ward is shaded by the share of its menu money that went to sidewalks and crossings, and each dot is one of those projects. The wards are pulled apart, each a quarter farther from State & Madison than it lies, so the city reads as it does in this program: fifty pieces on one grid.`,
+      'Residents have two other ways to get a sidewalk fixed: a 311 request for an inspection, or an application to the Shared Cost Sidewalk Program, in which the owner pays part of the repair. The inset maps both. Hover a ward for its numbers, or a row in the chart to find the ward on the map.',
+    ]],
+    ['Findings', [
+      day12Data.finding,
+      `Streets and alleys took ${pct(d12.byCat.streets / d12.menu)} of the ${d12M(d12.menu)} spent through the menu in those four years; sidewalks and crossings took ${pct(d12.walkShare)}. Wards ${d12List(d12.zeroWards)} put less than 1% into them.`,
+      `Those ${d12Num(d12.low.length)} wards rank ${d12List(d12.lowRank.filed.map(d12Ord))} in 311 sidewalk requests per resident, and ${d12List(d12.lowRank.shared.map(d12Ord))} in shared-cost applications. With ${pct(d12LowPop)} of the city’s residents, they sent ${pct(d12.lowSharedShare)} of the applications.`,
+      `Requests and applications rise and fall together (a rank correlation of ${d12.corr.filed_shared.toFixed(2)} across the wards). Both are highest on the Northwest Side and the far South and Southwest Sides, and lowest along the north lakefront, on the inner South Side and on the West Side.`,
+      `The alderman’s choice follows neither. The share spent on sidewalks has almost no relation to how many residents have a difficulty walking (rank correlation ${d12.corr.share_amb.toFixed(2)}) or to how many file requests (${d12.corr.share_filed.toFixed(2)}).`,
+      `On ${d12Pulled}, ${fmt(d12.open)} sidewalk requests were still open, ${fmt(d12.open3)} of them for three years or more. Half of the requests filed from ${d12.years[0]} to ${d12.years[1]} closed within ${fmt(d12.closeDays[0])} days in Ward ${d12.closeWards[0]}; in Ward ${d12.closeWards[1]}, half took ${fmt(d12.closeDays[2])} days or more.`,
+    ], true],
+    ['Three kinds of power', [
+      'The alderman’s. Menu money is the same for every ward, whatever its size or the state of its streets. In 2017 the city’s Inspector General found that this flat sum bears no relationship to what each ward needs, and that in 2015 the program fell about $228.8 million a year short of the city’s residential street, alley and sidewalk needs.',
+      'The complaint. Anyone can ask 311 for a sidewalk inspection. In Lane v. City of Chicago, filed in September 2025, four residents with mobility disabilities argue that the city relies on such complaints instead of a plan, and count more than 20,000 sidewalk requests left open for a year or more. The city has moved to dismiss the case.',
+      'The wallet. Through the Shared Cost Sidewalk Program an owner pays part of the repair, about $1,000 to $2,400 for a typical lot, and seniors and people with disabilities may qualify for half off. Applications open through 311 on one day in January and are taken first come, first served while the money lasts.',
+    ]],
+    ['What the map cannot see', [
+      'Who asked. A 311 request records a place, not a person: it cannot say whether the caller owns the house, rents, or walks with difficulty. An application is not a repair.',
+      'Other budgets. The city also repairs sidewalks and builds curb ramps through its own programs and street projects, which are not part of the menu and are not on this map.',
+      `Plans, not invoices. Menu costs are as listed in the city’s menu reports, compiled by Ward Wise. ${d12.years[0] + 1} was a short year: half the wards listed less than ${d12M(d12.alloc['2020'])}. A few projects could not be placed and have no dot.`,
+      'Old wards. The map uses the wards of 2015–2023, in force for all four years; the city redrew them in 2023.',
+    ]],
+  ],
+};
+d12Story.findings = d12Story.sections[1][1];
+
 const d9 = day09Data.summary;
 const d9Place = new Map(day09Data.inset.places.map((p) => [p.name, p]));
 const d9Ring = (r) => day09Data.rings.find((d) => d.ring === r);
@@ -796,6 +839,36 @@ export const plates = {
       csv([
         ['station_id', 'station', 'lines', 'accessible', 'db_24h_median_90m', 'db_24h_point', 'road_only_median_90m', 'rail_only_median_90m', 'aviation_only_median_90m', 'loudest_source'],
         ...day11Data.stations.map((s) => [s.id, s.short, s.lines.join(' '), s.ada, ...[s.db, s.point, s.road, s.rail, s.aviation].map((v) => (v < 45 ? '<45' : v)), s.source]),
+      ]),
+  },
+  12: {
+    file: 'day12-who-fixes-the-sidewalk',
+    render: (o) => renderDay12({ ...day12Data, findings: d12Story.findings.slice(1, 3) }, o), // the first finding repeats the headline
+    subtitle: 'Fifty aldermen get the same money each. How much of it went to the sidewalks, and who asks the city instead?',
+    finding: day12Data.finding,
+    story: d12Story,
+    ledger: [
+      ['Menu', `City of Chicago menu program reports, ${d12.years[0]}–${d12.years[1]}, compiled, categorized and geocoded by Ward Wise, a Chi Hack Night group (MIT licence). Costs as listed. Sidewalks: Ward Wise’s “Sidewalk Repair”; crossings: “Pedestrian Infrastructure” (bump-outs, refuge islands, crosswalk signs, countdown signals).`, day12Data.sources.wardwise],
+      ['Reports', 'Office of Budget and Management, Capital Improvement Archive (menu reports).', day12Data.sources.obm],
+      ['311', `Chicago Data Portal, 311 Service Requests: “Sidewalk Inspection Request” and “Shared Cost Sidewalk Program Request”, pulled ${day12Data.pulled311}; placed in wards by their location.`, day12Data.sources.sr311],
+      ['Wards', 'The 2015–2023 wards, built from Ward Precincts 2013–2022. Each ward is drawn a quarter farther from State & Madison than it lies; the grid and its labels are not moved.', day12Data.sources.precincts],
+      ['People', `2020 Census: ${fmt(d12.residents)} residents, placed by their block’s internal point; difficulty walking from ACS 2020–2024 (B18105), allocated to blocks by population (an estimate).`, 'https://www.census.gov/programs-surveys/decennial-census/about/rdo/summary-files.html'],
+      ['Sources', [
+        ['Inspector General, menu program audit (2017)', 'https://devigchicago.igchicago.org/wp-content/uploads/2023/08/CDOT-Aldermanic-Menu-Program-Audit.pdf'],
+        ['Shared Cost Sidewalk Program, 2026 overview', 'https://www.19thwardmobile.com/wp-content/uploads/2026/01/2026-SCSP-Overview_2025.12.15.pdf'],
+        ['Lane v. City of Chicago (Disability Rights Advocates)', 'https://dralegal.org/case/lane-v-city-of-chicago/'],
+        ['WTTW on the motion to dismiss (June 2026)', 'https://news.wttw.com/2026/06/22/chicago-s-sidewalks-aren-t-accessible-people-mobility-challenges-lawsuit-argues-city'],
+      ]],
+      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+    ],
+    page: {
+      chart: { title: D12_CHART_TITLE, note: D12_CHART_NOTE },
+      inset: { title: `Inset · ${D12_INSET}`, note: `Per 1,000 residents, ${d12.years[0]}–${String(d12.years[1]).slice(2)}, in fifths of the wards; the city whole, at a smaller scale.` }, // replaces the page's “Shown at ×N” note
+    },
+    csv: () =>
+      csv([
+        ['ward_2015_2023', 'residents', 'difficulty_walking_est', 'menu_total_2019_2022', 'sidewalks', 'crossings', 'streets_alleys', 'lights_signals', 'cameras', 'other', 'share_sidewalks_crossings', 'sr311_sidewalk_filed_2019_2022', 'sr311_open_now', 'sr311_open_3y_plus', 'median_days_to_close', 'shared_cost_applications_2019_2022'],
+        ...day12Data.wards.map((w) => [w.ward, w.pop, w.amb, w.total, w.sidewalks, w.crossings, w.streets, w.lights, w.cameras, w.other, w.share, w.filed, w.open, w.open3, w.closeDays, w.shared]),
       ]),
   },
 };
