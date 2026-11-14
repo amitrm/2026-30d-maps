@@ -32,6 +32,8 @@ import day08Data from '../../days/day08-utopia/output/plate.json';
 import { renderDay08, CHART_NOTE as D8_CHART_NOTE, chartTitle as d8ChartTitle, insetTitle as d8InsetTitle } from './day08.js';
 import day09Data from '../../days/day09-urban-rural/output/plate.json';
 import { renderDay09, CHART_TITLE as D9_CHART_TITLE, CHART_NOTE as D9_CHART_NOTE, INSET_TITLE as D9_INSET, dayLong as d9Day } from './day09.js';
+import day10Data from '../../days/day10-prompting/output/plate.json';
+import { renderDay10, CHART_TITLE as D10_CHART_TITLE, CHART_NOTE as D10_CHART_NOTE, COLOR_NOTE as D10_COLOR_NOTE, dayLong as d10Day } from './day10.js';
 import { renderDay07, CHART_NOTE as D7_CHART_NOTE, chartTitle as d7ChartTitle, insetTitle as d7InsetTitle, clock as d7Clock, dayLong as d7Day, hundreds as d7Hundreds, sortOutages as d7Sort } from './day07.js';
 
 const csv = (rows) =>
@@ -336,6 +338,41 @@ const d8Story = {
 d8Story.sections = [['Background', d8Story.background], ['Findings', d8Story.findings, true], ['The promise, dated', d8Story.promise], ['What the map cannot see', d8Story.limits]];
 
 // Every number below is computed from the plotted data (days/day09-urban-rural/output/plate.json).
+const d10 = day10Data.summary;
+const d10Addr = (m) => (m >= 0 ? m * 800 : m >= -1 ? m * 1200 : -1200 + (m + 1) * 800);
+const d10Walk = Math.round(day10Data.walkM / (day10Data.speedFtS * 0.3048) / 60);
+const d10Side = (f) => day10Data.sides.reduce((a, b) => (f(b.over15, a.over15) ? b : a));
+const d10Hi = d10Side((a, b) => a > b), d10Lo = d10Side((a, b) => a < b);
+const d10Far = day10Data.sides.filter((s) => s.side.startsWith('Far')).map((s) => s.over15);
+const d10Story = {
+  sections: [
+    ['Background', [
+      'The theme for Day 10 asks for a map made from start to finish in a chat window or on the command line. This one was. The data, the analysis and the plate all came out of one command-line session with an AI assistant, and the prompts are published with the notebook.',
+      'The look comes from the command line’s ancestor. In 1963, at a training session at Northwestern University in Evanston, Howard Fisher saw some of the first maps drawn by computer and set out to make better ones. With the programmer Betty Benson he built SYMAP, which printed maps on a line printer. Each character filled one cell, and darker places were struck two or four times, one character over another. Fisher took the work to Harvard, where he founded the Laboratory for Computer Graphics in 1965.',
+      `Here each character is one city block, an eighth of a mile on Chicago’s address grid, so eight characters make a mile. Each block prints the minutes until a rider who cannot take the stairs is moving at 9 p.m. on a weekday. That is the step-free walk to the best bus, or to a train at an accessible station, within four blocks, plus the wait for it.`,
+    ]],
+    ['Findings', [
+      day10Data.finding,
+      `About ${thousands(d10.over15)} residents need more than 15 minutes, about ${thousands(d10.over15Amb)} of them with a difficulty walking. About ${thousands(d10.none)} have no bus or accessible train within four blocks at all.`,
+      `At this hour the bus carries the city. A train at an accessible station is the quickest ride for only ${pct(d10.trainBest / d10.residents)} of residents. The pale lines on the map are the bus streets, most of them half a mile apart. The blocks between them print darker, because four blocks at 3 feet a second take about ${d10Walk} minutes.`,
+      `The wait grows toward the edges of the city. On the three Far sides, ${pct(Math.min(...d10Far))} to ${pct(Math.max(...d10Far))} of residents need more than 15 minutes. On the ${d10Lo.side}, near the centre, it is ${pct(d10Lo.over15)}.`,
+    ], true],
+    ['How the minutes are counted', [
+      `The schedule is CTA’s for ${d10Day(day10Data.serviceDay)}, the challenge’s Day 10, with departures between 8:30 and 9:30 p.m. Every CTA bus route counts, and trains count only at accessible stations.`,
+      'The walk follows the street and sidewalk network in OpenStreetMap with stairs taken out, from the centre of each block to the nearest stop of each route. It is timed at 3 feet a second, the speed the federal traffic manual uses to time a whole crossing at a signal. Its usual walking speed is 3.5 feet a second.',
+      'The wait is half the time between buses or trains at that stop, for a rider who arrives without checking the schedule. Each block keeps the route with the least walk plus wait.',
+    ]],
+    ['What the map cannot see', [
+      'These are scheduled times, not real arrivals. A bus that never comes still counts.',
+      'Every CTA bus is accessible, but the stop itself is not checked: a missing curb ramp, a snowbank or a broken sidewalk can still stop a rider.',
+      'Three feet a second is a planning number. Many wheelchair users move faster, and many people with walkers or canes move slower.',
+      'The wait counts one direction, at the nearest stop of each route. A rider headed the other way may wait longer.',
+      'Where OpenStreetMap is missing a step-free link, a block near a stop can print as if nothing were within reach.',
+    ]],
+  ],
+};
+d10Story.findings = d10Story.sections[1][1];
+
 const d9 = day09Data.summary;
 const d9Place = new Map(day09Data.inset.places.map((p) => [p.name, p]));
 const d9Ring = (r) => day09Data.rings.find((d) => d.ring === r);
@@ -651,6 +688,35 @@ export const plates = {
       csv([
         ['x_mile', 'y_mile', 'place', 'in_chicago', 'residents', 'vehicles_per_hour', 'last_departure_h', 'frequent_share'],
         ...day09Data.cells.map((c) => [c.x, c.y, c.where, c.chicago, c.pop, c.tph, c.last ?? '', c.freq]),
+      ]),
+  },
+  10: {
+    file: 'day10-the-line-printer',
+    render: (o) => renderDay10({ ...day10Data, findings: d10Story.findings.slice(1, 3), boundary: cityBoundary.rings }, o), // the first finding repeats the headline
+    subtitle: 'At nine at night, how long until a rider who cannot take the stairs is moving? Chicago printed one character per block, as the first computer maps were.',
+    finding: day10Data.finding,
+    story: d10Story,
+    ledger: [
+      ['Service', `CTA bus and train schedule (GTFS), feed of ${day10Data.gtfs.snapshot}, for ${d10Day(day10Data.serviceDay)}, departures from 8:30 to 9:30 p.m.: ${day10Data.gtfs.routes} routes. Trains count only at accessible stations, as on Plate VIII (Racine and Austin included).`, day10Data.gtfs.url],
+      ['Walk', `Step-free (no stairs) on the OpenStreetMap walk network, Geofabrik extract of ${day10Data.osm}, from each block’s centre to each route’s nearest stop within four blocks (half a mile), at 3 feet a second. © OpenStreetMap contributors (ODbL).`, 'https://download.geofabrik.de/north-america/us/illinois.html'],
+      ['Speed', 'Manual on Uniform Traffic Control Devices (2009), section 4E.06: a walking speed of 3 feet a second for the whole crossing time (paragraph 14); 3.5 feet a second for clearance, slower where people who walk slower or use wheelchairs routinely cross.', day10Data.sources.mutcd],
+      ['Buses', 'CTA: all of its buses and railcars are accessible.', 'https://www.transitchicago.com/accessibility/'],
+      ['Wait', 'Half the scheduled time between buses or trains at that stop, in one direction; each block keeps the route with the least walk plus wait.'],
+      ['People', `2020 Census: ${fmt(d10.residents)} residents, placed by their block’s internal point; difficulty walking from ACS 2020–2024 (B18105), allocated to blocks by population (an estimate). Blocks with no walkway within 100 m print blank.`, 'https://www.census.gov/programs-surveys/decennial-census/about/rdo/summary-files.html'],
+      ['Print', 'One character per block of an eighth of a mile, measured from State & Madison. Tone by overprinting, after SYMAP: Howard Fisher and Betty Benson, begun after a 1963 training session at Northwestern, released by the Harvard Laboratory for Computer Graphics in 1966.'],
+      ['SYMAP', [['Harvard GSD on the Laboratory', 'https://www.gsd.harvard.edu/2024/11/a-new-way-of-seeing-the-laboratory-for-computer-graphics-and-spatial-analysis'], ['Esri ArcNews', 'https://www.esri.com/about/newsroom/arcnews/celebrating-the-advent-of-digital-mapping'], ['Map Happenings on line-printer maps', 'https://maphappenings.com/2023/11/02/computer-based-mapping/']]],
+      ['Sides', 'Chicago’s 77 community areas in nine sides, as grouped on Wikipedia (an unofficial grouping; the traditional sides are three).', day10Data.sources.sides],
+      ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
+      ['Made', 'From start to finish in one command-line session with an AI coding assistant: every prompt, verbatim.', 'https://github.com/amitrm/2026-30d-maps/blob/main/days/day10-prompting/prompts.md'],
+    ],
+    page: {
+      chart: { title: D10_CHART_TITLE, note: D10_CHART_NOTE, colorNote: ` ${D10_COLOR_NOTE}` },
+      inset: { title: `Inset · ${day10Data.inset.title}` },
+    },
+    csv: () =>
+      csv([
+        ['col', 'row', 'x_address', 'y_address', 'class', 'minutes_until_moving_at_9pm'],
+        ...day10Data.rows.flatMap((r) => [...r.s].map((ch, i) => [r.col + i, r.row, ch]).filter(([, , ch]) => ch !== ' ').map(([c, row, ch]) => [c, row, (c + 0.5) * 100, Math.round(d10Addr((row + 0.5) / 8)), +ch, day10Data.classLabels[+ch]])),
       ]),
   },
 };
