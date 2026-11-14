@@ -132,7 +132,7 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   //        the dot inside a full or half outage ring (Plate VII); due / nodate, a station still to be
   //        made accessible, ring with a dot or dashed ring (Plate VIII); tile, a square mile as nested
 //        squares sized by data-size and data-frac, and none, no mark (Plate IX); glyph, a block's
-  //        overprinted characters, data-glyph (Plate X)
+  //        overprinted characters, data-glyph, on its color-mode fill, data-fill (Plate X)
   //   [data-kind=route][data-detail][data-sep][data-dash][data-gray][data-color][data-on-color]
   //        tooltip for a route: route box and name, a rule data-sep px thick, one sentence
   //   [data-kind=street][data-detail][data-band][data-line: 'gray|color' colors, empty for none]
@@ -293,7 +293,7 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
     if (shape === 'none') return '';
     // Plate X: a block, its characters struck on one spot as on the map (data-glyph)
     if (shape === 'glyph')
-      return `<svg viewBox="0 0 10 10" aria-hidden="true">${[...(ds.glyph ?? '')].map((g) => `<text x="5" y="8.8" font-family="Roboto, sans-serif" font-size="11.5" text-anchor="middle" fill="#232323">${g}</text>`).join('')}</svg>`;
+      return `<svg viewBox="0 0 10 10" aria-hidden="true">${color && ds.fill ? `<rect width="10" height="10" fill="${ds.fill}"/>` : ''}${[...(ds.glyph ?? '')].map((g) => `<text x="5" y="8.8" font-family="Roboto, sans-serif" font-size="11.5" text-anchor="middle" fill="#232323">${g}</text>`).join('')}</svg>`;
     if (shape === 'tile') {
       const s = 10 * Number(ds.size ?? 1), f = s * Number(ds.frac ?? 0);
       return `<svg viewBox="0 0 10 10" aria-hidden="true"><rect x="${5 - s / 2}" y="${5 - s / 2}" width="${s}" height="${s}" fill="${ds.fill ?? '#BDBBB4'}"/>${f > 0.3 ? `<rect x="${5 - f / 2}" y="${5 - f / 2}" width="${f}" height="${f}" fill="#232323"/>` : ''}</svg>`;

@@ -33,7 +33,7 @@ import { renderDay08, CHART_NOTE as D8_CHART_NOTE, chartTitle as d8ChartTitle, i
 import day09Data from '../../days/day09-urban-rural/output/plate.json';
 import { renderDay09, CHART_TITLE as D9_CHART_TITLE, CHART_NOTE as D9_CHART_NOTE, INSET_TITLE as D9_INSET, dayLong as d9Day } from './day09.js';
 import day10Data from '../../days/day10-prompting/output/plate.json';
-import { renderDay10, CHART_TITLE as D10_CHART_TITLE, CHART_NOTE as D10_CHART_NOTE, dayLong as d10Day } from './day10.js';
+import { renderDay10, CHART_TITLE as D10_CHART_TITLE, CHART_NOTE as D10_CHART_NOTE, COLOR_NOTE as D10_COLOR_NOTE, dayLong as d10Day } from './day10.js';
 import { renderDay07, CHART_NOTE as D7_CHART_NOTE, chartTitle as d7ChartTitle, insetTitle as d7InsetTitle, clock as d7Clock, dayLong as d7Day, hundreds as d7Hundreds, sortOutages as d7Sort } from './day07.js';
 
 const csv = (rows) =>
@@ -710,7 +710,7 @@ export const plates = {
       ['Made', 'From start to finish in one command-line session with an AI coding assistant: every prompt, verbatim.', 'https://github.com/amitrm/2026-30d-maps/blob/main/days/day10-prompting/prompts.md'],
     ],
     page: {
-      chart: { title: D10_CHART_TITLE, note: D10_CHART_NOTE },
+      chart: { title: D10_CHART_TITLE, note: D10_CHART_NOTE, colorNote: ` ${D10_COLOR_NOTE}` },
       inset: { title: `Inset · ${day10Data.inset.title}` },
     },
     csv: () =>

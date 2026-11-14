@@ -14,9 +14,40 @@ import { formatAddress, gridLines, toMiles } from '../lib/grid.js';
 export const RAMP = [['.'], [':'], ['='], ['O'], ['O', '-'], ['O', 'X'], ['O', 'X', 'A', 'V']];
 export const SHORT = ['under 7½', '7½–10', '10–12½', '12½–15', '15–20', 'over 20', 'none within 4 blocks'];
 const W_COL = 300;
+const SHOW_STATIONS = false; // 'L' station marks off (user, 2026-11-13): the blocks carry the trains already
 const CELL = 1 / 8; // miles
 
-export function renderDay10(data, { mode = 'gray', variant = 'plate' } = {}) {
+// Color mode: the characters also take a one-hue ramp, light to dark with the ramp (OKLCH lightness
+// 0.70 -> 0.245, chroma peaking mid-ramp; each passes the ordinal check against paper). Grayscale: ink.
+export const AMYROSE = ['#7B8240', '#A5AD6B', '#D1D3A7', '#FDFBE6', '#E9C8C4', '#D494A3', '#C66D80'];
+export const SUNSET = ['#F1E7A4', '#F2C68D', '#EBA484', '#DD8588', '#C16C92', '#965D9C', '#5A53A0'];
+export const PALETTES = {
+  amyrose: AMYROSE,
+  sunset: SUNSET,
+  greenbar: ['#73AD93', '#4E9779', '#2B8262', '#006C4D', '#005639', '#004027', '#002A17'],
+  ribbon: ['#7DA1D0', '#5E88BF', '#4372AD', '#2B5C97', '#18467E', '#083262', '#012045'],
+  ditto: ['#A692CD', '#9077BC', '#7B5FA9', '#664893', '#51347A', '#3C225F', '#281343'],
+  ember: ['#D08C6D', '#BE6E4D', '#AC5332', '#953A1D', '#7B240D', '#601204', '#430401'],
+};
+// Sunset (the user's choice, 2026-11-13, replacing AmyRose): yellow -> peach -> rose -> violet -> indigo,
+// light to dark with the wait: yellow for the shortest, indigo where nothing is within four blocks.
+// Filled under the ink print in color mode.
+export const COLOR_RAMP = 'sunset';
+// Color maps for filling the blocks themselves (shade 'fill' or 'wash'), light to dark, sampled from
+// matplotlib's perceptual maps with the light end moved in so the shortest wait does not read as paper.
+export const COLORMAPS = {
+  magma: ['#FEBD82', '#FA7F5E', '#E04C67', '#AD347C', '#792282', '#471078', '#140E36'],
+  viridis: ['#DFE318', '#7AD151', '#2FB47C', '#21918C', '#2F6C8E', '#414487', '#471365'],
+  ylgnbu: ['#B7E3B6', '#73C8BD', '#3BB0C3', '#1E8BBD', '#225AA6', '#233390', '#081D58'],
+  cividis: ['#EAD34C', '#C2B369', '#9C9576', '#797977', '#595E6E', '#33446D', '#002B62'],
+};
+// mix a color toward paper: the wash under the printed characters
+export const tint = (hex, t = 0.55) => {
+  const a = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)), b = [1, 3, 5].map((i) => parseInt(C.paper.slice(i, i + 2), 16));
+  return '#' + a.map((v, i) => Math.round(v * (1 - t) + b[i] * t).toString(16).padStart(2, '0')).join('').toUpperCase();
+};
+
+export function renderDay10(data, { mode = 'gray', variant = 'plate', palette, shade = 'print' } = {}) {
   const { rows, sides, summary, stations, boundary = [] } = data;
   const out = [];
   const isPlate = variant === 'plate';
@@ -28,6 +59,15 @@ export function renderDay10(data, { mode = 'gray', variant = 'plate' } = {}) {
   const T = isMap || isChart ? 1.3 : 1.15;
   const TI = isInset ? 1.35 : 1.15;
   const color = mode === 'color';
+  const ramp = color ? palette ?? PALETTES[COLOR_RAMP] ?? null : null;
+  const filled = ramp && shade !== 'glyph'; // blocks filled from the color map: 'print' fill + ink characters, 'fill' no characters, 'wash' tint + ink
+  const ink = (k) => (ramp && !filled ? ramp[k] : C.ink);
+  const blockFill = (k) => (shade === 'wash' ? tint(ramp[k]) : ramp[k]);
+  // a legend swatch for class k centred on (x, baseline y): the struck characters, on their fill when filled
+  const swatch = (k, x, y, size) => {
+    const box = filled ? `<rect x="${x - size * 0.45}" y="${y - size * 0.78}" width="${size * 0.9}" height="${size * 0.9}" fill="${blockFill(k)}"/>` : '';
+    return box + (shade === 'fill' ? '' : glyphs(RAMP[k], x, y, size, ink(k)));
+  };
   const ring = (r, fx, fy) => 'M' + r.map(([x, y]) => `${fx(x).toFixed(1)},${fy(y).toFixed(1)}`).join('L') + 'Z';
   const city = (fx, fy) => boundary.map((r) => ring(r, fx, fy)).join('');
 
@@ -35,20 +75,45 @@ export function renderDay10(data, { mode = 'gray', variant = 'plate' } = {}) {
   // Xm, Ym: miles to px; px: px per mile; box: miles to draw (with a cell's margin)
   const print = (Xm, Ym, px, box) => {
     const cell = px * CELL, fs = cell * 1.3;
+    if (filled) {
+      // one path per class: runs of same-class blocks along each row
+      const runs = Array.from({ length: 7 }, () => []);
+      for (const r of rows) {
+        const n0 = r.row * CELL;
+        if (n0 + CELL < box.south - CELL || n0 > box.north + CELL) continue;
+        const yTop = Ym(n0 + CELL);
+        for (let i = 0; i < r.s.length; ) {
+          const ch = r.s[i];
+          if (ch === ' ') { i++; continue; }
+          let j = i;
+          while (j + 1 < r.s.length && r.s[j + 1] === ch) j++;
+          const x0 = Xm((r.col + i) * CELL), w = Xm((r.col + j + 1) * CELL) - x0;
+          // a hair of overlap so neighbouring fills leave no paper seam when scaled
+          runs[+ch].push(`M${x0.toFixed(2)},${yTop.toFixed(2)}h${(w + 0.35).toFixed(2)}v${(cell + 0.35).toFixed(2)}h${(-w - 0.35).toFixed(2)}z`);
+          i = j + 1;
+        }
+      }
+      runs.forEach((d, k) => { if (d.length) out.push(`<path d="${d.join('')}" fill="${blockFill(k)}"/>`); });
+      if (shade === 'fill') return;
+    }
     const g = [`<g font-family="${SANS}" font-size="${fs.toFixed(2)}" fill="${C.ink}" text-anchor="middle" aria-hidden="true">`];
     for (const r of rows) {
       const n = (r.row + 0.5) * CELL;
       if (n < box.south - CELL || n > box.north + CELL) continue;
       const y = (Ym(n) + fs * 0.36).toFixed(1);
-      const layers = [[], [], [], []];
+      const layers = new Map(); // 'layer class' -> [[x, glyph]]
       for (let i = 0; i < r.s.length; i++) {
         const ch = r.s[i];
         if (ch === ' ') continue;
         const e = (r.col + i + 0.5) * CELL;
         if (e < box.west - CELL || e > box.east + CELL) continue;
-        RAMP[+ch].forEach((glyph, l) => layers[l].push([Xm(e).toFixed(1), glyph]));
+        const k = ramp && !filled ? +ch : 0;
+        RAMP[+ch].forEach((glyph, l) => { const key = `${l} ${k}`; if (!layers.has(key)) layers.set(key, []); layers.get(key).push([Xm(e).toFixed(1), glyph]); });
       }
-      for (const l of layers) if (l.length) g.push(`<text x="${l.map((d) => d[0]).join(' ')}" y="${y}">${esc(l.map((d) => d[1]).join(''))}</text>`);
+      for (const [key, l] of layers) {
+        const fill = ramp && !filled ? ` fill="${ramp[+key.split(' ')[1]]}"` : '';
+        g.push(`<text x="${l.map((d) => d[0]).join(' ')}" y="${y}"${fill}>${esc(l.map((d) => d[1]).join(''))}</text>`);
+      }
     }
     g.push('</g>');
     out.push(g.join(''));
@@ -99,7 +164,7 @@ export function renderDay10(data, { mode = 'gray', variant = 'plate' } = {}) {
     for (const x of g.xs) out.push(`<line x1="${X(x)}" x2="${X(x)}" y1="${fy0}" y2="${fy1}" stroke="${x === 0 ? C.pencil : C.grid}" stroke-width="${x === 0 ? 0.8 : 0.5}"/>`);
     for (const y of g.ys) out.push(`<line x1="${fx0}" x2="${fx1}" y1="${Y(y)}" y2="${Y(y)}" stroke="${y === 0 ? C.pencil : C.grid}" stroke-width="${y === 0 ? 0.8 : 0.5}"/>`);
     print(Xm, Ym, k, ext);
-    for (const s of [...stations].sort((a, b) => a.ada - b.ada)) out.push(station(s, X(s.x), Y(s.y), rMap));
+    if (SHOW_STATIONS) for (const s of [...stations].sort((a, b) => a.ada - b.ada)) out.push(station(s, X(s.x), Y(s.y), rMap));
     out.push(`<rect${hooks ? ` data-inset-frame data-y0="${+Ym(0).toFixed(2)}"` : ''} x="${Xm(ib.west)}" y="${Ym(ib.north)}" width="${(ib.east - ib.west) * k}" height="${(ib.north - ib.south) * k}" fill="none" stroke="${C.ink}" stroke-width="0.7" stroke-dasharray="2 2"/>`);
     out.push('</g>');
     const gridLabel = (v) => (v === 0 ? { fill: C.ink, weight: 600 } : { fill: C.pencil });
@@ -123,22 +188,22 @@ export function renderDay10(data, { mode = 'gray', variant = 'plate' } = {}) {
       out.push(text(lx, y, lead, { size: lgs, fill: C.pencil }));
       lx += textWidth(lead, lgs) + 8;
       SHORT.forEach((lab, i) => {
-        out.push(glyphs(RAMP[i], lx + 5, y, lgs * 1.15));
+        out.push(swatch(i, lx + 5, y, lgs * 1.15));
         out.push(text(lx + 13, y, i === 6 ? 'none near' : lab, { size: lgs, fill: C.pencil }));
         lx += 13 + textWidth(i === 6 ? 'none near' : lab, lgs) + 9;
       });
-      out.push(`<g transform="translate(${lx + 4} ${y - lgs * 0.35})">${dot(true)}</g>`);
-      out.push(text(lx + 12, y, 'accessible', { size: lgs, fill: C.pencil }));
-      lx += 12 + textWidth('accessible', lgs) + 9;
-      out.push(`<g transform="translate(${lx + 4} ${y - lgs * 0.35})">${dot(false)}</g>`);
-      out.push(text(lx + 12, y, 'not', { size: lgs, fill: C.pencil }));
+      if (SHOW_STATIONS) {
+        out.push(`<g transform="translate(${lx + 4} ${y - lgs * 0.35})">${dot(true)}</g>`);
+        out.push(text(lx + 12, y, 'accessible', { size: lgs, fill: C.pencil }));
+        lx += 12 + textWidth('accessible', lgs) + 9;
+        out.push(`<g transform="translate(${lx + 4} ${y - lgs * 0.35})">${dot(false)}</g>`);
+        out.push(text(lx + 12, y, 'not', { size: lgs, fill: C.pencil }));
+      }
     } else {
       const items = [
         ['head', 'Minutes until moving at 9 p.m.'],
-        ...SHORT.map((lab, i) => [glyphs(RAMP[i], 0, lgs * 0.4, lgs * 1.25), i === 6 ? 'Nothing within four blocks' : `${lab} minutes`]),
-        ['gap'],
-        [dot(true), 'Accessible ‘L’ station'],
-        [dot(false), 'Not accessible: not counted'],
+        ...SHORT.map((lab, i) => [swatch(i, 0, lgs * 0.4, lgs * 1.25), i === 6 ? 'Nothing within four blocks' : `${lab} minutes`]),
+        ...(SHOW_STATIONS ? [['gap'], [dot(true), 'Accessible ‘L’ station'], [dot(false), 'Not accessible: not counted']] : []),
       ];
       out.push(legendBox(items, { x: rx, bottom: fy1 - k, k, size: lgs }));
     }
@@ -163,7 +228,7 @@ export function renderDay10(data, { mode = 'gray', variant = 'plate' } = {}) {
     if (isPlate) {
       uy = Math.round(labelTop + 10.5 * T * 0.72);
       title(uy, CHART_TITLE.toUpperCase());
-      const noteLines = wrap(CHART_NOTE, Math.floor(cw / (ns * 0.45)));
+      const noteLines = wrap(filled ? `${CHART_NOTE} ${COLOR_NOTE}` : CHART_NOTE, Math.floor(cw / (ns * 0.45)));
       noteLines.forEach((l, i) => note(uy + (i + 1) * nh + 4, l));
       uy += noteLines.length * nh + 20;
     } else uy = 4;
@@ -176,10 +241,14 @@ export function renderDay10(data, { mode = 'gray', variant = 'plate' } = {}) {
       gs.push(text(mx, y0, s.side.toUpperCase(), { size: cs, weight: 500, spacing: 0.4 }));
       gs.push(text(mx + cw, y0, `${Math.round(s.over15 * 100)}% over 15 min`, { size: cs, anchor: 'end', fill: C.pencil }));
       const by = y0 + cs * 1.5;
-      const layers = [[], [], [], []];
+      if (filled) {
+        let c0 = 0;
+        counts.forEach((n, kk) => { if (n) gs.push(`<rect x="${(mx + c0 * cellW).toFixed(1)}" y="${(by - cellW * 1.02).toFixed(1)}" width="${(n * cellW).toFixed(1)}" height="${(cellW * 1.3).toFixed(1)}" fill="${blockFill(kk)}"/>`); c0 += n; });
+      }
+      const layers = new Map();
       let i = 0;
-      counts.forEach((n, kk) => { for (let j = 0; j < n; j++, i++) RAMP[kk].forEach((g, l) => layers[l].push([(mx + (i + 0.5) * cellW).toFixed(1), g])); });
-      for (const l of layers) if (l.length) gs.push(`<text x="${l.map((d) => d[0]).join(' ')}" y="${by.toFixed(1)}" font-family="${SANS}" font-size="${(cellW * 1.25).toFixed(2)}" fill="${C.ink}" text-anchor="middle">${esc(l.map((d) => d[1]).join(''))}</text>`);
+      counts.forEach((n, kk) => { for (let j = 0; j < n; j++, i++) RAMP[kk].forEach((g, l) => { const key = `${l} ${ramp ? kk : 0}`; if (!layers.has(key)) layers.set(key, []); layers.get(key).push([(mx + (i + 0.5) * cellW).toFixed(1), g]); }); });
+      for (const [key, l] of layers) gs.push(`<text x="${l.map((d) => d[0]).join(' ')}" y="${by.toFixed(1)}" font-family="${SANS}" font-size="${(cellW * 1.25).toFixed(2)}" fill="${ink(+key.split(' ')[1])}" text-anchor="middle">${esc(l.map((d) => d[1]).join(''))}</text>`);
       if (hooks) gs.push('</g>');
       out.push(gs.join(''));
       uy += rowH;
@@ -212,8 +281,8 @@ export function renderDay10(data, { mode = 'gray', variant = 'plate' } = {}) {
   for (let m = Math.ceil(lbm.south); m <= lbm.north; m++) out.push(`<line x1="${inset.x}" x2="${inset.x + inset.w}" y1="${IYm(m)}" y2="${IYm(m)}" stroke="${C.grid}" stroke-width="0.6"/>`);
   print(IXm, IYm, ki, lbm);
   const inI = (s) => toMiles(s.x, 'x') >= lbm.west && toMiles(s.x, 'x') <= lbm.east && toMiles(s.y, 'y') >= lbm.south && toMiles(s.y, 'y') <= lbm.north;
-  for (const s of stations.filter(inI)) out.push(station(s, IX(s.x), IY(s.y), isInset ? 5 : 4.2));
-  if (hooks) out.push(blockHooks(data.inset, IXm, IYm, ki, lbm));
+  if (SHOW_STATIONS) for (const s of stations.filter(inI)) out.push(station(s, IX(s.x), IY(s.y), isInset ? 5 : 4.2));
+  if (hooks) out.push(blockHooks(data.inset, IXm, IYm, ki, lbm, filled ? blockFill : null));
   out.push('</g>');
   // the bus streets that print pale, named beside their rows: in the margin on the plate, inside on the page
   const ss = 7 * TI;
@@ -264,12 +333,12 @@ export function renderDay10(data, { mode = 'gray', variant = 'plate' } = {}) {
 }
 
 // a ramp entry's characters struck on one spot (legend swatches)
-export function glyphs(chars, x, y, size) {
-  return chars.map((g) => `<text x="${x}" y="${y}" font-family="${SANS}" font-size="${size}" fill="${C.ink}" text-anchor="middle">${esc(g)}</text>`).join('');
+export function glyphs(chars, x, y, size, fill = C.ink) {
+  return chars.map((g) => `<text x="${x}" y="${y}" font-family="${SANS}" font-size="${size}" fill="${fill}" text-anchor="middle">${esc(g)}</text>`).join('');
 }
 
 // every inset block a hover target: its address, its minutes, the walk and the wait
-function blockHooks(inset, IXm, IYm, ki, box) {
+function blockHooks(inset, IXm, IYm, ki, box, fillOf) {
   const s = ki * CELL;
   const g = [];
   for (const [col, row, t, walkMin, every, ri] of inset.cells) {
@@ -279,7 +348,7 @@ function blockHooks(inset, IXm, IYm, ki, box) {
     const rows = t == null
       ? ['No bus or accessible train within four blocks at 9 p.m.']
       : [`${minutes(t)} until moving`, `${minutes(walkMin)} step-free walk to ${inset.routes[ri]}`, `then a ${ri != null && inset.routes[ri].endsWith('Line') ? 'train' : 'bus'} every ${minutes(every)}`];
-    g.push(`<rect x="${(IXm(e) - s / 2).toFixed(1)}" y="${(IYm(n) - s / 2).toFixed(1)}" width="${s.toFixed(1)}" height="${s.toFixed(1)}" fill="transparent" data-tip="${esc(blockName(col, row))}" data-name="${esc(blockName(col, row))}" data-shape="glyph" data-glyph="${RAMP[k].join('')}" data-detail="${esc(rows.join('|'))}"/>`);
+    g.push(`<rect x="${(IXm(e) - s / 2).toFixed(1)}" y="${(IYm(n) - s / 2).toFixed(1)}" width="${s.toFixed(1)}" height="${s.toFixed(1)}" fill="transparent" data-tip="${esc(blockName(col, row))}" data-name="${esc(blockName(col, row))}" data-shape="glyph" data-glyph="${RAMP[k].join('')}"${fillOf ? ` data-fill="${fillOf(k)}"` : ''} data-detail="${esc(rows.join('|'))}"/>`);
   }
   return g.join('');
 }
@@ -316,6 +385,7 @@ const sideMax = (sides) => sides.reduce((a, b) => (b.over15 > a.over15 ? b : a))
 const pctOf = (sides, f) => `${Math.round(Math[f](...sides.map((s) => s.over15)) * 100)}%`;
 
 export const CHART_TITLE = 'The nine sides';
+export const COLOR_NOTE = 'In color, yellow comes soonest and the colors deepen to indigo, nothing within four blocks.';
 export const CHART_NOTE = 'Each side’s residents as fifty characters, 2% each, printed light to dark by their minutes until moving.';
 export const INSET_STREETS = [[-8700, '87TH'], [-9500, '95TH'], [-10300, '103RD'], [-11100, '111TH'], [-11500, '115TH']];
 
