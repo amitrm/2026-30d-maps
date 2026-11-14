@@ -9,3 +9,4 @@ days/*/data/processed/
 reference/raw/gtfs/
 reference/raw/osm/
 reference/raw/census/
+reference/raw/noise/

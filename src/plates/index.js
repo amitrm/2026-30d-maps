@@ -34,6 +34,8 @@ import day09Data from '../../days/day09-urban-rural/output/plate.json';
 import { renderDay09, CHART_TITLE as D9_CHART_TITLE, CHART_NOTE as D9_CHART_NOTE, INSET_TITLE as D9_INSET, dayLong as d9Day } from './day09.js';
 import day10Data from '../../days/day10-prompting/output/plate.json';
 import { renderDay10, CHART_TITLE as D10_CHART_TITLE, CHART_NOTE as D10_CHART_NOTE, COLOR_NOTE as D10_COLOR_NOTE, dayLong as d10Day } from './day10.js';
+import day11Data from '../../days/day11-sound/output/plate.json';
+import { renderDay11, CHART_TITLE as D11_CHART_TITLE, CHART_NOTE as D11_CHART_NOTE, INSET_TITLE as D11_INSET } from './day11.js';
 import { renderDay07, CHART_NOTE as D7_CHART_NOTE, chartTitle as d7ChartTitle, insetTitle as d7InsetTitle, clock as d7Clock, dayLong as d7Day, hundreds as d7Hundreds, sortOutages as d7Sort } from './day07.js';
 
 const csv = (rows) =>
@@ -372,6 +374,49 @@ const d10Story = {
   ],
 };
 d10Story.findings = d10Story.sections[1][1];
+
+// Day 11: every number below comes from days/day11-sound/output/plate.json. External facts: the BTS
+// documentation (model), the CDA Midway report (monitors), EPA's 1974 levels document (70 dB), FAA
+// Part 150 and HUD 24 CFR 51 (65 dB DNL), chicago-l.org (Orange Line on freight rights-of-way) and
+// Phan & Jones 2017 (inside the train).
+const d11 = day11Data.summary;
+const d11St = day11Data.stations;
+const d11Top = [...d11St].sort((a, b) => b.db - a.db);
+const d11Find = (short, line) => d11St.find((s) => s.short === short && s.lines.includes(line));
+const d11Mon = [...day11Data.monitors].filter((m) => m.measured != null).sort((a, b) => b.measured - a.measured)[0];
+const d11Db = (v) => `${Math.round(v)} dB`;
+const d11LoudNot = d11Top.filter((s) => s.db >= 65 && !s.ada);
+const d11List = (a) => `${a.slice(0, -1).join(', ')} and ${a.at(-1)}`;
+const d11Story = {
+  sections: [
+    ['Background', [
+      'Every ‘L’ platform and bus stop sits somewhere in the noise the city’s own systems make: expressway traffic, the ‘L’, freight trains, aircraft. A rider waiting there cannot move away from it. Plate V counted the crossings with an audible signal for riders who cannot see the walk sign; this plate maps the noise such sounds have to be heard over.',
+      'The noise is a model, not a recording. The Bureau of Transportation Statistics’ National Transportation Noise Map estimates the average sound over a whole day from traffic counts on roads, rail timetables (the ‘L’ included) and flights, on squares 30 metres wide. Sound is measured in decibels: every 10 more is ten times the sound energy.',
+      'Each dot is one city block, an eighth of a mile, and its area grows with the decibels above 45. Each station gets a ring for every 5 dB above 50 at its loudest platform; a filled centre means the station is accessible. Hover a station for its level and loudest source, or a line in the chart to show only its stations.',
+    ]],
+    ['Findings', [
+      day11Data.finding,
+      `The two loudest stations are ${d11Top[0].short} (${d11Db(d11Top[0].db)}) and ${d11Top[1].short} (${d11Db(d11Top[1].db)}) on the Orange Line, which runs mostly along freight railroad rights-of-way. Next come the South Side Green Line and the Red Line in the Dan Ryan. ${d11.stationsEpa} stations reach 70 dB or more.`,
+      `${d11.stationsLoudAccessible} of the ${d11.stationsLoud} are accessible, about the same share as across the city (${d11.stationsAccessible} of ${d11.stations}). The ${d11LoudNot.length} that are not are all on the Blue Line, in expressway medians: ${d11List(d11LoudNot.map((s) => s.short))}.`,
+      `Away from the ‘L’ the city is quieter. ${fmt(d11.busLoud)} of ${fmt(d11.bus)} CTA bus stops (${pct(d11.busLoudShare, 1)}) and about ${thousands(d11.residentsLoud)} residents (${pct(d11.residentsBands['65'], 1)}) sit at 65 dB or more. For most of those residents, trains are the loudest source.`,
+    ], true],
+    ['How loud is loud', [
+      'Federal rules draw a line at 65 dB. The FAA treats homes as compatible with aircraft noise below 65 dB, and HUD calls sites above 65 dB “normally unacceptable” for new housing. Both use the day-night average, which adds 10 dB to sound at night; the plate’s 24-hour average does not, so 65 here is the gentler test.',
+      `In 1974 the EPA named 70 dB, averaged over a day, as the level that protects hearing over a lifetime. ${d11.stationsEpa} stations reach it. That describes the place across a whole day, not a rider’s few minutes on the platform.`,
+    ]],
+    ['Checking the model', [
+      `Around Midway the Chicago Department of Aviation measures aircraft noise at 13 monitors. Over the 12 months to December 2025 the model sat between ${Math.abs(d11.monitorDiffRange[0])} dB below and ${d11.monitorDiffRange[1]} dB above the measured levels at the 12 that reported. The measurement is a day-night average, which adds 10 dB at night, so the model should read a little lower.`,
+      `The loudest monitor, ${d11Mon.address.replace(' 1/2', '')}, measured ${d11Mon.measured.toFixed(1)} dB from aircraft alone. The model gives ${d11Mon.modelled.toFixed(1)}.`,
+    ]],
+    ['What the map cannot hear', [
+      `Underground. The model has no tunnels, so subway platforms read quiet: Logan Square ${d11Db(d11Find('Logan Square', 'Blue').db)}, Belmont on the Blue Line ${d11Db(d11Find('Belmont', 'Blue').db)}. Inside the train it is the reverse: a 2017 study from the University of Illinois Chicago found the Blue Line toward O’Hare the loudest branch, and its loudest stretch in the tunnel between Chicago and Grand, at 88.9 dB inside the car.`,
+      'Walls and buildings. The model lets sound travel as if nothing stood in the way, so streets lined with buildings read louder than they are, and the far side of a wall reads too loud.',
+      'Small streets and the bus itself. Roads without traffic counts are left out, as is anything below 45 dB. The bus a rider is waiting for, sirens and construction are not in the model; freight and commuter train horns are.',
+      `An average day. Each station reads the median within ${day11Data.thresholds.radiusM} m of its loudest platform, because the model puts the listener on the track or the roadway itself. When a train pulls in, the platform is far louder than any average.`,
+    ]],
+  ],
+};
+d11Story.findings = d11Story.sections[1][1];
 
 const d9 = day09Data.summary;
 const d9Place = new Map(day09Data.inset.places.map((p) => [p.name, p]));
@@ -717,6 +762,40 @@ export const plates = {
       csv([
         ['col', 'row', 'x_address', 'y_address', 'class', 'minutes_until_moving_at_9pm'],
         ...day10Data.rows.flatMap((r) => [...r.s].map((ch, i) => [r.col + i, r.row, ch]).filter(([, , ch]) => ch !== ' ').map(([c, row, ch]) => [c, row, (c + 0.5) * 100, Math.round(d10Addr((row + 0.5) / 8)), +ch, day10Data.classLabels[+ch]])),
+      ]),
+  },
+  11: {
+    file: 'day11-what-you-hear-while-you-wait',
+    render: (o) => renderDay11({ ...day11Data, findings: d11Story.findings.slice(1, 3), boundary: cityBoundary.rings, sequences: lineSequences.lines }, o), // the first finding repeats the headline
+    subtitle: 'Expressways, the ‘L’, freight trains and aircraft: how loud is it where Chicago waits for a train or a bus?',
+    finding: day11Data.finding,
+    story: d11Story,
+    ledger: [
+      ['Noise', 'Bureau of Transportation Statistics, National Transportation Noise Map, 2022 release: road noise from 2023 traffic counts, rail (freight, commuter and the ‘L’) and aviation from 2022. A model of the 24-hour average sound level (LAeq) on 30 m squares, nothing below 45 dB; the three combined by sound energy.', day11Data.sources.bts],
+      ['Method', `Each point reads the median within ${day11Data.thresholds.radiusM} m (about half a block): the model puts the listener on the track or roadway, where one square reads 80–95 dB and the next about 60. Each map dot is one block of an eighth of a mile, the energy average of that surface over the block; the inset averages over half a block.`, day11Data.sources.btsDoc],
+      ['Stations', `CTA GTFS platforms, feed of ${day11Data.gtfsDate}; each of the ${d11.stations} city stations reads its loudest platform (State/Lake, missing from the feed, its station point). Accessible as on Plate VIII.`, 'https://www.transitchicago.com/developers/gtfs/'],
+      ['Check', 'Chicago Department of Aviation, Airport Noise Management System, Midway quarterly report, 4th quarter 2025: aircraft day-night average (DNL) at 13 monitors, 12 months to December 2025; monitors placed by their street addresses (Census geocoder).', day11Data.sources.midway],
+      ['People', `2020 Census: ${fmt(d11.residents)} residents, read at each block’s internal point.`, 'https://www.census.gov/programs-surveys/decennial-census/about/rdo/summary-files.html'],
+      ['Levels', [
+        ['EPA, levels document (1974)', day11Data.sources.epa],
+        ['FAA, 14 CFR Part 150, Appendix A', 'https://www.ecfr.gov/current/title-14/chapter-I/subchapter-I/part-150/appendix-Appendix%20A%20to%20Part%20150'],
+        ['HUD, 24 CFR 51 Subpart B', 'https://www.ecfr.gov/current/title-24/subtitle-A/part-51/subpart-B'],
+      ]],
+      ['Sources', [
+        ['Phan & Jones (2017), noise inside CTA trains', day11Data.sources.ctaStudy],
+        ['Orange Line on freight rights-of-way (chicago-l.org)', 'https://www.chicago-l.org/operations/lines/midway.html'],
+      ]],
+      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
+    ],
+    page: {
+      chart: { title: D11_CHART_TITLE, note: D11_CHART_NOTE },
+      inset: { title: `Inset · ${D11_INSET}` },
+    },
+    csv: () =>
+      csv([
+        ['station_id', 'station', 'lines', 'accessible', 'db_24h_median_90m', 'db_24h_point', 'road_only_median_90m', 'rail_only_median_90m', 'aviation_only_median_90m', 'loudest_source'],
+        ...day11Data.stations.map((s) => [s.id, s.short, s.lines.join(' '), s.ada, ...[s.db, s.point, s.road, s.rail, s.aviation].map((v) => (v < 45 ? '<45' : v)), s.source]),
       ]),
   },
 };

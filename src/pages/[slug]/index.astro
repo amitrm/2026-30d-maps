@@ -132,7 +132,8 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   //        the dot inside a full or half outage ring (Plate VII); due / nodate, a station still to be
   //        made accessible, ring with a dot or dashed ring (Plate VIII); tile, a square mile as nested
 //        squares sized by data-size and data-frac, and none, no mark (Plate IX); glyph, a block's
-  //        overprinted characters, data-glyph, on its color-mode fill, data-fill (Plate X)
+  //        overprinted characters, data-glyph, on its color-mode fill, data-fill (Plate X); rings, a
+  //        station's sound rings, data-n of them (Plate XI)
   //   [data-kind=route][data-detail][data-sep][data-dash][data-gray][data-color][data-on-color]
   //        tooltip for a route: route box and name, a rule data-sep px thick, one sentence
   //   [data-kind=street][data-detail][data-band][data-line: 'gray|color' colors, empty for none]
@@ -297,6 +298,13 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
     if (shape === 'tile') {
       const s = 10 * Number(ds.size ?? 1), f = s * Number(ds.frac ?? 0);
       return `<svg viewBox="0 0 10 10" aria-hidden="true"><rect x="${5 - s / 2}" y="${5 - s / 2}" width="${s}" height="${s}" fill="${ds.fill ?? '#BDBBB4'}"/>${f > 0.3 ? `<rect x="${5 - f / 2}" y="${5 - f / 2}" width="${f}" height="${f}" fill="#232323"/>` : ''}</svg>`;
+    }
+    // Plate XI: a station's sound rings, one per 5 dB above 50 (data-n, drawn up to 3), round the dot or ring
+    if (shape === 'rings') {
+      const n = Math.min(3, Number(ds.n ?? 0));
+      const rings = Array.from({ length: n }, (_, i) => `<circle cx="9" cy="9" r="${(4.6 + 1.5 * (i + 1)).toFixed(1)}" fill="none" stroke="${c}" stroke-width="0.6"/>`).join('');
+      const centre = ada ? `<circle cx="9" cy="9" r="3.4" fill="${c}"/>` : `<circle cx="9" cy="9" r="3" fill="#F1F0EC" stroke="${c}" stroke-width="1.2"/>`;
+      return `<svg viewBox="0 0 18 18" style="width:16px;height:16px" aria-hidden="true">${rings}${centre}</svg>`;
     }
     if (shape === 'square')
       return ada
