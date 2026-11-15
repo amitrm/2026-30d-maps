@@ -1,9 +1,9 @@
 {
  "schema": 1,
  "day": 13,
- "generated": "2026-11-15T16:03:23+00:00",
+ "generated": "2026-11-15T16:38:07+00:00",
  "asOf": "2026-11-15",
- "finding": "Every day about 32,000 ride-hail trips run between two places beside the same ‘L’ line, at about $11 a ride against $2.50 by train. Between 1 and 3 a.m., when the trains thin out, a third of all ride-hail trips do. On the Blue Line, 58% of them copy a train ride that a rider who cannot take the stairs could not make.",
+ "finding": "Every day about 32,000 ride-hail trips run between two places beside the same ‘L’ line, at about $11 a ride against $2.50 by train. Between 1 and 3 a.m., when the trains thin out, a third of all ride-hail trips do. Along the Blue Line, 58% of such trips copy a train ride that a rider who cannot take the stairs could not make.",
  "ledger": {
   "source": "City of Chicago, Transportation Network Providers - Trips (2025-)",
   "dataset_id": "6dvr-xwnh",

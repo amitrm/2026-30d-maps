@@ -313,7 +313,7 @@ export function renderDay13(data, { mode = 'gray', variant = 'plate' } = {}) {
     for (let h = 0; h < 24; h++) {
       const key = `h${String(h).padStart(2, '0')}`;
       if (hooks) {
-        const tip = `${Math.round(shares[h] * 100)}% of ride-hail trips copy a one-seat ‘L’ ride|About ${fmt(hours.copies[h])} an hour on an average day|${Math.round(hours.trains[h])} trains leave their first stop`;
+        const tip = `${Math.round(shares[h] * 100)}% of ride-hail trips copy a one-seat ‘L’ ride|About ${hundreds(hours.copies[h])} such trips in this hour, on an average day|${Math.round(hours.trains[h])} trains leave their first stop`;
         out.push(`<g class="${uid}-col" data-state-key="${key}" data-tip="${hourName(h)}" data-name="${hourName(h)}" data-shape="none" data-detail="${esc(tip)}"><rect class="bg" x="${(cx(h) - colW / 2).toFixed(1)}" y="${top - 12}" width="${colW.toFixed(1)}" height="${ch + 12}" fill="transparent"/>`);
       }
       out.push(`<rect x="${(cx(h) - colW * 0.36).toFixed(1)}" y="${ty(hours.trains[h]).toFixed(1)}" width="${(colW * 0.72).toFixed(1)}" height="${(base - ty(hours.trains[h])).toFixed(1)}" fill="${C.fog}"/>`);
@@ -403,7 +403,7 @@ export function renderDay13(data, { mode = 'gray', variant = 'plate' } = {}) {
     ['COPY', `Both tracts have residents within ${summary.reachMi} mi (straight line) of stations on one line; counted by that expected share (2020 blocks)`],
     ['STAIRS', 'The same test with accessible stations only; the rest of the copy needs stairs. Accessible: portal flag, Racine and Austin per CTA'],
     ['TRAINS', `CTA GTFS, feed of ${data.gtfsDate}: trains leaving their first stop each hour, the week’s average day; bands on its rail shapes`],
-    ['FARE', `Ride-hail fare as reported (rounded to $2.50, no tips or charges) against the CTA fare of $${summary.fare.toFixed(2)}`],
+    ['FARE', `Ride-hail fare as reported (rounded to the nearest $2.50, no tips or charges) against the CTA fare of $${summary.fare.toFixed(2)}`],
     ['LIMITS', 'City of Chicago, Boundaries – City · qqq8-j68g; stations: CTA List of ‘L’ Stops · 8pix-ypme'],
   ];
   dy += 18;
