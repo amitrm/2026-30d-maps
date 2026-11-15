@@ -435,8 +435,8 @@ const d12Story = {
   sections: [
     ['Background', [
       `The CTA runs the trains and the buses. The block between a rider’s front door and the stop belongs to the city, and in Chicago much of what gets fixed on it is chosen ward by ward. Each of the 50 aldermen gets the same sum of “menu” money every year (${d12M(d12.alloc['2019'])} in 2019, ${d12M(d12.alloc['2021'])} from 2021) and picks which streets, alleys, lights and sidewalks in the ward it pays for.`,
-      `This plate maps those choices from ${d12.years[0]} to ${d12.years[1]}, the last four full years on one ward map. Each ward is shaded by the share of its menu money that went to sidewalks and crossings, and each dot is one of those projects.`,
-      'Residents have two other ways to get a sidewalk fixed: a 311 request for an inspection, or an application to the Shared Cost Sidewalk Program, in which the owner pays part of the repair. The inset plots the two against each other, each ward a dot. Hover a ward, a dot or a row in the chart for its numbers; the same ward lights up in all three.',
+      `This plate maps those choices from ${d12.years[0]} to ${d12.years[1]}, the last four full years on one ward map. Each ward is shaded by the share of its menu money that went to sidewalks and crossings.`,
+      'Residents have two other ways to get a sidewalk fixed: a 311 request for an inspection, or an application to the Shared Cost Sidewalk Program, in which the owner pays part of the repair. The Complaint and Wallet chart plots the two against each other, each ward a dot. Wards and Choices shows the ten wards at each end here, and all fifty on the plate. Hover a ward on the map, a row or a dot for its numbers; the same ward lights up in all three.',
     ]],
     ['Findings', [
       day12Data.finding,
@@ -444,17 +444,17 @@ const d12Story = {
       `Those ${d12Num(d12.low.length)} wards rank ${d12List(d12.lowRank.filed.map(d12Ord))} in 311 sidewalk requests per resident, and ${d12List(d12.lowRank.shared.map(d12Ord))} in shared-cost applications. With ${pct(d12LowPop)} of the city’s residents, they sent ${pct(d12.lowSharedShare)} of the applications.`,
       `Requests and applications rise and fall together (a rank correlation of ${d12.corr.filed_shared.toFixed(2)} across the wards). Both are highest on the Northwest Side and the far South and Southwest Sides, and lowest along the north lakefront, on the inner South Side and on the West Side.`,
       `The alderman’s choice follows neither. The share spent on sidewalks has almost no relation to how many residents have a difficulty walking (rank correlation ${d12.corr.share_amb.toFixed(2)}) or to how many file requests (${d12.corr.share_filed.toFixed(2)}).`,
-      `On ${d12Pulled}, ${fmt(d12.open)} sidewalk requests were still open, ${fmt(d12.open3)} of them for three years or more. Half of the requests filed from ${d12.years[0]} to ${d12.years[1]} closed within ${fmt(d12.closeDays[0])} days in Ward ${d12.closeWards[0]}; in Ward ${d12.closeWards[1]}, half took ${fmt(d12.closeDays[2])} days or more.`,
+      `On ${d12Pulled}, ${fmt(d12.open)} sidewalk requests were still open, ${fmt(d12.open3)} of them for three years or more. Of the requests filed from ${d12.years[0]} to ${d12.years[1]} that have been closed, half took ${fmt(d12.closeDays[0])} days or less in Ward ${d12.closeWards[0]}, and ${fmt(d12.closeDays[2])} days or more in Ward ${d12.closeWards[1]}.`,
     ], true],
     ['Three kinds of power', [
-      'The alderman’s. Menu money is the same for every ward, whatever its size or the state of its streets. In 2017 the city’s Inspector General found that this flat sum bears no relationship to what each ward needs, and that in 2015 the program fell about $228.8 million a year short of the city’s residential street, alley and sidewalk needs.',
-      'The complaint. Anyone can ask 311 for a sidewalk inspection. In Lane v. City of Chicago, filed in September 2025, four residents with mobility disabilities argue that the city relies on such complaints instead of a plan, and count more than 20,000 sidewalk requests left open for a year or more. The city has moved to dismiss the case.',
-      'The wallet. Through the Shared Cost Sidewalk Program an owner pays part of the repair, about $1,000 to $2,400 for a typical lot, and seniors and people with disabilities may qualify for half off. Applications open through 311 on one day in January and are taken first come, first served while the money lasts.',
+      'The alderman’s. Menu money is the same for every ward, whatever its size or the state of its streets. In 2017 the city’s Inspector General found that the sum is set without regard to what each ward needs, and that, with needs priced at 2015 costs, it left the city’s residential streets, alleys and sidewalks about $228.8 million a year short.',
+      'The complaint. Anyone can ask 311 for a sidewalk inspection. In Lane v. City of Chicago, filed in September 2025, four residents with mobility disabilities argue that the city relies on such complaints instead of a plan, and count more than 20,000 sidewalk requests left open for a year or more. The city has moved to dismiss the case, arguing that the plaintiffs lack standing; when this plate was made the case was still open.',
+      'The wallet. Through the Shared Cost Sidewalk Program an owner pays part of the repair, about $1,000 to $2,400 for an average mid-block lot, and owners who are seniors or have a disability and live in the home may qualify for half off. Applications open through 311 on one day each January and are taken first come, first served, as far as the year’s budget allows.',
     ]],
     ['What the map cannot see', [
       'Who asked. A 311 request records a place, not a person: it cannot say whether the caller owns the house, rents, or walks with difficulty. An application is not a repair.',
       'Other budgets. The city also repairs sidewalks and builds curb ramps through its own programs and street projects, which are not part of the menu and are not on this map.',
-      `Plans, not invoices. Menu costs are as listed in the city’s menu reports, compiled by Ward Wise. ${d12.years[0] + 1} was a short year: half the wards listed less than ${d12M(d12.alloc['2020'])}. A few projects could not be placed and have no dot.`,
+      `Plans, not invoices. Menu costs are as listed in the city’s menu reports, compiled by Ward Wise. ${d12.years[0] + 1} was a short year: half the wards listed less than ${d12M(d12.alloc['2020'])}.`,
       'Old wards. The map uses the wards of 2015–2023, in force for all four years; the city redrew them in 2023.',
     ]],
   ],
@@ -848,26 +848,27 @@ export const plates = {
     finding: day12Data.finding,
     story: d12Story,
     ledger: [
-      ['Menu', `City of Chicago menu program reports, ${d12.years[0]}–${d12.years[1]}, compiled, categorized and geocoded by Ward Wise, a Chi Hack Night group (MIT licence). Costs as listed. Sidewalks: Ward Wise’s “Sidewalk Repair”; crossings: “Pedestrian Infrastructure” (bump-outs, refuge islands, crosswalk signs, countdown signals).`, day12Data.sources.wardwise],
+      ['Menu', `City of Chicago menu program reports, ${d12.years[0]}–${d12.years[1]}, compiled and categorized by Ward Wise, a Chi Hack Night group (MIT licence). Costs as listed. Sidewalks: Ward Wise’s “Sidewalk Repair”; crossings: “Pedestrian Infrastructure” (bump-outs, refuge islands, crosswalk signs, countdown signals).`, day12Data.sources.wardwise],
       ['Reports', 'Office of Budget and Management, Capital Improvement Archive (menu reports).', day12Data.sources.obm],
       ['311', `Chicago Data Portal, 311 Service Requests: “Sidewalk Inspection Request” and “Shared Cost Sidewalk Program Request”, pulled ${day12Data.pulled311}; placed in wards by their location.`, day12Data.sources.sr311],
       ['Wards', 'The 2015–2023 wards, in force for all four years, built from Ward Precincts 2013–2022.', day12Data.sources.precincts],
       ['People', `2020 Census: ${fmt(d12.residents)} residents, placed by their block’s internal point; difficulty walking from ACS 2020–2024 (B18105), allocated to blocks by population (an estimate).`, 'https://www.census.gov/programs-surveys/decennial-census/about/rdo/summary-files.html'],
       ['Sources', [
-        ['Inspector General, menu program audit (2017)', 'https://devigchicago.igchicago.org/wp-content/uploads/2023/08/CDOT-Aldermanic-Menu-Program-Audit.pdf'],
+        ['Inspector General, menu program audit (2017)', 'https://igchicago.org/2017/04/20/cdot-aldermanic-menu-program-audit-2/'],
+        ['Inspector General, advisory on residential street infrastructure (2019)', 'https://igchicago.org/?p=20680'],
         ['Shared Cost Sidewalk Program, 2026 overview', 'https://www.19thwardmobile.com/wp-content/uploads/2026/01/2026-SCSP-Overview_2025.12.15.pdf'],
         ['Lane v. City of Chicago (Disability Rights Advocates)', 'https://dralegal.org/case/lane-v-city-of-chicago/'],
         ['WTTW on the motion to dismiss (June 2026)', 'https://news.wttw.com/2026/06/22/chicago-s-sidewalks-aren-t-accessible-people-mobility-challenges-lawsuit-argues-city'],
       ]],
       ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
       ['Colour', `Seven classes of the share spent on sidewalks and crossings: under 2%, 2–5, 5–7, 7–10, 10–15, 15–20 and 20% or more. In colour mode they run from sand to teal in seven even steps of lightness, light for less, dark for more, and the chart’s sidewalk and crossing bars take the same teals. In grayscale the same classes step from light to dark. The city as a whole spent ${pct(d12.walkShare)}.`],
-      ['Scatter', 'In colour mode the inset’s nine cells (thirds of the wards on each axis) use Joshua Stevens’ purple–gold bivariate scheme: purple for more requests, gold for more applications, umber for both.', 'https://www.joshuastevens.net/cartography/make-a-bivariate-choropleth-map/'],
+      ['Scatter', 'In colour mode the nine cells of Complaint and Wallet (thirds of the wards on each axis) use Joshua Stevens’ purple–gold bivariate scheme: purple for more requests, gold for more applications, umber for both.', 'https://www.joshuastevens.net/cartography/make-a-bivariate-choropleth-map/'],
     ],
     page: {
-      // the page chart shows the five wards at each end (all fifty are on the plate, the map and in the
+      // the page chart shows the ten wards at each end (all fifty are on the plate, the map and in the
       // tooltips); one-line notes leave the scatter room
-      chart: { title: D12_CHART_TITLE, note: 'Five wards at each end · ● 311 requests, ○ shared-cost applications, per 1,000 residents.' },
-      inset: { title: D12_INSET, note: `Each ward a dot, per 1,000 residents, ${d12.years[0]}–${String(d12.years[1]).slice(2)}; colours by thirds of the wards on each axis.` }, // replaces the page's “Shown at ×N” note
+      chart: { title: D12_CHART_TITLE, note: 'Ten wards at each end · ● 311 requests, ○ shared-cost applications, per 1,000 residents.', colorNote: ' Rows shaded as in the scatter below.' },
+      inset: { title: D12_INSET, note: `Each ward a dot, per 1,000 residents, ${d12.years[0]}–${String(d12.years[1]).slice(2)}; marked by thirds of the wards on each axis.`, frame: false }, // replaces the page's “Shown at ×N” note
     },
     csv: () =>
       csv([

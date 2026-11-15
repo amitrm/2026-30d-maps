@@ -82,7 +82,7 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
         {p.page.inset.note
           ? <p class="col-note">{p.page.inset.note}</p>
           : <p class="col-note">Shown at <span data-inset-scale>×2</span> the scale of the main map.</p>}
-        <div class="inset-box">
+        <div class:list={['inset-box', { bare: p.page.inset.frame === false }]}>
           <div class="only-gray" set:html={insets.gray} />
           <div class="only-color" set:html={insets.color} />
         </div>
@@ -544,6 +544,7 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   .side .chart :global(svg) { height: auto; }
   .inset { flex: 1; min-height: 0; display: flex; flex-direction: column; padding-top: 10px; }
   .inset-box { flex: 1; min-height: 0; border: 1px solid var(--ink); overflow: hidden; position: relative; }
+  .inset-box.bare { border: 0; } /* a chart, not an inset of the map (registry page.inset.frame: false; Plate XII) */
   .inset-box > div { position: absolute; inset: 0; }
   .inset-box :global(svg) { overflow: hidden; }
 
