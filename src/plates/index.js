@@ -38,6 +38,8 @@ import day11Data from '../../days/day11-sound/output/plate.json';
 import { renderDay11, CHART_TITLE as D11_CHART_TITLE, CHART_NOTE as D11_CHART_NOTE, INSET_TITLE as D11_INSET } from './day11.js';
 import day12Data from '../../days/day12-power/output/plate.json';
 import { renderDay12, CHART_TITLE as D12_CHART_TITLE, CHART_NOTE as D12_CHART_NOTE, INSET_TITLE as D12_INSET } from './day12.js';
+import day13Data from '../../days/day13-interactions/output/plate.json';
+import { renderDay13, CHART_TITLE as D13_CHART_TITLE, INSET_TITLE as D13_INSET, hourName as d13Hour, hundreds as d13Hundreds, INSET_BANDS as D13_INSET_BANDS } from './day13.js';
 import { renderDay07, CHART_NOTE as D7_CHART_NOTE, chartTitle as d7ChartTitle, insetTitle as d7InsetTitle, clock as d7Clock, dayLong as d7Day, hundreds as d7Hundreds, sortOutages as d7Sort } from './day07.js';
 
 const csv = (rows) =>
@@ -497,6 +499,41 @@ const d9Story = {
 };
 d9Story.sections = [['Background', d9Story.background], ['Findings', d9Story.findings, true], ['Every 15 minutes', d9Story.edge], ['What the map cannot see', d9Story.limits]];
 
+// Day 13: every number below comes from days/day13-interactions/output/plate.json. External fact: the
+// CTA fare ($2.50, transitchicago.com/fares, unchanged for 2026).
+const d13 = day13Data.summary;
+const d13H = day13Data.hours;
+const d13PeakTrains = d13H.trains.indexOf(Math.max(...d13H.trains));
+// the Blue Line's O'Hare branch from Logan Square into the Loop, to Jackson (the inset), in route order from the Loop
+const d13BlueSeq = lineSequences.lines.Blue[0];
+const d13BlueStairs = d13BlueSeq.slice(d13BlueSeq.indexOf(day13Data.stations.find((s) => s.short === 'Logan Square').id), d13BlueSeq.indexOf(day13Data.stations.find((s) => s.short === 'Jackson' && s.lines.includes('Blue')).id) + 1)
+  .map((id) => day13Data.stations.find((s) => s.id === id)).filter((s) => !s.ada).reverse().map((s) => s.short);
+const d13List = (a) => `${a.slice(0, -1).join(', ')} and ${a.at(-1)}`;
+const d13Lines = Object.entries(d13.lineDay).sort((a, b) => b[1] - a[1]);
+const d13Story = {
+  sections: [
+    ['Background', [
+      'Every day the ‘L’ and the ride-hail car carry people between the same places. A ride-hail trip copies the ‘L’ when it starts and ends near stations on one line, so a single train ride, with no change, could have made it. Chicago publishes every ride-hail trip with its census tracts, so the copies can be counted and laid on the track the train would have run.',
+      'Some of these trips are about comfort, luggage or a late night out. Some are about the train itself: it comes less often at night, and at some stations a rider who cannot take the stairs cannot board it at all.',
+      'The map shows a whole day. Hover or tap an hour in the chart to see that hour on the map. Bands are measured per 1,000 ride-hail trips, so a quiet hour and a busy hour compare.',
+    ]],
+    ['Findings', [
+      day13Data.finding,
+      `In September 2026, ${fmt(d13.tripsDay)} ride-hail trips a day carried both census tracts. About ${thousands(d13.copyDay)} of them (${pct(d13.copyShare)}) copied a one-seat ‘L’ ride. They averaged ${d13.milesCopy.toFixed(1)} miles, ${Math.round(d13.minsCopy)} minutes and about $${Math.round(d13.fareCopy)} in fare: about $${thousands(d13.farePaid)} a day for rides the train would carry for about $${thousands(d13.fareTrain)}.`,
+      `The Red Line carries ${share(d13.lineDay.Red / d13.copyDay)} of the copies, about ${thousands(d13.lineDay.Red)} a day. The ${d13Lines[1][0]} and ${d13Lines[2][0]} lines follow with about ${d13Hundreds(d13Lines[1][1])} and ${d13Hundreds(d13Lines[2][1])}.`,
+      `At midday about one ride-hail trip in five copies the ‘L’ (${pct(d13.midShare)}). From the evening the share climbs, and between 1 and 3 a.m. it is ${share(d13.nightShare) === 'one in three' ? 'a third' : share(d13.nightShare)}, when ${Math.round(d13H.trains[1])} and then ${Math.round(d13H.trains[2])} trains an hour leave their first stop (${Math.round(d13H.trains[d13PeakTrains])} at ${d13Hour(d13PeakTrains)}). The Red and Blue lines run all night, yet the car copies them most when they run least.`,
+      `For ${pct(d13.stairsShare)} of the copies, the train ride needs stairs: no accessible station on the line is within half a mile of one end. Of those, ${share(d13.blueStairsOfAll)} are on the Blue Line, where ${pct(d13.lineStairs.Blue)} of the copies need the stairs. From the Loop to Logan Square (the inset), ${d13List(d13BlueStairs)} are non-accessible.`,
+    ], true],
+    ['What the map cannot see', [
+      'Who rode. The data has no riders, so it cannot say whether a car trip was taken by someone who cannot use the stairs. It says only which train ride existed. The City publishes no count of wheelchair-accessible ride-hail trips.',
+      `Withheld tracts. ${pct(1 - d13.knownShare)} of the month’s ${fmt(d13.tripsAll)} trips have a census tract withheld for privacy and are left out, more of them at night. A tract is larger than a station’s reach, so each trip counts by the share of its tracts’ residents within half a mile of the stations.`,
+      `The half-mile edge. The test draws a straight half mile. Give accessible stations a little more, ${d13.stairsWide.reachMi} mile, and the copies that need stairs fall from ${pct(d13.stairsShare)} to ${pct(d13.stairsWide.share)}, and on the Blue Line from ${pct(d13.lineStairs.Blue)} to ${pct(d13.stairsWide.byLine.Blue)}. The Blue Line still holds most of them.`,
+      `A train ride, not a faster one. A copy is a trip the train could have made: the test leaves out the walk to the station, the wait and the reasons people choose a car. Trips that need two lines are not counted. Counting only rides of two stops or more, ${pct(d13.twoStopsShare)} of trips copy the ‘L’.`,
+    ]],
+  ],
+};
+d13Story.findings = d13Story.sections[1][1];
+
 export const plates = {
   1: {
     file: 'day01-the-doors',
@@ -874,6 +911,35 @@ export const plates = {
       csv([
         ['ward_2015_2023', 'residents', 'difficulty_walking_est', 'menu_total_2019_2022', 'sidewalks', 'crossings', 'streets_alleys', 'lights_signals', 'cameras', 'other', 'share_sidewalks_crossings', 'sr311_sidewalk_filed_2019_2022', 'sr311_open_now', 'sr311_open_3y_plus', 'median_days_to_close', 'shared_cost_applications_2019_2022'],
         ...day12Data.wards.map((w) => [w.ward, w.pop, w.amb, w.total, w.sidewalks, w.crossings, w.streets, w.lights, w.cameras, w.other, w.share, w.filed, w.open, w.open3, w.closeDays, w.shared]),
+      ]),
+  },
+  13: {
+    file: 'day13-car-or-train',
+    render: (o) => renderDay13({ ...day13Data, findings: d13Story.findings.slice(3, 5), boundary: cityBoundary.rings }, o), // the headline is the plate's finding note
+    subtitle: 'Where one ‘L’ ride could make the trip, how often does Chicago take a car instead, and when?',
+    finding: day13Data.finding,
+    story: d13Story,
+    ledger: [
+      ['Trips', `City of Chicago, Transportation Network Providers – Trips (2025–): every ride-hail trip in September 2026 that carries both census tracts, ${fmt(d13.tripsKnown)} of ${fmt(d13.tripsAll)}, grouped by pickup tract, drop-off tract and the hour it started. Fares rounded to $2.50 by the City; tips and charges not included.`, day13Data.sources.tnp],
+      ['Copy', `A trip copies the ‘L’ when both tracts have residents within ${d13.reachMi} mile (straight line) of stations on one line, the stations different. It counts by the share of the pickup tract’s residents near one station times the drop-off tract’s near the other (2020 Census blocks), for the best pair, and is laid on the track between them, drawn on CTA’s GTFS rail shapes.`],
+      ['Stairs', 'The same test with accessible stations only. The part of a copy it cannot match needs stairs. Accessible: the City’s flag, with Racine (Blue) and Austin (Green) counted accessible after their reopenings (as Plate VIII).', day13Data.sources.stops],
+      ['Trains', `CTA GTFS, feed of ${day13Data.gtfsDate}: ‘L’ trains leaving their first stop in each hour, averaged over a week (five weekdays, Saturday, Sunday).`, day13Data.sources.gtfs],
+      ['Fare', `CTA fares: $${d13.fare.toFixed(2)} for an ‘L’ ride (the O’Hare surcharge is left out).`, day13Data.sources.fares],
+      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
+    ],
+    page: {
+      chart: { title: D13_CHART_TITLE, note: 'Line: share of ride-hail trips that copy a one-seat ‘L’ ride · Bars: ‘L’ trains leaving their first stop.' },
+      inset: { title: `Inset · ${D13_INSET}`, note: `Blue Line bands only, ×${D13_INSET_BANDS} their width on the map; the other lines as track.` },
+    },
+    csv: () =>
+      csv([
+        ['line', 'from_station', 'to_station', 'copies_per_day', 'needs_stairs_per_day', ...day13Data.hours.trips.map((_, h) => `copies_h${String(h).padStart(2, '0')}`)],
+        ...day13Data.edges.map((e) => {
+          const name = (id) => day13Data.stations.find((s) => s.id === id).short;
+          const t = (a) => Math.round(a.reduce((x, v) => x + v, 0) * 10) / 10;
+          return [e.line, name(e.a), name(e.b), t(e.h), t(e.s), ...e.h];
+        }),
       ]),
   },
 };
