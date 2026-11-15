@@ -436,7 +436,7 @@ const d12Story = {
     ['Background', [
       `The CTA runs the trains and the buses. The block between a rider’s front door and the stop belongs to the city, and in Chicago much of what gets fixed on it is chosen ward by ward. Each of the 50 aldermen gets the same sum of “menu” money every year (${d12M(d12.alloc['2019'])} in 2019, ${d12M(d12.alloc['2021'])} from 2021) and picks which streets, alleys, lights and sidewalks in the ward it pays for.`,
       `This plate maps those choices from ${d12.years[0]} to ${d12.years[1]}, the last four full years on one ward map. Each ward is shaded by the share of its menu money that went to sidewalks and crossings.`,
-      'Residents have two other ways to get a sidewalk fixed: a 311 request for an inspection, or an application to the Shared Cost Sidewalk Program, in which the owner pays part of the repair. The Complaint and Wallet chart plots the two against each other, each ward a dot. Wards and Choices shows the ten wards at each end here, and all fifty on the plate. Hover a ward on the map, a row or a dot for its numbers; the same ward lights up in all three.',
+      'Residents have two other ways to get a sidewalk fixed: a 311 request for an inspection, or an application to the Shared Cost Sidewalk Program, in which the owner pays part of the repair. The Complaint and Wallet chart plots the two against each other, each ward a dot. Wards and Choices shows the ten wards at each end; every ward is on the map, with its numbers in the tooltip. Hover a ward on the map, a row or a dot for its numbers; the same ward lights up in all three.',
     ]],
     ['Findings', [
       day12Data.finding,

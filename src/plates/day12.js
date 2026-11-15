@@ -13,7 +13,7 @@ import { gridLines, formatAddress, toMiles } from '../lib/grid.js';
 // teal on the map and on the chart's sidewalk bars, Stevens' purple-gold in the scatter.
 export const W_COL = 300;
 export const CHART_TITLE = 'Wards and Choices';
-export const CHART_NOTE = 'Each ward’s menu money, 2019–22, as one bar, sorted by the share on sidewalks and crossings · Right: per 1,000 residents, 311 sidewalk requests ● and shared-cost applications ○';
+export const CHART_NOTE = 'The ten wards at each end of the share of menu money, 2019–22, spent on sidewalks and crossings · per 1,000 residents: ● 311 requests, ○ shared-cost applications';
 export const INSET_TITLE = 'Complaint and Wallet';
 // the map's seven classes of menu share (breaks in plate.json: 2, 5, 7, 10, 15, 20%), light to dark
 export const MAP_TONES = ['#E4E2DC', '#CFCDC6', '#B6B4AD', '#9A9891', '#7C7A74', '#5A5954', '#3A3936'];
@@ -211,14 +211,17 @@ export function renderDay12(data, { mode = 'gray', variant = 'plate', palette, c
     // page chart options: width, row, font, cats ('two' | 'three' | 'all'), dots, top (N wards each end)
     // the page chart (chosen 2026-11-14, option B of .private/day12-middle-study): drawn 1:1 in the 259 px
     // column at 10 px, the 10 wards that spent most and the 10 that spent least (user), two spending groups with the
-    // sidewalk share printed, the dots kept. The plate keeps all 50 rows, also in the two groups.
-    const co = isChart ? { width: 253, row: 14, font: 10, cats: 'two', dots: true, top: 10, ...chartOpts } : { cats: 'two', dots: true, top: 0 };
-    const cw = isChart ? co.width : W_COL;
-    const row = isChart ? co.row : 6.8;
-    const cs = isChart ? co.font : 6;
-    const numW = isChart ? Math.round(cs * 1.9) : 12;
+    // sidewalk share printed, the dots kept. The plate (export) uses the same design (user, 2026-11-14),
+    // sized for its 300-wide margin column.
+    const co = isChart
+      ? { width: 253, row: 14, font: 10, cats: 'two', dots: true, top: 10, ...chartOpts }
+      : { width: W_COL, row: 12, font: 8.5, cats: 'two', dots: true, top: 10 };
+    const cw = co.width;
+    const row = co.row;
+    const cs = co.font;
+    const numW = Math.round(cs * 1.9);
     const barX = mx + numW + 4;
-    const barW = isChart ? (co.dots ? Math.round((cw - numW) * 0.52) : cw - numW - 6) : 160;
+    const barW = co.dots ? Math.round((cw - numW) * 0.52) : cw - numW - 6;
     const dotX0 = barX + barW + 12, dotX1 = mx + cw - 2;
     // spending groups (user, 2026-11-14: two, 'Sidewalks + crossings' and 'Others' in the streets' gray);
     // 'three' and 'all' kept for studies
@@ -264,7 +267,7 @@ export function renderDay12(data, { mode = 'gray', variant = 'plate', palette, c
         if (ww > 0.05) out.push(`<rect x="${x.toFixed(2)}" y="${(uy + row * 0.14).toFixed(2)}" width="${ww.toFixed(2)}" height="${(row * 0.72).toFixed(2)}" fill="${co.cats !== 'all' ? fill3[c] : catFill(c)}"/>`);
         x += ww;
       }
-      if (co.cats !== 'all' && isChart) out.push(text(barX + barW * (catVal(w, 'walk') / w.total) + 3, cy + cs * 0.34, pct(w.share), { size: cs * 0.92, fill: C.ink, weight: 500 }));
+      if (co.cats !== 'all') out.push(text(barX + barW * (catVal(w, 'walk') / w.total) + 3, cy + cs * 0.34, pct(w.share), { size: cs * 0.92, fill: C.ink, weight: 500 }));
       if (!co.dots) { if (hooks) out.push('</g>'); uy += row; continue; }
       const a = dx(w.filed1k), b = dx(w.shared1k), r = row * 0.3;
       // colour mode: the row behind the dots takes the ward's colour in the scatter (its bivariate
@@ -279,11 +282,11 @@ export function renderDay12(data, { mode = 'gray', variant = 'plate', palette, c
     // key for the bar
     uy += 6;
     let kx = mx;
-    const ks = isChart ? cs : 7;
+    const ks = cs;
     CATS_USED.forEach((c, i) => {
       const lab = co.cats !== 'all' ? lab3[c] : CAT_LABEL[c];
       const kw = 11 + textWidth(lab, ks) + (isChart ? 10 : 6);
-      if (isChart && kx > mx && kx + kw > mx + cw) { kx = mx; uy += ks + 5; } // wrap the key to the width
+      if (kx > mx && kx + kw > mx + cw) { kx = mx; uy += ks + 5; } // wrap the key to the width
       out.push(`<rect x="${kx}" y="${uy}" width="8" height="6" fill="${co.cats !== 'all' ? fill3[c] : catFill(c)}"${c === 'other' ? ` stroke="${C.frame}" stroke-width="0.5"` : ''}/>`);
       out.push(text(kx + 11, uy + 6, lab, { size: ks, fill: C.pencil }));
       kx += kw;
@@ -309,11 +312,11 @@ export function renderDay12(data, { mode = 'gray', variant = 'plate', palette, c
   }
   const io = { width: 259, height: 250, font: 11, ...insetOpts }; // the page scatter: 1:1 in the 259 px column
   const iw = isInset ? io.width : W_COL;
-  const fs = isInset ? io.font : 7.5;
-  const padL = isInset ? Math.round(io.font * 3.3) : 24, padB = isInset ? 34 : 28;
+  const fs = isInset ? io.font : 8.5; // the plate's scatter: the page's design at the plate's text size
+  const padL = Math.round(fs * 3.3), padB = isInset ? 34 : 28;
   const top0 = isInset ? 8 : ty + noteH + 18;
   const x0 = (isInset ? 0 : mx) + padL, x1 = (isInset ? 0 : mx) + iw - 4;
-  const ph = isInset ? io.height : 190;
+  const ph = isInset ? io.height : 235;
   const y1 = top0, y0 = top0 + ph; // y0 = the axis at the bottom
   const XMAX = 32, YMAX = 14;
   const sq = isInset && io.scale === 'sqrt'; // page option: square-root axes spread the crowded low corner
@@ -335,7 +338,7 @@ export function renderDay12(data, { mode = 'gray', variant = 'plate', palette, c
   out.push(text(x1, y0 + 2 * fs + 7, '311 SIDEWALK REQUESTS PER 1,000', { size: fs * 0.9, anchor: 'end', spacing: 0.3, weight: 600 }));
   const yt = x0 - padL + fs * 0.8;
   out.push(text(yt, y1, 'SHARED-COST APPLICATIONS PER 1,000', { size: fs * 0.9, anchor: 'end', spacing: 0.3, weight: 600, rotate: -90 }));
-  const r = isInset ? io.font * 0.47 : 3;
+  const r = fs * 0.47;
   const named = new Set([...summary.low, summary.top.ward, [...wards].sort((a, b) => b.filed1k - a.filed1k)[0].ward]);
   for (const w of [...wards].sort((a, b) => a.filed1k - b.filed1k)) {
     const cx = SX(Math.min(w.filed1k, XMAX)), cy = SY(Math.min(w.shared1k, YMAX));
