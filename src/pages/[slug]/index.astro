@@ -79,8 +79,10 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
       </div>
       <div class="inset">
         <p class="col-title sans">{p.page.inset.title}</p>
-        <p class="col-note">Shown at <span data-inset-scale>×2</span> the scale of the main map.</p>
-        <div class="inset-box">
+        {p.page.inset.note
+          ? <p class="col-note">{p.page.inset.note}</p>
+          : <p class="col-note">Shown at <span data-inset-scale>×2</span> the scale of the main map.</p>}
+        <div class:list={['inset-box', { bare: p.page.inset.frame === false }]}>
           <div class="only-gray" set:html={insets.gray} />
           <div class="only-color" set:html={insets.color} />
         </div>
@@ -141,6 +143,11 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   //   [data-kind=cluster][data-rank][data-ca][data-total][data-walk][data-bike][data-kw][data-kb][data-colors: 'gray four | color four']
   //        tooltip for a cluster (Plate IV): number box, name and area, total, a walking / biking bar
   //        with the deaths as dots under their part of it, the counts, then the detail rows
+  //   [data-kind=sheet][data-sheet: JSON {num, name, sub, fill, on, blocks}]
+  //        a structured tooltip (Plate XII): a header shaded in the item's map colour (fill, text in
+  //        on) with a number box as Plate IV's; then blocks: {sec} small-caps section, {bar: [[frac,
+  //        colour|'hatch'], ...]} a 100% bar, {row: [label, value, note?]} right-aligned figures,
+  //        {foot} a closing line in pencil
   //   [data-hl] (chart row) / [data-keys] (station, label)  highlight one line set, fade the rest
   // Highlighting spans every page SVG, so a line row in the chart lights its stations on the map.
   const cols = document.querySelector<HTMLElement>('.cols');
@@ -326,6 +333,7 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
       tip.style.transform = `translate(${x}px, ${y}px)`;
     };
     const show = (g: HTMLElement, e: PointerEvent) => {
+      tip.classList.remove('sheet');
       const route = g.dataset.kind === 'route';
       const head = document.createElement('div');
       head.className = 'tt-head';
@@ -370,6 +378,45 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
         text.className = 'tt-detail';
         text.textContent = g.dataset.detail ?? '';
         tip.replaceChildren(head, sw, text);
+        tip.hidden = false;
+        move(e);
+        return;
+      }
+      if (g.dataset.kind === 'sheet') {
+        type Sheet = { num: string; name: string; sub?: string; fill: string; on: string; blocks: Record<string, any>[] };
+        let sh: Sheet;
+        try { sh = JSON.parse(g.dataset.sheet ?? ''); } catch { return; }
+        const el = (tag: string, cls: string, txt?: string) => { const n = document.createElement(tag); n.className = cls; if (txt != null) n.textContent = txt; return n; };
+        const top = el('div', 'tt-sh-head');
+        Object.assign(top.style, { background: sh.fill, color: sh.on });
+        top.append(el('span', 'tt-num', sh.num), el('strong', '', sh.name));
+        if (sh.sub) { const s = el('span', 'tt-sh-sub', sh.sub); s.style.color = sh.on; top.append(s); }
+        const kids: HTMLElement[] = [top];
+        for (const b of sh.blocks) {
+          if (b.sec) kids.push(el('div', 'tt-sh-sec', b.sec));
+          else if (b.foot) kids.push(el('div', 'tt-sh-foot', b.foot));
+          else if (b.row) {
+            const [label, value, note] = b.row as string[];
+            const r = el('div', 'tt-sh-row');
+            const v = el('span', 'tt-sh-val');
+            v.append(el('b', '', value));
+            if (note) v.append(el('i', '', ` ${note}`));
+            r.append(el('span', '', label), v);
+            kids.push(r);
+          } else if (b.bar) {
+            let x = 0;
+            const rects = (b.bar as [number, string][]).map(([f, c]) => {
+              const s = `<rect x="${(x * 240).toFixed(1)}" width="${(f * 240).toFixed(1)}" height="8" fill="${c === 'hatch' ? 'url(#tt-hatch)' : c}"/>`;
+              x += f;
+              return s;
+            }).join('');
+            const bar = el('div', 'tt-sh-bar');
+            bar.innerHTML = `<svg viewBox="0 0 240 8" preserveAspectRatio="none" aria-hidden="true"><defs><pattern id="tt-hatch" width="2.4" height="2.4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2.4" height="2.4" fill="#F1F0EC"/><line x1="0" y1="0" x2="0" y2="2.4" stroke="#232323" stroke-width="0.7"/></pattern></defs>${rects}</svg>`;
+            kids.push(bar);
+          }
+        }
+        tip.replaceChildren(...kids);
+        tip.classList.add('sheet');
         tip.hidden = false;
         move(e);
         return;
@@ -497,6 +544,7 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   .side .chart :global(svg) { height: auto; }
   .inset { flex: 1; min-height: 0; display: flex; flex-direction: column; padding-top: 10px; }
   .inset-box { flex: 1; min-height: 0; border: 1px solid var(--ink); overflow: hidden; position: relative; }
+  .inset-box.bare { border: 0; } /* a chart, not an inset of the map (registry page.inset.frame: false; Plate XII) */
   .inset-box > div { position: absolute; inset: 0; }
   .inset-box :global(svg) { overflow: hidden; }
 
@@ -531,6 +579,17 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   .tip :global(.tt-sep svg) { display: block; width: 100%; height: 9px; }
   .tip :global(strong) { font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
   .tip :global(.tt-lines) { display: flex; flex-wrap: wrap; gap: 4px; }
+  /* sheet tooltip (Plate XII): header shaded in the item's map colour, small-caps sections, right-aligned figures */
+  .tip:global(.sheet) { width: 262px; max-width: 262px; padding: 0 11px 8px; gap: 0; }
+  .tip :global(.tt-sh-head) { display: flex; align-items: center; gap: 7px; margin: 0 -11px 2px; padding: 7px 11px; }
+  .tip :global(.tt-sh-head .tt-num) { color: var(--ink); }
+  .tip :global(.tt-sh-sub) { font-size: 10.5px; opacity: 0.85; }
+  .tip :global(.tt-sh-sec) { font-size: 9px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pencil); margin: 7px 0 2px; }
+  .tip :global(.tt-sh-row) { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; border-bottom: 1px dotted var(--rule); }
+  .tip :global(.tt-sh-val b) { font-weight: 600; }
+  .tip :global(.tt-sh-val i) { font-style: normal; font-size: 10px; color: var(--pencil); }
+  .tip :global(.tt-sh-bar svg) { display: block; width: 100%; height: 8px; margin: 2px 0 3px; }
+  .tip :global(.tt-sh-foot) { font-size: 10px; color: var(--pencil); margin-top: 6px; }
   /* cluster tooltip (Plate IV): number box as in the chart, area in pencil, bar with death dots */
   .tip :global(.tt-num) { display: inline-grid; place-items: center; min-width: 16px; height: 15px; padding: 0 3px; border-radius: 1.5px; background: var(--fog); font-size: 10px; font-weight: 600; }
   .tip :global(.tt-ca) { color: var(--pencil); }
