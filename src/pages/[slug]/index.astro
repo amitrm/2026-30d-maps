@@ -508,6 +508,43 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
       if (!hoverable(t)) highlight(null);
     });
   });
+
+  // States (Plate XIII): a renderer may draw several versions of its map as groups [data-state="key"],
+  // all but "all" hidden, and give a chart [data-state-host] controls [data-state-key="key"]. Hovering
+  // or tapping a control shows its state on every page SVG; leaving the chart (or blurring it) returns
+  // to "all". With the chart focused, the arrow keys step through the controls.
+  const hosts = [...document.querySelectorAll<SVGSVGElement>('[data-state-host]')];
+  if (hosts.length) {
+    const setState = (key: string) => {
+      cols?.querySelectorAll('[data-state]').forEach((g) => {
+        if (g.getAttribute('data-state') === key) g.removeAttribute('display');
+        else g.setAttribute('display', 'none');
+      });
+      cols?.querySelectorAll('[data-state-key]').forEach((c) => c.classList.toggle('on', c.getAttribute('data-state-key') === key));
+    };
+    for (const host of hosts) {
+      const controls = [...host.querySelectorAll('[data-state-key]')];
+      let at = -1;
+      host.addEventListener('pointerover', (e) => {
+        const c = (e.target as Element).closest('[data-state-key]');
+        if (!c) return;
+        at = controls.indexOf(c);
+        setState(c.getAttribute('data-state-key')!);
+      });
+      host.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch') setState('all'); });
+      host.addEventListener('blur', () => setState('all'));
+      host.addEventListener('keydown', (e) => {
+        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+        e.preventDefault();
+        at = (at + (e.key === 'ArrowRight' ? 1 : controls.length - 1) + (at < 0 && e.key === 'ArrowLeft' ? 1 : 0)) % controls.length;
+        setState(controls[at].getAttribute('data-state-key')!);
+      });
+    }
+    // touch keeps the last tapped hour until a tap outside every chart
+    document.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'touch' && !hosts.some((h) => h.contains(e.target as Node))) setState('all');
+    });
+  }
 </script>
 
 <style>
@@ -549,6 +586,7 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   .inset-box :global(svg) { overflow: hidden; }
 
   .viz :global([data-tip]), .viz :global([data-hl]) { cursor: pointer; }
+  .viz :global(svg[data-state-host]:focus-visible) { outline: 1px solid var(--ink); outline-offset: 4px; }
   /* the full-screen button, in the map's top-left corner, framed like the legend */
   .mapctl { position: absolute; left: 0; top: 0; z-index: 2; display: flex; background: var(--paper); border: 1px solid var(--frame); }
   .mapctl button { width: 28px; height: 28px; padding: 0; display: grid; place-items: center; border: 0; background: none; color: var(--ink); cursor: pointer; }
