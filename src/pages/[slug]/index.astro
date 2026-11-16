@@ -16,7 +16,7 @@ const p = plates[d.day];
 const both = (variant) => ({ gray: p.render({ variant }), color: p.render({ mode: 'color', variant }) });
 const maps = both('map');
 const charts = both('chart');
-const insets = both('inset');
+const insets = p.page.inset ? both('inset') : null; // a page without an inset gives the chart the whole column (Plate XIV)
 // Column widths, as multiples of the column height. On Plate I the map column is as wide as the map
 // draws at full height and the middle column as wide as the chart plus a ~330-unit inset would draw
 // at full height; the story takes the rest. Every page keeps Plate I's story width: its map column
@@ -71,12 +71,13 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
       </div>
     </figure>
     <figure class="viz side">
-      <div class="chart">
+      <div class:list={['chart', { fill: !insets }]}>
         <p class="col-title sans">{p.page.chart.title}</p>
         <p class="col-note">{p.page.chart.note}{p.page.chart.colorNote && <span class="only-color">{p.page.chart.colorNote}</span>}</p>
         <div class="only-gray" set:html={charts.gray} />
         <div class="only-color" set:html={charts.color} />
       </div>
+      {insets && (
       <div class="inset">
         <p class="col-title sans">{p.page.inset.title}</p>
         {p.page.inset.note
@@ -87,6 +88,7 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
           <div class="only-color" set:html={insets.color} />
         </div>
       </div>
+      )}
       <div class="tip" role="tooltip" hidden></div>
     </figure>
 
@@ -135,7 +137,8 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   //        made accessible, ring with a dot or dashed ring (Plate VIII); tile, a square mile as nested
 //        squares sized by data-size and data-frac, and none, no mark (Plate IX); glyph, a block's
   //        overprinted characters, data-glyph, on its color-mode fill, data-fill (Plate X); rings, a
-  //        station's sound rings, data-n of them (Plate XI)
+  //        station's sound rings, data-n of them (Plate XI); label, a crowd label's mark, data-type and
+  //        data-fill (Plate XIV)
   //   [data-kind=route][data-detail][data-sep][data-dash][data-gray][data-color][data-on-color]
   //        tooltip for a route: route box and name, a rule data-sep px thick, one sentence
   //   [data-kind=street][data-detail][data-band][data-line: 'gray|color' colors, empty for none]
@@ -148,6 +151,11 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   //        on) with a number box as Plate IV's; then blocks: {sec} small-caps section, {bar: [[frac,
   //        colour|'hatch'], ...]} a 100% bar, {row: [label, value, note?]} right-aligned figures,
   //        {foot} a closing line in pencil
+  //   [data-kind=card][data-card: JSON {name, aside?, mark?: {type, fill}, big?: [value, text],
+  //        bar?: {frac, segs: [[from, to, fill]], left, right}, sev?: [level, of], chips?: [..],
+  //        sec?, counts?: [{type, fill, n, label}], foot?: [left, right]}]
+  //        a compact card (Plate XIV): one number and a filled bar in the map's own shades, label
+  //        marks with counts, severity pips, tags, a status footer
   //   [data-hl] (chart row) / [data-keys] (station, label)  highlight one line set, fade the rest
   // Highlighting spans every page SVG, so a line row in the chart lights its stations on the map.
   const cols = document.querySelector<HTMLElement>('.cols');
@@ -279,6 +287,16 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   // or ink for stations on two or more lines.
   const lineColors: Record<string, string> = JSON.parse(cols?.dataset.lineColors ?? '{}');
   const isColor = () => document.documentElement.dataset.mode === 'color';
+  // Plate XIV's label marks: ring curb ramp, dot obstacle, cross missing curb ramp, diamond surface
+  // problem, bar no sidewalk
+  const labelGlyph = (t: string, c: string) => {
+    const g = t === 'CurbRamp' ? `<circle cx="5" cy="5" r="3.3" fill="none" stroke="${c}" stroke-width="1.3"/>`
+      : t === 'Obstacle' ? `<circle cx="5" cy="5" r="3.2" fill="${c}"/>`
+      : t === 'NoCurbRamp' ? `<path d="M1.6,1.6L8.4,8.4M1.6,8.4L8.4,1.6" stroke="${c}" stroke-width="1.8"/>`
+      : t === 'SurfaceProblem' ? `<path d="M5,1L9,5L5,9L1,5Z" fill="#fff" stroke="${c}" stroke-width="1.4"/>`
+      : `<rect x="1" y="3.6" width="8" height="2.8" fill="${c}"/>`;
+    return `<svg viewBox="0 0 10 10" aria-hidden="true">${g}</svg>`;
+  };
   const mark = (ada: boolean, lines: string[], shape?: string, ds: DOMStringMap = {}) => {
     const color = isColor();
     const c = color && lines.length === 1 ? lineColors[lines[0]] ?? '#232323' : color ? '#232323' : '#5A5853'; // grayscale marks are softened
@@ -313,6 +331,12 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
       const centre = ada ? `<circle cx="9" cy="9" r="3.4" fill="${c}"/>` : `<circle cx="9" cy="9" r="3" fill="#F1F0EC" stroke="${c}" stroke-width="1.2"/>`;
       return `<svg viewBox="0 0 18 18" style="width:16px;height:16px" aria-hidden="true">${rings}${centre}</svg>`;
     }
+    // Plate XIV: a crowd label, drawn as on the map: ring curb ramp, dot obstacle, cross missing curb
+    // ramp, diamond surface problem, bar no sidewalk (data-type); its colour (data-fill) in color mode
+    if (shape === 'label') {
+      const t = ds.type ?? '';
+      return labelGlyph(t, color ? ds.fill ?? '#232323' : t === 'CurbRamp' ? '#77756F' : '#232323');
+    }
     if (shape === 'square')
       return ada
         ? `<svg viewBox="0 0 10 10" aria-hidden="true"><rect x="1.5" y="1.5" width="7" height="7" fill="${c}"/></svg>`
@@ -333,7 +357,7 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
       tip.style.transform = `translate(${x}px, ${y}px)`;
     };
     const show = (g: HTMLElement, e: PointerEvent) => {
-      tip.classList.remove('sheet');
+      tip.classList.remove('sheet', 'card');
       const route = g.dataset.kind === 'route';
       const head = document.createElement('div');
       head.className = 'tt-head';
@@ -378,6 +402,57 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
         text.className = 'tt-detail';
         text.textContent = g.dataset.detail ?? '';
         tip.replaceChildren(head, sw, text);
+        tip.hidden = false;
+        move(e);
+        return;
+      }
+      if (g.dataset.kind === 'card') {
+        type Card = { name: string; aside?: string; mark?: { type: string; fill: string }; big?: [string, string];
+          bar?: { frac: number; segs: [number, number, string][]; left?: string; right?: string }; sev?: [number, number];
+          chips?: string[]; sec?: string; counts?: { type: string; fill: string; n: string; label: string }[]; foot?: [string, string] };
+        let cd: Card;
+        try { cd = JSON.parse(g.dataset.card ?? ''); } catch { return; }
+        const el = (tag: string, cls: string, txt?: string) => { const n = document.createElement(tag); n.className = cls; if (txt != null) n.textContent = txt; return n; };
+        const kids: HTMLElement[] = [];
+        const head = el('div', 'tt-head');
+        if (cd.mark) head.innerHTML = labelGlyph(cd.mark.type, cd.mark.fill);
+        head.append(el('strong', '', cd.name));
+        if (cd.aside) head.append(el('span', 'tt-aside', cd.aside));
+        kids.push(head);
+        if (cd.big) { const b = el('div', 'tt-big'); b.append(el('b', '', cd.big[0]), el('span', '', cd.big[1])); kids.push(b); }
+        if (cd.bar) {
+          // filled to frac in the map's class shades; the rest open, framed; an ink tick at the value
+          const W = 236, f = Math.max(0, Math.min(1, cd.bar.frac));
+          const rects = cd.bar.segs.filter(([a]) => a < f).map(([a, b, c]) => `<rect x="${(a * W).toFixed(1)}" width="${((Math.min(b, f) - a) * W).toFixed(1)}" height="9" fill="${c}"/>`).join('');
+          const bar = el('div', 'tt-cbar');
+          bar.innerHTML = `<svg viewBox="0 0 ${W} 9" preserveAspectRatio="none" aria-hidden="true"><rect x="0.5" y="0.5" width="${W - 1}" height="8" fill="#fff" stroke="#CFCDC7"/>${rects}<line x1="${(f * W).toFixed(1)}" x2="${(f * W).toFixed(1)}" y1="0" y2="9" stroke="#232323" stroke-width="1.2"/></svg>`;
+          const lr = el('div', '');
+          lr.append(el('span', '', cd.bar.left ?? ''), el('span', '', cd.bar.right ?? ''));
+          bar.append(lr);
+          kids.push(bar);
+        }
+        if (cd.sev) {
+          const r = el('div', 'tt-sev');
+          const pips = el('span', 'tt-pips');
+          pips.innerHTML = Array.from({ length: cd.sev[1] }, (_, i) => `<i${i < cd.sev![0] ? '' : ' class="o"'}></i>`).join('');
+          r.append(el('span', 'tt-cap', 'Severity'), pips, el('span', 'tt-detail', `${cd.sev[0]} of ${cd.sev[1]}`));
+          kids.push(r);
+        }
+        if (cd.chips?.length) { const c = el('div', 'tt-chips'); cd.chips.forEach((t) => c.append(el('span', '', t))); kids.push(c); }
+        if (cd.sec) kids.push(el('div', 'tt-cap', cd.sec));
+        if (cd.counts?.length) {
+          const c = el('div', 'tt-counts');
+          for (const k of cd.counts) {
+            const d = el('div', '');
+            d.innerHTML = labelGlyph(k.type, k.fill);
+            d.append(el('b', '', k.n), el('span', '', k.label));
+            c.append(d);
+          }
+          kids.push(c);
+        }
+        if (cd.foot) { const f = el('div', 'tt-foot'); f.append(el('span', '', cd.foot[0]), el('span', '', cd.foot[1])); kids.push(f); }
+        tip.replaceChildren(...kids);
+        tip.classList.add('card');
         tip.hidden = false;
         move(e);
         return;
@@ -579,6 +654,10 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   .side { padding: 12px 24px 12px 20px; border-right: 1px solid var(--rule); display: flex; flex-direction: column; }
   .side .chart { flex: none; }
   .side .chart :global(svg) { height: auto; }
+  /* no inset (Plate XIV): the chart takes the column's height, drawn to fit it */
+  .side .chart.fill { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .side .chart.fill > div { flex: 1; min-height: 0; position: relative; }
+  .side .chart.fill :global(svg) { position: absolute; inset: 0; width: 100%; height: 100%; }
   .inset { flex: 1; min-height: 0; display: flex; flex-direction: column; padding-top: 10px; }
   .inset-box { flex: 1; min-height: 0; border: 1px solid var(--ink); overflow: hidden; position: relative; }
   .inset-box.bare { border: 0; } /* a chart, not an inset of the map (registry page.inset.frame: false; Plate XII) */
@@ -628,6 +707,28 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   .tip :global(.tt-sh-val i) { font-style: normal; font-size: 10px; color: var(--pencil); }
   .tip :global(.tt-sh-bar svg) { display: block; width: 100%; height: 8px; margin: 2px 0 3px; }
   .tip :global(.tt-sh-foot) { font-size: 10px; color: var(--pencil); margin-top: 6px; }
+  /* card tooltip (Plate XIV): one big number, a filled bar in the map's shades, mark counts, severity pips */
+  .tip:global(.card) { width: 254px; max-width: 254px; gap: 6px; }
+  .tip :global(.tt-aside) { margin-left: auto; font-size: 10.5px; color: var(--pencil); }
+  .tip :global(.tt-big) { display: flex; align-items: baseline; gap: 7px; }
+  .tip :global(.tt-big b) { font-size: 22px; font-weight: 500; line-height: 1; }
+  .tip :global(.tt-big span) { font-size: 10.5px; color: var(--pencil); }
+  .tip :global(.tt-cbar svg) { display: block; width: 100%; height: 9px; }
+  .tip :global(.tt-cbar div) { display: flex; justify-content: space-between; font-size: 10px; color: var(--pencil); margin-top: 2px; }
+  .tip :global(.tt-cap) { font-size: 9px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pencil); }
+  .tip :global(.tt-counts) { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; }
+  .tip :global(.tt-counts div) { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .tip :global(.tt-counts svg) { width: 10px; height: 10px; }
+  .tip :global(.tt-counts b) { font-weight: 500; }
+  .tip :global(.tt-counts span) { font-size: 9px; color: var(--pencil); }
+  .tip :global(.tt-sev) { display: flex; align-items: center; gap: 6px; }
+  .tip :global(.tt-sev .tt-cap) { width: 50px; }
+  .tip :global(.tt-pips) { display: inline-flex; gap: 2px; }
+  .tip :global(.tt-pips i) { width: 9px; height: 5px; background: var(--ink); }
+  .tip :global(.tt-pips i.o) { background: var(--rule); }
+  .tip :global(.tt-chips) { display: flex; flex-wrap: wrap; gap: 4px; }
+  .tip :global(.tt-chips span) { padding: 1px 5px; border-radius: 1.5px; background: var(--rule); color: #5a5853; font-size: 10px; font-weight: 500; }
+  .tip :global(.tt-foot) { display: flex; justify-content: space-between; font-size: 10px; color: var(--pencil); border-top: 1px dotted var(--rule); padding-top: 4px; }
   /* cluster tooltip (Plate IV): number box as in the chart, area in pencil, bar with death dots */
   .tip :global(.tt-num) { display: inline-grid; place-items: center; min-width: 16px; height: 15px; padding: 0 3px; border-radius: 1.5px; background: var(--fog); font-size: 10px; font-weight: 600; }
   .tip :global(.tt-ca) { color: var(--pencil); }
@@ -684,6 +785,8 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
     .side { padding: 12px 0; }
     .viz :global(svg) { height: auto; }
     .inset-box { flex: none; aspect-ratio: 4 / 3; }
+    .side .chart.fill > div { flex: none; position: static; }
+    .side .chart.fill :global(svg) { position: static; height: auto; }
     .inset-box :global(svg) { height: 100%; }
     .panel { overflow: visible; padding: 18px 0 24px; }
     h1 { font-size: 36px; }
