@@ -43,6 +43,8 @@ import day13Data from '../../days/day13-interactions/output/plate.json';
 import { renderDay13, CHART_TITLE as D13_CHART_TITLE, INSET_TITLE as D13_INSET, hourName as d13Hour, hundreds as d13Hundreds, INSET_BANDS as D13_INSET_BANDS } from './day13.js';
 import day14Data from '../../days/day14-borgesian/output/plate.json';
 import { renderDay14, CHART_TITLE as D14_CHART_TITLE } from './day14.js';
+import day15Data from '../../days/day15-inside-out/output/plate.json';
+import { renderDay15, CHART_TITLE as D15_CHART_TITLE, CHART_NOTE as D15_CHART_NOTE, dayLong as d15Day } from './day15.js';
 import { renderDay07, CHART_NOTE as D7_CHART_NOTE, chartTitle as d7ChartTitle, insetTitle as d7InsetTitle, clock as d7Clock, dayLong as d7Day, hundreds as d7Hundreds, sortOutages as d7Sort } from './day07.js';
 
 const csv = (rows) =>
@@ -570,6 +572,24 @@ const d14Story = {
 };
 d14Story.findings = d14Story.sections[1][1];
 
+const d15 = day15Data.summary;
+const d15Min = (v) => Math.round(v);
+const d15Story = {
+  background: [
+    'Chicago’s address grid promises equal distance: 800 numbers to the mile, in every direction. Buses and trains do not keep that promise. This plate measures the city from 130th Street on the far South Side, where the Red Line Extension will end, in minutes by bus and train.',
+    'The main map shades every quarter mile by its travel time. The middle column turns the city inside out: each point keeps its direction from the start but sits as far out as its minutes. The minutes become circles and the square-mile grid bends. The same drawing from the Loop sits below, at the same scale. Hover a square for its times.',
+  ],
+  findings: [
+    day15Data.finding,
+    `The Loop is about ${Math.round(d15.startMiles)} miles from 130th Street, and ${d15Min(d15.startToLoop)} minutes. Northwestern Memorial Hospital, just north of it, is ${d15Min(d15.startToHosp)} minutes away. From the Loop, the hospital is ${d15Min(d15.loopToHosp)}.`,
+    `From 130th Street, half of Chicagoans are more than ${d15Min(d15.median.start)} minutes away. From the Loop, half are within ${d15Min(d15.median.loop)}.`,
+  ],
+  plan: [
+    'The Red Line Extension will carry the Red Line from 95th Street to 130th Street, with four new stations at 103rd Street, 111th Street, Michigan Avenue and 130th Street. It is due to open in 2030.',
+    'This plate maps today’s schedules, before the extension opens.',
+  ],
+};
+
 export const plates = {
   1: {
     file: 'day01-the-doors',
@@ -999,6 +1019,30 @@ export const plates = {
       csv([
         ['community_area', 'street_km', 'mapped_km', 'share_mapped', 'labels', 'confirmed_curb_ramps', 'confirmed_obstacles', 'confirmed_surface_problems', 'confirmed_missing_curb_ramps', 'confirmed_no_sidewalk'],
         ...d14Areas.map((a) => [a.name, a.km, a.mappedKm, a.share, a.labels, a.ramps, a.obstacles, a.surfaces, a.noRamp, a.noSidewalk]),
+      ]),
+  },
+  15: {
+    file: 'day15-from-the-end-of-the-line',
+    render: (o) => renderDay15({ ...day15Data, findings: d15Story.findings.slice(1), boundary: cityBoundary.rings }, o), // the headline is the plate's finding note
+    subtitle: `The grid puts 130th Street ${Math.round(d15.startMiles)} miles from the Loop. How far is it by bus and train?`,
+    finding: day15Data.finding,
+    story: d15Story,
+    ledger: [
+      ['Transit', `Bus and train schedules (GTFS) from CTA (${day15Data.feeds.cta.snapshot}), Metra (${day15Data.feeds.metra.snapshot}) and Pace (${day15Data.feeds.pace.snapshot}), for Tuesday ${d15Day(day15Data.serviceDay)}. Fares differ between the three and are not counted.`, [['CTA', day15Data.feeds.cta.url], ['Metra', day15Data.feeds.metra.url], ['Pace', day15Data.feeds.pace.url]]],
+      ['Minutes', `Door to door, leaving every five minutes from ${day15Data.departs[0]} to ${day15Data.departs[1]} a.m.; the travel time is the median of the 12 trips, waiting included. Earliest arrivals by connection scan. Walking: a straight line × ${day15Data.method.detour} at ${day15Data.method.walkMps} m/s, up to ¾ mile to a stop and ¼ mile between stops (plus a minute).`],
+      ['Start', 'The start is 130th Street on the Red Line Extension’s alignment as mapped in OpenStreetMap (railway=construction), the extension’s last station. The Loop is State & Madison. The hospital is Northwestern Memorial Hospital, 251 E Huron St.', day15Data.sources.rleFaq],
+      ['People', `2020 Census: ${fmt(d15.residents)} residents, each block at its internal point taking the minutes of the nearest quarter-mile point.`, day15Data.sources.census],
+      ['Drawing', 'Main map: every quarter mile of the grid, its minutes lightly smoothed (0.2 mile). Inside out: each point keeps its true direction from the start and sits as far out as its minutes, smoothed over about 0.4 mile; the rings are minutes. Hover squares (every half mile) show the unsmoothed minutes. Points with no stop within reach, on Lake Calumet, are left blank.'],
+      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
+    ],
+    page: {
+      chart: { title: D15_CHART_TITLE, note: D15_CHART_NOTE },
+    },
+    csv: () =>
+      csv([
+        ['x_miles_east', 'y_miles_north', 'minutes_from_130th_st', 'minutes_from_state_madison', 'miles_from_130th_st'],
+        ...day15Data.cells.map(([x, y, a, b]) => [x, y, a, b, Math.hypot(x - day15Data.points.start[0], y - day15Data.points.start[1]).toFixed(2)]),
       ]),
   },
 };
