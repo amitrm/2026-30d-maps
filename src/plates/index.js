@@ -11,7 +11,8 @@
 //                              value may be a list of [text, url] links
 //   csv()                      the plotted data, offered as a download
 //   page                       the day page's middle-column headings: chart { title, note, colorNote? },
-//                              inset { title } (the page appends the inset's scale)
+//                              inset { title } (the page appends the inset's scale); without
+//                              inset, the chart fills the middle column (Plate XIV)
 // Story numbers are computed from each plate's data below, never typed, so the text cannot drift.
 import cityBoundary from '../../reference/city-boundary.json';
 import lineSequences from '../../reference/cta-line-sequences.json';
@@ -40,6 +41,8 @@ import day12Data from '../../days/day12-power/output/plate.json';
 import { renderDay12, CHART_TITLE as D12_CHART_TITLE, CHART_NOTE as D12_CHART_NOTE, INSET_TITLE as D12_INSET } from './day12.js';
 import day13Data from '../../days/day13-interactions/output/plate.json';
 import { renderDay13, CHART_TITLE as D13_CHART_TITLE, INSET_TITLE as D13_INSET, hourName as d13Hour, hundreds as d13Hundreds, INSET_BANDS as D13_INSET_BANDS } from './day13.js';
+import day14Data from '../../days/day14-borgesian/output/plate.json';
+import { renderDay14, CHART_TITLE as D14_CHART_TITLE } from './day14.js';
 import { renderDay07, CHART_NOTE as D7_CHART_NOTE, chartTitle as d7ChartTitle, insetTitle as d7InsetTitle, clock as d7Clock, dayLong as d7Day, hundreds as d7Hundreds, sortOutages as d7Sort } from './day07.js';
 
 const csv = (rows) =>
@@ -535,6 +538,38 @@ const d13Story = {
 };
 d13Story.findings = d13Story.sections[1][1];
 
+// Day 14: every number below comes from days/day14-borgesian/output/plate.json.
+const d14 = day14Data.summary;
+const d14Areas = [...day14Data.areas].sort((a, b) => b.share - a.share);
+const d14Top = d14Areas.filter((a) => a.share >= 0.9).map((a) => a.name);
+const d14Low = d14Areas.filter((a) => a.share < 0.05).map((a) => a.name);
+const d14List = (a) => (a.length < 2 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a.at(-1)}`);
+const d14Mile = (t, sd) => d14.mile.counts[t]?.[sd] ?? 0;
+const d14Both = (t) => d14Mile(t, 'W') + d14Mile(t, 'E');
+const d14Full = [1, 2, 3].map((i) => d14.kmByYear[day14Data.asOf.slice(0, 4) - i] ?? 0);
+const d14Pace3 = d14Full.reduce((a, b) => a + b, 0) / 3;
+const d14Story = {
+  sections: [
+    ['Background', [
+      'In a story one paragraph long, Jorge Luis Borges imagines an empire whose cartographers draw a map the size of the empire, matching it point for point. Later generations find the map useless and leave it to sun and winter. Tattered pieces of it still lie in the western deserts.',
+      'A rider who uses a wheelchair needs a map close to that one. On Plate I, a filled dot says a station is accessible. The walk to it is a list of small things: a curb ramp or none, a pole in the middle of the sidewalk, a raised slab.',
+      `Project Sidewalk, from the University of Washington, asks volunteers to walk streets in street-level imagery and label what they see. Other users then check each label. This map draws every street the volunteers have walked as a thin dark line. Each community area is shaded by the share of its street length mapped, darker where more is done. Hover an area for its numbers.`,
+      'The chart reads one of those streets at the scale of the address grid: one mile of Cicero Avenue, from Madison at the bottom to Chicago Avenue at the top, 800 address numbers, every label at its number. Hover a mark for its label.',
+    ]],
+    ['Findings', [
+      day14Data.finding,
+      `The map is patchy. In ${d14.areasHalf} of the city’s ${d14.areas} community areas, more than half the street length is mapped. In ${d14.areasTenth}, less than a tenth is. ${d14List(d14Top)} are nearly complete; ${d14List(d14Low)} have under 5%.`,
+      `One mile of Cicero Avenue, from Madison Street to Chicago Avenue, has ${fmt(d14.mile.confirmed)} confirmed labels. ${share(d14Mile('Obstacle', 'W') / d14Both('Obstacle')).replace(/^./, (c) => c.toUpperCase())} of its ${d14Both('Obstacle')} confirmed obstacles stand on the west sidewalk, and ${d14Mile('NoCurbRamp', 'E')} of its ${d14Both('NoCurbRamp')} missing curb ramps are on the east side.`,
+    ], true],
+    ['What the map cannot see', [
+      `The picture, not the street. Volunteers label images, and half of those images were more than ${d14.imageAge.toFixed(0)} years old when the labels were placed. A ramp built since then, or a slab repaired, does not appear.`,
+      `Checked, not certain. ${fmt(d14.unchecked)} labels have not yet been checked by another user; they are drawn faint. ${fmt(d14.rejected)} were rejected and are left out. Missing curb ramps are hard to see in an image: ${fmt(d14.noCurb.rejected)} of the ${fmt(d14.noCurb.rejected + d14.noCurb.confirmed)} such labels in the city were rejected. The findings count only confirmed labels.`,
+      `Walked or not. A street counts as mapped once a volunteer finishes a virtual walk along it; a label placed on a side street while walking past does not count it. ${fmt(d14.noImageryKm)} km of streets have no imagery and are not counted. The pace is uncertain too: at the average of the three full years before the last, about ${fmt(d14Pace3)} km a year, the rest would take about ${Math.round(d14.yearsLeft3)} years instead of ${Math.round(d14.yearsLeft)}.`,
+    ]],
+  ],
+};
+d14Story.findings = d14Story.sections[1][1];
+
 export const plates = {
   1: {
     file: 'day01-the-doors',
@@ -941,6 +976,29 @@ export const plates = {
           const t = (a) => Math.round(a.reduce((x, v) => x + v, 0) * 10) / 10;
           return [e.line, name(e.a), name(e.b), t(e.h), t(e.s), ...e.h];
         }),
+      ]),
+  },
+  14: {
+    file: 'day14-the-tattered-map',
+    render: (o) => renderDay14({ ...day14Data, findings: d14Story.findings.slice(1), boundary: cityBoundary.rings }, o), // the headline is the plate's finding note
+    subtitle: 'A wheelchair user needs a map of every curb ramp and broken slab. How much of Chicago has one?',
+    finding: day14Data.finding,
+    story: d14Story,
+    ledger: [
+      ['Labels', `Project Sidewalk Chicago (University of Washington, Makeability Lab), pulled ${day14Data.asOf}: ${fmt(d14.labels)} labels inside the city by ${fmt(d14.volunteers)} volunteers since ${d14.firstYear}. ${fmt(d14.confirmed)} confirmed in validation by other users or Project Sidewalk’s AI validator, ${fmt(d14.unchecked)} not yet checked (drawn faint), ${fmt(d14.rejected)} rejected (left out). Crosswalks, signals and other labels are counted but not drawn; on the Cicero mile, the strip draws the four types in its table (its few no-sidewalk labels are all unchecked). Project Sidewalk data is public domain (CC0 1.0); Saha et al., CHI 2019.`, day14Data.sources.ps],
+      ['Mapped', `Project Sidewalk’s street segments (OpenStreetMap ways) inside the city that have imagery: ${fmt(d14.openKm)} km. A segment is mapped once a volunteer has completed a virtual walk of it: ${fmt(d14.mappedKm)} km, drawn as thin lines. Pace: the length first labelled in the 12 months before the pull, ${fmt(d14.lastYearKm)} km.`, day14Data.sources.api],
+      ['Mile', `Cicero Avenue from Madison Street to Chicago Avenue. The CTA bus stops at each end, both directions averaged, fix 0 and 800 N; each label’s distance between them is scaled to 800 numbers. Its side comes from a centre line fitted through the bus stops at each crossing. CTA GTFS, feed of ${day14Data.gtfsDate}. Cross streets: every named street meeting the mile in OpenStreetMap (Geofabrik extract, ODbL); arterials darker, minor streets lighter.`, day14Data.sources.gtfs],
+      ['Areas', 'City of Chicago, Boundaries – Community Areas; a street segment counts in the area that holds its midpoint.', day14Data.sources.areas],
+      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
+    ],
+    page: {
+      chart: { title: D14_CHART_TITLE, note: 'Cicero Avenue, Madison (bottom) to Chicago Avenue (top): 800 address numbers, every label at its number.' },
+    },
+    csv: () =>
+      csv([
+        ['community_area', 'street_km', 'mapped_km', 'share_mapped', 'labels', 'confirmed_curb_ramps', 'confirmed_obstacles', 'confirmed_surface_problems', 'confirmed_missing_curb_ramps', 'confirmed_no_sidewalk'],
+        ...d14Areas.map((a) => [a.name, a.km, a.mappedKm, a.share, a.labels, a.ramps, a.obstacles, a.surfaces, a.noRamp, a.noSidewalk]),
       ]),
   },
 };
