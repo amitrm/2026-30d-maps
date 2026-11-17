@@ -43,6 +43,8 @@ import day13Data from '../../days/day13-interactions/output/plate.json';
 import { renderDay13, CHART_TITLE as D13_CHART_TITLE, INSET_TITLE as D13_INSET, hourName as d13Hour, hundreds as d13Hundreds, INSET_BANDS as D13_INSET_BANDS } from './day13.js';
 import day14Data from '../../days/day14-borgesian/output/plate.json';
 import { renderDay14, CHART_TITLE as D14_CHART_TITLE } from './day14.js';
+import day15Data from '../../days/day15-inside-out/output/plate.json';
+import { renderDay15, CHART_TITLE as D15_CHART_TITLE, CHART_NOTE as D15_CHART_NOTE, dayLong as d15Day } from './day15.js';
 import { renderDay07, CHART_NOTE as D7_CHART_NOTE, chartTitle as d7ChartTitle, insetTitle as d7InsetTitle, clock as d7Clock, dayLong as d7Day, hundreds as d7Hundreds, sortOutages as d7Sort } from './day07.js';
 
 const csv = (rows) =>
@@ -364,11 +366,11 @@ const d10Story = {
       day10Data.finding,
       `About ${thousands(d10.over15)} residents need more than 15 minutes, about ${thousands(d10.over15Amb)} of them with a difficulty walking. About ${thousands(d10.none)} have no bus or accessible train within four blocks at all.`,
       `At this hour the bus carries the city. A train at an accessible station is the quickest ride for only ${pct(d10.trainBest / d10.residents)} of residents. The pale lines on the map are the bus streets, most of them half a mile apart. The blocks between them print darker, because four blocks at 3 feet a second take about ${d10Walk} minutes.`,
-      `The wait grows toward the edges of the city. On the three Far sides, ${pct(Math.min(...d10Far))} to ${pct(Math.max(...d10Far))} of residents need more than 15 minutes. On the ${d10Lo.side}, near the centre, it is ${pct(d10Lo.over15)}.`,
+      `The wait grows toward the edges of the city. On the three Far sides, ${pct(Math.min(...d10Far))} to ${pct(Math.max(...d10Far))} of residents need more than 15 minutes. On the ${d10Lo.side}, near the center, it is ${pct(d10Lo.over15)}.`,
     ], true],
     ['How the minutes are counted', [
       `The schedule is CTA’s for ${d10Day(day10Data.serviceDay)}, the challenge’s Day 10, with departures between 8:30 and 9:30 p.m. Every CTA bus route counts, and trains count only at accessible stations.`,
-      'The walk follows the street and sidewalk network in OpenStreetMap with stairs taken out, from the centre of each block to the nearest stop of each route. It is timed at 3 feet a second, the speed the federal traffic manual uses to time a whole crossing at a signal. Its usual walking speed is 3.5 feet a second.',
+      'The walk follows the street and sidewalk network in OpenStreetMap with stairs taken out, from the center of each block to the nearest stop of each route. It is timed at 3 feet a second, the speed the federal traffic manual uses to time a whole crossing at a signal. Its usual walking speed is 3.5 feet a second.',
       'The wait is half the time between buses or trains at that stop, for a rider who arrives without checking the schedule. Each block keeps the route with the least walk plus wait.',
     ]],
     ['What the map cannot see', [
@@ -398,8 +400,8 @@ const d11Story = {
   sections: [
     ['Background', [
       'Every ‘L’ platform and bus stop sits somewhere in the noise the city’s own systems make: expressway traffic, the ‘L’, freight trains, aircraft. A rider waiting there cannot move away from it. Plate V counted the crossings with an audible signal for riders who cannot see the walk sign; this plate maps the noise such sounds have to be heard over.',
-      'The noise is a model, not a recording. The Bureau of Transportation Statistics’ National Transportation Noise Map estimates the average sound over a whole day from traffic counts on roads, rail timetables (the ‘L’ included) and flights, on squares 30 metres wide. Sound is measured in decibels: every 10 more is ten times the sound energy.',
-      'Each dot is one city block, an eighth of a mile, and its area grows with the decibels above 45. Each station gets a ring for every 5 dB above 50 at its loudest platform; a filled centre means the station is accessible. Hover a station for its level and loudest source, or a line in the chart to show only its stations.',
+      'The noise is a model, not a recording. The Bureau of Transportation Statistics’ National Transportation Noise Map estimates the average sound over a whole day from traffic counts on roads, rail timetables (the ‘L’ included) and flights, on squares 30 meters wide. Sound is measured in decibels: every 10 more is ten times the sound energy.',
+      'Each dot is one city block, an eighth of a mile, and its area grows with the decibels above 45. Each station gets a ring for every 5 dB above 50 at its loudest platform; a filled center means the station is accessible. Hover a station for its level and loudest source, or a line in the chart to show only its stations.',
     ]],
     ['Findings', [
       day11Data.finding,
@@ -569,6 +571,24 @@ const d14Story = {
   ],
 };
 d14Story.findings = d14Story.sections[1][1];
+
+const d15 = day15Data.summary;
+const d15Min = (v) => Math.round(v);
+const d15Story = {
+  background: [
+    'Most maps of Chicago put the Loop at the center. The address grid counts out from State and Madison, and the ‘L’ lines run out from downtown. This map turns that view inside out. Its center is 130th Street on the far South Side, where the Red Line Extension will end.',
+    'Distance here is time by bus and train, not miles. The main map shades every quarter mile by how long the trip from 130th Street takes. The middle column redraws the city around the start: each place keeps its direction, but its distance from the center is its travel time. The same drawing from the Loop sits below, at the same scale. Hover a block for its times.',
+  ],
+  findings: [
+    day15Data.finding,
+    `On the grid, the Loop is about ${Math.round(d15.startMiles)} miles from 130th Street. By bus and train it is ${d15Min(d15.startToLoop)} minutes away. A trip to Northwestern Memorial Hospital, just north of the Loop, takes ${d15Min(d15.startToHosp)} minutes from 130th Street and ${d15Min(d15.loopToHosp)} from the Loop.`,
+    `Seen from 130th Street, the city is far away: half of Chicagoans live more than ${d15Min(d15.median.start)} minutes from it. Seen from the Loop, half live within ${d15Min(d15.median.loop)} minutes.`,
+  ],
+  plan: [
+    'The Red Line Extension will carry the Red Line from 95th Street to 130th Street, with four new, fully accessible stations near 103rd Street, 111th Street, Michigan Avenue and 130th Street. CTA expects it to open in 2030.',
+    'This map shows today’s buses and trains, before the extension opens.',
+  ],
+};
 
 export const plates = {
   1: {
@@ -859,7 +879,7 @@ export const plates = {
     story: d10Story,
     ledger: [
       ['Service', `CTA bus and train schedule (GTFS), feed of ${day10Data.gtfs.snapshot}, for ${d10Day(day10Data.serviceDay)}, departures from 8:30 to 9:30 p.m.: ${day10Data.gtfs.routes} routes. Trains count only at accessible stations, as on Plate VIII (Racine and Austin included).`, day10Data.gtfs.url],
-      ['Walk', `Step-free (no stairs) on the OpenStreetMap walk network, Geofabrik extract of ${day10Data.osm}, from each block’s centre to each route’s nearest stop within four blocks (half a mile), at 3 feet a second. © OpenStreetMap contributors (ODbL).`, 'https://download.geofabrik.de/north-america/us/illinois.html'],
+      ['Walk', `Step-free (no stairs) on the OpenStreetMap walk network, Geofabrik extract of ${day10Data.osm}, from each block’s center to each route’s nearest stop within four blocks (half a mile), at 3 feet a second. © OpenStreetMap contributors (ODbL).`, 'https://download.geofabrik.de/north-america/us/illinois.html'],
       ['Speed', 'Manual on Uniform Traffic Control Devices (2009), section 4E.06: a walking speed of 3 feet a second for the whole crossing time (paragraph 14); 3.5 feet a second for clearance, slower where people who walk slower or use wheelchairs routinely cross.', day10Data.sources.mutcd],
       ['Buses', 'CTA: all of its buses and railcars are accessible.', 'https://www.transitchicago.com/accessibility/'],
       ['Wait', 'Half the scheduled time between buses or trains at that stop, in one direction; each block keeps the route with the least walk plus wait.'],
@@ -921,7 +941,7 @@ export const plates = {
     finding: day12Data.finding,
     story: d12Story,
     ledger: [
-      ['Menu', `City of Chicago menu program reports, ${d12.years[0]}–${d12.years[1]}, compiled and categorized by Ward Wise, a Chi Hack Night group (MIT licence). Costs as listed. Sidewalks: Ward Wise’s “Sidewalk Repair”; crossings: “Pedestrian Infrastructure” (bump-outs, refuge islands, crosswalk signs, countdown signals).`, day12Data.sources.wardwise],
+      ['Menu', `City of Chicago menu program reports, ${d12.years[0]}–${d12.years[1]}, compiled and categorized by Ward Wise, a Chi Hack Night group (MIT license). Costs as listed. Sidewalks: Ward Wise’s “Sidewalk Repair”; crossings: “Pedestrian Infrastructure” (bump-outs, refuge islands, crosswalk signs, countdown signals).`, day12Data.sources.wardwise],
       ['Reports', 'Office of Budget and Management, Capital Improvement Archive (menu reports).', day12Data.sources.obm],
       ['311', `Chicago Data Portal, 311 Service Requests: “Sidewalk Inspection Request” and “Shared Cost Sidewalk Program Request”, pulled ${day12Data.pulled311}; placed in wards by their location.`, day12Data.sources.sr311],
       ['Wards', 'The 2015–2023 wards, in force for all four years, built from Ward Precincts 2013–2022.', day12Data.sources.precincts],
@@ -934,8 +954,8 @@ export const plates = {
         ['WTTW on the motion to dismiss (June 2026)', 'https://news.wttw.com/2026/06/22/chicago-s-sidewalks-aren-t-accessible-people-mobility-challenges-lawsuit-argues-city'],
       ]],
       ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
-      ['Colour', `Seven classes of the share spent on sidewalks and crossings: under 2%, 2–5, 5–7, 7–10, 10–15, 15–20 and 20% or more. In colour mode they run from sand to teal in seven even steps of lightness, light for less, dark for more, and the chart’s sidewalk and crossing bars take the same teals. In grayscale the same classes step from light to dark. The city as a whole spent ${pct(d12.walkShare)}.`],
-      ['Scatter', 'In colour mode the nine cells of Complaint and Wallet (thirds of the wards on each axis) use Joshua Stevens’ purple–gold bivariate scheme: purple for more requests, gold for more applications, umber for both.', 'https://www.joshuastevens.net/cartography/make-a-bivariate-choropleth-map/'],
+      ['Color', `Seven classes of the share spent on sidewalks and crossings: under 2%, 2–5, 5–7, 7–10, 10–15, 15–20 and 20% or more. In color mode they run from sand to teal in seven even steps of lightness, light for less, dark for more, and the chart’s sidewalk and crossing bars take the same teals. In grayscale the same classes step from light to dark. The city as a whole spent ${pct(d12.walkShare)}.`],
+      ['Scatter', 'In color mode the nine cells of Complaint and Wallet (thirds of the wards on each axis) use Joshua Stevens’ purple–gold bivariate scheme: purple for more requests, gold for more applications, umber for both.', 'https://www.joshuastevens.net/cartography/make-a-bivariate-choropleth-map/'],
     ],
     page: {
       // the page chart shows the ten wards at each end (all fifty are on the plate, the map and in the
@@ -986,8 +1006,8 @@ export const plates = {
     story: d14Story,
     ledger: [
       ['Labels', `Project Sidewalk Chicago (University of Washington, Makeability Lab), pulled ${day14Data.asOf}: ${fmt(d14.labels)} labels inside the city by ${fmt(d14.volunteers)} volunteers since ${d14.firstYear}. ${fmt(d14.confirmed)} confirmed in validation by other users or Project Sidewalk’s AI validator, ${fmt(d14.unchecked)} not yet checked (drawn faint), ${fmt(d14.rejected)} rejected (left out). Crosswalks, signals and other labels are counted but not drawn; on the Cicero mile, the strip draws the four types in its table (its few no-sidewalk labels are all unchecked). Project Sidewalk data is public domain (CC0 1.0); Saha et al., CHI 2019.`, day14Data.sources.ps],
-      ['Mapped', `Project Sidewalk’s street segments (OpenStreetMap ways) inside the city that have imagery: ${fmt(d14.openKm)} km. A segment is mapped once a volunteer has completed a virtual walk of it: ${fmt(d14.mappedKm)} km, drawn as thin lines. Pace: the length first labelled in the 12 months before the pull, ${fmt(d14.lastYearKm)} km.`, day14Data.sources.api],
-      ['Mile', `Cicero Avenue from Madison Street to Chicago Avenue. The CTA bus stops at each end, both directions averaged, fix 0 and 800 N; each label’s distance between them is scaled to 800 numbers. Its side comes from a centre line fitted through the bus stops at each crossing. CTA GTFS, feed of ${day14Data.gtfsDate}. Cross streets: every named street meeting the mile in OpenStreetMap (Geofabrik extract, ODbL); arterials darker, minor streets lighter.`, day14Data.sources.gtfs],
+      ['Mapped', `Project Sidewalk’s street segments (OpenStreetMap ways) inside the city that have imagery: ${fmt(d14.openKm)} km. A segment is mapped once a volunteer has completed a virtual walk of it: ${fmt(d14.mappedKm)} km, drawn as thin lines. Pace: the length first labeled in the 12 months before the pull, ${fmt(d14.lastYearKm)} km.`, day14Data.sources.api],
+      ['Mile', `Cicero Avenue from Madison Street to Chicago Avenue. The CTA bus stops at each end, both directions averaged, fix 0 and 800 N; each label’s distance between them is scaled to 800 numbers. Its side comes from a center line fitted through the bus stops at each crossing. CTA GTFS, feed of ${day14Data.gtfsDate}. Cross streets: every named street meeting the mile in OpenStreetMap (Geofabrik extract, ODbL); arterials darker, minor streets lighter.`, day14Data.sources.gtfs],
       ['Areas', 'City of Chicago, Boundaries – Community Areas; a street segment counts in the area that holds its midpoint.', day14Data.sources.areas],
       ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
       ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
@@ -999,6 +1019,30 @@ export const plates = {
       csv([
         ['community_area', 'street_km', 'mapped_km', 'share_mapped', 'labels', 'confirmed_curb_ramps', 'confirmed_obstacles', 'confirmed_surface_problems', 'confirmed_missing_curb_ramps', 'confirmed_no_sidewalk'],
         ...d14Areas.map((a) => [a.name, a.km, a.mappedKm, a.share, a.labels, a.ramps, a.obstacles, a.surfaces, a.noRamp, a.noSidewalk]),
+      ]),
+  },
+  15: {
+    file: 'day15-from-the-end-of-the-line',
+    render: (o) => renderDay15({ ...day15Data, findings: d15Story.findings.slice(1), boundary: cityBoundary.rings }, o), // the headline is the plate's finding note
+    subtitle: 'What does Chicago look like with 130th Street, not the Loop, at its center?',
+    finding: day15Data.finding,
+    story: d15Story,
+    ledger: [
+      ['Transit', `Bus and train schedules (GTFS) from CTA (${day15Data.feeds.cta.snapshot}), Metra (${day15Data.feeds.metra.snapshot}) and Pace (${day15Data.feeds.pace.snapshot}), for Tuesday ${d15Day(day15Data.serviceDay)}. Fares differ between the three and are not counted.`, [['CTA', day15Data.feeds.cta.url], ['Metra', day15Data.feeds.metra.url], ['Pace', day15Data.feeds.pace.url]]],
+      ['Minutes', `Door to door, leaving every five minutes from ${day15Data.departs[0]} to ${day15Data.departs[1]} a.m.; the travel time is the median of the 12 trips, waiting included (earliest arrival by connection scan). Walking: a straight line × ${day15Data.method.detour} at ${day15Data.method.walkMps} m/s, up to ¾ mile to a stop and ¼ mile between stops, plus a minute to change.`],
+      ['Start', 'The center is 130th Street where the Red Line Extension’s alignment, as mapped in OpenStreetMap (railway=construction), crosses it: the site of the extension’s last station. The Loop is State & Madison. The hospital is Northwestern Memorial Hospital, 251 E Huron St.', day15Data.sources.rleFaq],
+      ['People', `2020 Census: ${fmt(d15.residents)} residents, each block at its internal point taking the minutes of the nearest quarter-mile point.`, day15Data.sources.census],
+      ['Drawing', 'Main map: every quarter mile of the grid, its minutes lightly smoothed (0.2 mile). Inside out: each point keeps its true direction from the start and sits as far out as its minutes, smoothed over about 0.4 mile; the rings are minutes. Hover blocks (every half mile) show the unsmoothed minutes. Points with no stop within reach, on Lake Calumet, take the minutes of their neighbors.'],
+      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
+    ],
+    page: {
+      chart: { title: D15_CHART_TITLE, note: D15_CHART_NOTE },
+    },
+    csv: () =>
+      csv([
+        ['x_miles_east', 'y_miles_north', 'minutes_from_130th_st', 'minutes_from_state_madison', 'miles_from_130th_st'],
+        ...day15Data.cells.map(([x, y, a, b]) => [x, y, a, b, Math.hypot(x - day15Data.points.start[0], y - day15Data.points.start[1]).toFixed(2)]),
       ]),
   },
 };

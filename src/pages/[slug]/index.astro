@@ -156,6 +156,10 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   //        sec?, counts?: [{type, fill, n, label}], foot?: [left, right]}]
   //        a compact card (Plate XIV): one number and a filled bar in the map's own shades, label
   //        marks with counts, severity pips, tags, a status footer
+  //   [data-kind=ruler][data-vals: 'a b'][data-aside?], its drawing's svg [data-ruler: JSON {max,
+  //        segs: [[from, to, fill]], ticks: [..], foot: [dot label, square label, note]}]
+  //        a minutes ruler (Plate XV): the legend's classes as a strip from 0 to max, a dot pin above
+  //        for the first value and a square pin below for the second
   //   [data-hl] (chart row) / [data-keys] (station, label)  highlight one line set, fade the rest
   // Highlighting spans every page SVG, so a line row in the chart lights its stations on the map.
   const cols = document.querySelector<HTMLElement>('.cols');
@@ -357,7 +361,7 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
       tip.style.transform = `translate(${x}px, ${y}px)`;
     };
     const show = (g: HTMLElement, e: PointerEvent) => {
-      tip.classList.remove('sheet', 'card');
+      tip.classList.remove('sheet', 'card', 'ruler');
       const route = g.dataset.kind === 'route';
       const head = document.createElement('div');
       head.className = 'tt-head';
@@ -402,6 +406,47 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
         text.className = 'tt-detail';
         text.textContent = g.dataset.detail ?? '';
         tip.replaceChildren(head, sw, text);
+        tip.hidden = false;
+        move(e);
+        return;
+      }
+      if (g.dataset.kind === 'ruler') {
+        type Ruler = { max: number; segs: [number, number, string][]; ticks?: number[]; foot?: [string, string, string?] };
+        let r: Ruler;
+        try { r = JSON.parse(g.closest('svg')?.dataset.ruler ?? ''); } catch { return; }
+        const [a, b] = (g.dataset.vals ?? '').split(' ').map(Number);
+        const W = 212, top = 20, h = 9, k = W / r.max;
+        const at = (v: number) => Math.min(v, r.max - 0.5) * k;
+        const t = (x: number, y: number, s: string | number, anchor = 'start') =>
+          `<text x="${x.toFixed(1)}" y="${y}" text-anchor="${anchor}" font-family="Roboto, sans-serif" font-size="12" font-weight="600" fill="#232323">${s}</text>`;
+        // the classes, a hair apart so the pale ones stay distinct; short ticks under the strip
+        let s = r.segs.map(([s0, s1, c]) => `<rect x="${(s0 * k + 0.5).toFixed(1)}" y="${top}" width="${Math.max(0, (s1 - s0) * k - 1).toFixed(1)}" height="${h}" fill="${c}"/>`).join('');
+        s += (r.ticks ?? []).map((v) => `<line x1="${(v * k).toFixed(1)}" x2="${(v * k).toFixed(1)}" y1="${top + h + 1}" y2="${top + h + 4}" stroke="#77756F" stroke-width="1"/>`).join('');
+        const ax = at(a), bx = at(b), aEnd = ax > W * 0.8;
+        s += `<line x1="${ax.toFixed(1)}" x2="${ax.toFixed(1)}" y1="6" y2="${top + h}" stroke="#232323" stroke-width="1.2"/><circle cx="${ax.toFixed(1)}" cy="6" r="4" fill="#232323"/>`;
+        s += t(ax + (aEnd ? -7 : 7), 10, a, aEnd ? 'end' : 'start');
+        const bEnd = bx > W * 0.8;
+        s += `<line x1="${bx.toFixed(1)}" x2="${bx.toFixed(1)}" y1="${top}" y2="${top + h + 8}" stroke="#232323" stroke-width="1.2"/><rect x="${(bx - 3.5).toFixed(1)}" y="${top + h + 5}" width="7" height="7" fill="#fff" stroke="#232323" stroke-width="1.4"/>`;
+        s += t(bx + (bEnd ? -7 : 7), top + h + 13, b, bEnd ? 'end' : 'start');
+        const el = (tag: string, cls: string, txt?: string) => { const n = document.createElement(tag); n.className = cls; if (txt != null) n.textContent = txt; return n; };
+        const dot = (c: string, rr = 3.6) => `<svg viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="${rr}" fill="${c}"/></svg>`;
+        const sq = '<svg viewBox="0 0 10 10" aria-hidden="true"><rect x="1.6" y="1.6" width="6.8" height="6.8" fill="#fff" stroke="#232323" stroke-width="1.4"/></svg>';
+        const head = el('div', 'tt-head');
+        head.append(el('strong', '', g.dataset.tip ?? ''));
+        if (g.dataset.aside) { const aside = el('span', 'tt-aside'); aside.innerHTML = dot('#77756F', 2.6); aside.append(g.dataset.aside); head.append(aside); }
+        const bar = el('div', 'tt-ruler');
+        bar.innerHTML = `<svg viewBox="-2 0 ${W + 4} 44" aria-hidden="true">${s}</svg>`;
+        const kids: HTMLElement[] = [head, bar];
+        if (r.foot) {
+          const f = el('div', 'tt-rfoot');
+          const a1 = el('span', ''); a1.innerHTML = dot('#232323'); a1.append(r.foot[0]);
+          const b1 = el('span', ''); b1.innerHTML = sq; b1.append(r.foot[1]);
+          f.append(a1, b1);
+          if (r.foot[2]) f.append(el('span', 'tt-rnote', r.foot[2]));
+          kids.push(f);
+        }
+        tip.replaceChildren(...kids);
+        tip.classList.add('ruler');
         tip.hidden = false;
         move(e);
         return;
@@ -709,6 +754,12 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   .tip :global(.tt-sh-foot) { font-size: 10px; color: var(--pencil); margin-top: 6px; }
   /* card tooltip (Plate XIV): one big number, a filled bar in the map's shades, mark counts, severity pips */
   .tip:global(.card) { width: 254px; max-width: 254px; gap: 6px; }
+  .tip:global(.ruler) { width: 236px; max-width: 236px; gap: 4px; }
+  .tip :global(.tt-ruler svg) { display: block; width: 100%; height: auto; }
+  .tip :global(.tt-rfoot) { display: flex; flex-wrap: wrap; gap: 2px 9px; font-size: 9.5px; color: var(--pencil); }
+  .tip :global(.tt-rfoot span), .tip:global(.ruler) :global(.tt-aside) { display: inline-flex; align-items: center; white-space: nowrap; }
+  .tip :global(.tt-rfoot svg), .tip:global(.ruler) :global(.tt-aside svg) { display: inline-block; width: 9px; height: 9px; margin-right: 3px; }
+  .tip :global(.tt-rnote) { margin-left: auto; }
   .tip :global(.tt-aside) { margin-left: auto; font-size: 10.5px; color: var(--pencil); }
   .tip :global(.tt-big) { display: flex; align-items: baseline; gap: 7px; }
   .tip :global(.tt-big b) { font-size: 22px; font-weight: 500; line-height: 1; }
