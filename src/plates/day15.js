@@ -13,14 +13,16 @@ import { gridLines, formatAddress, toMiles } from '../lib/grid.js';
 // data.loop (smoothed minutes on the quarter-mile lattice for the two drawings), data.cells (half-mile
 // hover squares with unsmoothed minutes from each start).
 
-export const BREAKS = [40, 60, 80, 100, 120];
-// near -> far. Colour: CARTO Teal, its last step lightened; grayscale: about 12 L* apart
+// Seven classes split at the hour: three within it, four beyond (as the notebook's data.classes).
+export const BREAKS = [30, 45, 60, 75, 90, 120];
+// near -> far, dark to light in both modes. Colour: the Magenta palette, deep plum to pale pink;
+// grayscale: about 10 L* apart
 export const RAMP = {
-  color: ['#2A5674', '#3B738F', '#5A9CB0', '#85C4C9', '#B3DFDB', '#D9EFEB'],
-  gray: ['#4A4744', '#66635E', '#86837D', '#A4A29B', '#C6C4BD', '#E6E4DE'],
+  color: ['#632664', '#863B7A', '#A5538B', '#BD6E9B', '#D18CAB', '#E0ACBD', '#EDCCD3'],
+  gray: ['#45423F', '#5E5B57', '#78756F', '#939089', '#AFADA6', '#CBC9C2', '#E6E4DE'],
 };
-export const CLASS_LABELS = ['Under 40', '40–60', '60–80', '80–100', '100–120', '120 or more'];
-const SHORT = ['Under 40', '40–60', '60–80', '80–100', '100–120', '120+'];
+export const CLASS_LABELS = ['Under 30', '30–45', '45–60', '60–75', '75–90', '90–120', '120 or more'];
+const SHORT = ['Under 30', '30–45', '45–60', '60–75', '75–90', '90–120', '120+'];
 const clsOf = (v) => BREAKS.filter((b) => v >= b).length;
 
 export function renderDay15(data, { mode = 'gray', variant = 'plate' } = {}) {
@@ -52,16 +54,18 @@ export function renderDay15(data, { mode = 'gray', variant = 'plate' } = {}) {
   };
   const label = (x, y, str, size, anchor = 'start') => text(r1(x), r1(y + size * 0.35), str, { size, weight: 600, spacing: 0.5, anchor, halo: C.paper });
 
-  // hover squares: a 14% ink tint, and a ring at the square's centre wherever it is picked
   // (one class for every drawing: the rules are the same, so the page's copies agree)
-  const hoverCss = `<style>.d15c path{fill:${C.ink};fill-opacity:0}.d15c:hover path,.d15c.pick path{fill-opacity:.14}.d15c circle{display:none}.d15c.pick circle{display:inline}</style>`;
-  const cellAttrs = (c, fill) => {
+  // the hovered (picked) square is outlined in ink with a paper glow, wherever it appears (asked by the user)
+  const hoverCss = `<style>.d15c path{fill:transparent;stroke:none}.d15c:hover path,.d15c.pick path{stroke:${C.ink};stroke-width:1.5;stroke-linejoin:miter;filter:drop-shadow(0 0 1px ${C.paper}) drop-shadow(0 0 1px ${C.paper})}</style>`;
+  // tooltip: the page's minutes ruler (data-kind=ruler): this square's two minutes; the ruler itself
+  // (the classes from 0 to 150 minutes, in this mode's shades) is set once on the drawing's svg
+  const cellAttrs = (c) => {
     const [x, y, a, b] = c;
-    const name = place(x, y);
     const crow = Math.hypot(x - P.start[0], y - P.start[1]);
-    // the tooltip's name falls back on data-tip; a tile's size and frac default to 1 and 0
-    return `class="d15c" data-kind="area" data-id="q${x}_${y}" data-tip="${esc(name)}" data-shape="tile" data-fill="${fill}" data-detail="${a} min from 130th St|${b} min from the Loop|${crow.toFixed(1)} mi from 130th St, straight line"`;
+    return `class="d15c" data-kind="ruler" data-id="q${x}_${y}" data-tip="${esc(place(x, y))}" data-aside="${Math.round(crow)} mi" data-vals="${a} ${b}"`;
   };
+  const edges = [0, ...BREAKS, RULER_MAX];
+  const rulerAttr = `data-ruler='${JSON.stringify({ max: RULER_MAX, segs: ramp.map((c, i) => [edges[i], edges[i + 1], c]), ticks: [60, 120], foot: ['from 130th St', 'from the Loop', 'minutes'] })}' `;
 
   if (isPlate) out.push(frame({
     plate: 'XV',
@@ -118,7 +122,7 @@ export function renderDay15(data, { mode = 'gray', variant = 'plate' } = {}) {
       const q = k * 0.5;
       for (const c of data.cells) {
         const cx = Xm(c[0]), cy = Ym(c[1]);
-        out.push(`<g ${cellAttrs(c, ramp[clsOf(c[2])])}><path d="M${r1(cx - q / 2)},${r1(cy - q / 2)}h${r1(q)}v${r1(q)}h${r1(-q)}Z"/><circle cx="${r1(cx)}" cy="${r1(cy)}" r="5.5" fill="none" stroke="${C.ink}" stroke-width="1.6"/></g>`);
+        out.push(`<g ${cellAttrs(c)}><path d="M${r1(cx - q / 2)},${r1(cy - q / 2)}h${r1(q)}v${r1(q)}h${r1(-q)}Z"/></g>`);
       }
     }
     out.push('</g>');
@@ -173,13 +177,13 @@ export function renderDay15(data, { mode = 'gray', variant = 'plate' } = {}) {
 
   if (isMap) {
     return svg(out.join(''), { label: mapLabel(s), viewBox: `60 184 ${Math.ceil(colX + 4 - 60)} 1114`, align: 'xMinYMin meet' })
-      .replace('<svg ', `<svg data-top="${labelTop - 184}" data-bottom="${fy1 - 184}" data-ftop="${+(fy0 - 184).toFixed(2)}" data-ppm="${+k.toFixed(3)}" `);
+      .replace('<svg ', `<svg ${rulerAttr}data-top="${labelTop - 184}" data-bottom="${fy1 - 184}" data-ftop="${+(fy0 - 184).toFixed(2)}" data-ppm="${+k.toFixed(3)}" `);
   }
 
   // ---------- the city inside out: two drawings at one scale ----------
   const DR = {
-    start: { grid: data.start, o: P.start, rings: [40, 80, 120], head: 'FROM 130TH ST', marks: { start: 0, loop: s.startToLoop, hosp: s.startToHosp } },
-    loop: { grid: data.loop, o: P.loop, rings: [40, 80], head: 'FROM THE LOOP', marks: { start: s.loopToStart, loop: 0, hosp: s.loopToHosp } },
+    start: { grid: data.start, o: P.start, rings: [30, 60, 90, 120], head: 'FROM 130TH ST', marks: { start: 0, loop: s.startToLoop, hosp: s.startToHosp } },
+    loop: { grid: data.loop, o: P.loop, rings: [30, 60, 90], head: 'FROM THE LOOP', marks: { start: s.loopToStart, loop: 0, hosp: s.loopToHosp } },
   };
   // positions in minutes, relative to the start: true bearing, minutes as distance
   const polar = (o, x, y, m) => { const a = Math.atan2(y - o[1], x - o[0]); return [m * Math.cos(a), m * Math.sin(a)]; };
@@ -239,10 +243,8 @@ export function renderDay15(data, { mode = 'gray', variant = 'plate' } = {}) {
       const h = 0.25;
       for (const c of data.cells) {
         const corners = [[c[0] - h, c[1] - h], [c[0] + h, c[1] - h], [c[0] + h, c[1] + h], [c[0] - h, c[1] + h]].map(([x, y]) => dr.at(row(y), col(x)));
-        const mid = dr.at(row(c[1]), col(c[0]));
-        if (corners.some((p) => !p) || !mid) continue;
-        const v = dr === DR.start ? c[2] : c[3];
-        o.push(`<g ${cellAttrs(c, ramp[clsOf(v)])}><path d="M${corners.map((p) => `${r1(Xp(p[0]))},${r1(Yp(p[1]))}`).join('L')}Z"/><circle cx="${r1(Xp(mid[0]))}" cy="${r1(Yp(mid[1]))}" r="4.5" fill="none" stroke="${C.ink}" stroke-width="1.5"/></g>`);
+        if (corners.some((p) => !p)) continue;
+        o.push(`<g ${cellAttrs(c)}><path d="M${corners.map((p) => `${r1(Xp(p[0]))},${r1(Yp(p[1]))}`).join('L')}Z"/></g>`);
       }
     }
     o.push('</g>');
@@ -259,7 +261,9 @@ export function renderDay15(data, { mode = 'gray', variant = 'plate' } = {}) {
   const middle = (x0, top, w, hMax, size) => {
     const head = size * 2.1, gap = size * 1.6;
     const A = DR.start.box, B = DR.loop.box;
-    const kw = (w - 4) / Math.max(A.x1 - A.x0, B.x1 - B.x0);
+    // 130th St's drawing is centred on its own extent; the Loop's on the Loop, so its rings sit in the
+    // middle of the column
+    const kw = (w - 4) / Math.max(A.x1 - A.x0, 2 * Math.max(-B.x0, B.x1));
     const kh = (hMax - 2 * head - gap) / (A.y1 - A.y0 + B.y1 - B.y0);
     const kk = Math.min(kw, kh);
     const parts = [];
@@ -271,7 +275,7 @@ export function renderDay15(data, { mode = 'gray', variant = 'plate' } = {}) {
       const hgt = (b.y1 - b.y0) * kk;
       const clip = `${uid}-${name}`;
       parts.push(`<defs><clipPath id="${clip}"><rect x="${x0}" y="${r1(y - 4)}" width="${w}" height="${r1(hgt + 8)}"/></clipPath></defs>`);
-      const cx = x0 + w / 2 - ((b.x0 + b.x1) / 2) * kk;
+      const cx = name === 'loop' ? x0 + w / 2 : x0 + w / 2 - ((b.x0 + b.x1) / 2) * kk;
       parts.push(drawing(dr, kk, cx, y + b.y1 * kk, clip, size));
       y += hgt + gap;
     }
@@ -281,7 +285,7 @@ export function renderDay15(data, { mode = 'gray', variant = 'plate' } = {}) {
   if (isChart) {
     const cw = 390, size = 8 * T;
     const m = middle(0, 6, cw, 1400, size);
-    return svg(m.svg, { label: chartLabel(s), viewBox: `0 0 ${cw} ${Math.ceil(m.height + 12)}`, align: 'xMidYMin meet' });
+    return svg(m.svg, { label: chartLabel(s), viewBox: `0 0 ${cw} ${Math.ceil(m.height + 12)}`, align: 'xMidYMin meet' }).replace('<svg ', `<svg ${rulerAttr}`);
   }
 
   // ---------- plate: margin column with both drawings, then Findings ----------
@@ -329,8 +333,9 @@ export function renderDay15(data, { mode = 'gray', variant = 'plate' } = {}) {
 }
 
 const W_COL = 300;
+const RULER_MAX = 150; // minutes: the tooltip ruler's length (longer trips sit at its end)
 export const CHART_TITLE = 'The city, inside out';
-export const CHART_NOTE = 'Each point in its true direction, as far out as its minutes. One scale for both; rings every 40 min.';
+export const CHART_NOTE = 'Each point in its true direction, as far out as its minutes. One scale for both; rings every 30 min.';
 
 const pct = (v) => `${Math.round(v * 100)}%`;
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
