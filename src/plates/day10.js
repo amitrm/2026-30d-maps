@@ -63,7 +63,7 @@ export function renderDay10(data, { mode = 'gray', variant = 'plate', palette, s
   const filled = ramp && shade !== 'glyph'; // blocks filled from the color map: 'print' fill + ink characters, 'fill' no characters, 'wash' tint + ink
   const ink = (k) => (ramp && !filled ? ramp[k] : C.ink);
   const blockFill = (k) => (shade === 'wash' ? tint(ramp[k]) : ramp[k]);
-  // a legend swatch for class k centred on (x, baseline y): the struck characters, on their fill when filled
+  // a legend swatch for class k centered on (x, baseline y): the struck characters, on their fill when filled
   const swatch = (k, x, y, size) => {
     const box = filled ? `<rect x="${x - size * 0.45}" y="${y - size * 0.78}" width="${size * 0.9}" height="${size * 0.9}" fill="${blockFill(k)}"/>` : '';
     return box + (shade === 'fill' ? '' : glyphs(RAMP[k], x, y, size, ink(k)));
@@ -88,7 +88,7 @@ export function renderDay10(data, { mode = 'gray', variant = 'plate', palette, s
           let j = i;
           while (j + 1 < r.s.length && r.s[j + 1] === ch) j++;
           const x0 = Xm((r.col + i) * CELL), w = Xm((r.col + j + 1) * CELL) - x0;
-          // a hair of overlap so neighbouring fills leave no paper seam when scaled
+          // a hair of overlap so neighboring fills leave no paper seam when scaled
           runs[+ch].push(`M${x0.toFixed(2)},${yTop.toFixed(2)}h${(w + 0.35).toFixed(2)}v${(cell + 0.35).toFixed(2)}h${(-w - 0.35).toFixed(2)}z`);
           i = j + 1;
         }
@@ -316,7 +316,7 @@ export function renderDay10(data, { mode = 'gray', variant = 'plate', palette, s
   out.push(text(lx, dy, 'DATA LEDGER', { size: 10.5 * T, weight: 600, spacing: 1 }));
   const ledger = [
     ['SERVICE', `CTA schedule (GTFS) of ${data.gtfs.snapshot}, ${dayLong(data.serviceDay)}, departures 8:30–9:30 p.m.; trains only at accessible stations.`],
-    ['WALK', 'Step-free (no stairs) on OpenStreetMap, from each block’s centre to each route’s nearest stop within four blocks (½ mi),'],
+    ['WALK', 'Step-free (no stairs) on OpenStreetMap, from each block’s center to each route’s nearest stop within four blocks (½ mi),'],
     ['', 'at 3 ft/s, the MUTCD speed for timing a whole signal crossing. Plus half the time between buses or trains at that stop.'],
     ['PRINT', 'One character per block of ⅛ mile from State & Madison; tone by overprinting, after SYMAP (Fisher and Benson; Northwestern 1963, Harvard 1966).'],
     ['PEOPLE', `2020 Census: ${fmt(summary.residents)} residents, by their block’s internal point. Blank: no walkway within 100 m.`],

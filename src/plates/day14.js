@@ -198,7 +198,7 @@ export function renderDay14(data, { mode = 'gray', variant = 'plate' } = {}) {
     const { cs, nameW, gk } = z;
     const nameR = x0 + nameW;
     const tickW = cs * 4.6; // ticks and their numbers
-    const xL = nameR + 8, xR = x0 + w - tickW - 6; // the street, kerb to kerb across both sidewalks
+    const xL = nameR + 8, xR = x0 + w - tickW - 6; // the street, curb to curb across both sidewalks
     const rd = (xR - xL) * 0.09; // half the roadway
     const sw = (xR - xL) / 2 - rd; // a sidewalk band
     const xc = (xL + xR) / 2;
@@ -217,7 +217,7 @@ export function renderDay14(data, { mode = 'gray', variant = 'plate' } = {}) {
     }
     const xt = xR + 5;
     out.push(`<line x1="${xt}" x2="${xt}" y1="${top}" y2="${top + h}" stroke="${C.pencil}" stroke-width="0.45"/>`);
-    // address ticks: every 8 numbers, longer every 40; the blocks (every 100) in ink, across the kerb too
+    // address ticks: every 8 numbers, longer every 40; the blocks (every 100) in ink, across the curb too
     for (let n = 0; n <= 800; n += 8) {
       const block = n % 100 === 0;
       const len = block ? 7 : n % 40 === 0 ? 4 : 2;

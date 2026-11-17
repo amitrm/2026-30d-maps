@@ -1,9 +1,9 @@
 {
  "schema": 1,
  "day": 15,
- "generated": "2026-11-17T05:20:51+00:00",
+ "generated": "2026-11-17T05:44:58+00:00",
  "asOf": "2026-11-08",
- "finding": "From 130th Street, 9% of Chicagoans live within an hour by bus and train. From the Loop, 91% do.",
+ "finding": "An hour by bus and train from 130th Street reaches the homes of 9% of Chicagoans. The same hour from the Loop reaches 91%.",
  "ledger": {
   "source": "CTA, Metra and Pace GTFS",
   "dataset_id": "GTFS schedules",

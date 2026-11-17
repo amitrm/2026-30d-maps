@@ -15,7 +15,7 @@ import { gridLines, formatAddress, toMiles } from '../lib/grid.js';
 
 // Seven classes split at the hour: three within it, four beyond (as the notebook's data.classes).
 export const BREAKS = [30, 45, 60, 75, 90, 120];
-// near -> far, dark to light in both modes. Colour: the Magenta palette, deep plum to pale pink;
+// near -> far, dark to light in both modes. Color: the Magenta palette, deep plum to pale pink;
 // grayscale: about 10 L* apart
 export const RAMP = {
   color: ['#632664', '#863B7A', '#A5538B', '#BD6E9B', '#D18CAB', '#E0ACBD', '#EDCCD3'],
@@ -73,7 +73,7 @@ export function renderDay15(data, { mode = 'gray', variant = 'plate' } = {}) {
     day: 15,
     theme: 'Inside out',
     title: 'From the End of the Line',
-    subtitle: `From 130th Street, the Loop is ${Math.round(s.startToLoop)} minutes away by bus and train. Turned inside out, the grid bends.`,
+    subtitle: `Put 130th Street at the center and measure in minutes: the Loop is ${Math.round(s.startToLoop)} minutes out.`,
   }));
 
   // ---------- main map: the extent of Plates II–XIV ----------
@@ -261,7 +261,7 @@ export function renderDay15(data, { mode = 'gray', variant = 'plate' } = {}) {
   const middle = (x0, top, w, hMax, size) => {
     const head = size * 2.1, gap = size * 1.6;
     const A = DR.start.box, B = DR.loop.box;
-    // 130th St's drawing is centred on its own extent; the Loop's on the Loop, so its rings sit in the
+    // 130th St's drawing is centered on its own extent; the Loop's on the Loop, so its rings sit in the
     // middle of the column
     const kw = (w - 4) / Math.max(A.x1 - A.x0, 2 * Math.max(-B.x0, B.x1));
     const kh = (hMax - 2 * head - gap) / (A.y1 - A.y0 + B.y1 - B.y0);
@@ -318,8 +318,8 @@ export function renderDay15(data, { mode = 'gray', variant = 'plate' } = {}) {
   const f = data.feeds;
   const ledger = [
     ['TRANSIT', `${f.cta.name}, ${f.metra.name} and ${f.pace.name} schedules (GTFS) for Tuesday ${dayLong(data.serviceDay)}, leaving 8–9 a.m.; fares not counted`],
-    ['MINUTES', 'Door to door: the median of 12 departures, five minutes apart; walking a straight line × 1.3 at 1.2 m/s'],
-    ['START', '130th St on the Red Line Extension’s alignment (OpenStreetMap); the Loop = State & Madison'],
+    ['MINUTES', 'Door to door, waiting included: the median of 12 departures, five minutes apart; walking a straight line × 1.3 at 1.2 m/s'],
+    ['CENTER', '130th St on the Red Line Extension’s alignment (OpenStreetMap); the Loop is State & Madison'],
     ['LIMITS', 'City of Chicago, Boundaries – City · qqq8-j68g; residents: 2020 Census blocks'],
   ];
   dy += 18;
@@ -335,13 +335,13 @@ export function renderDay15(data, { mode = 'gray', variant = 'plate' } = {}) {
 const W_COL = 300;
 const RULER_MAX = 150; // minutes: the tooltip ruler's length (longer trips sit at its end)
 export const CHART_TITLE = 'The city, inside out';
-export const CHART_NOTE = 'Each point in its true direction, as far out as its minutes. One scale for both; rings every 30 min.';
+export const CHART_NOTE = 'Each place keeps its direction; its distance from the center is its travel time. One scale for both; rings every 30 minutes.';
 
 const pct = (v) => `${Math.round(v * 100)}%`;
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 export const dayLong = (iso) => `${Number(iso.slice(8, 10))} ${MONTHS[Number(iso.slice(5, 7)) - 1]} ${iso.slice(0, 4)}`;
 
 const mapLabel = (s) =>
-  `Plate XV, From the End of the Line: from 130th Street, ${pct(s.within60.start)} of Chicagoans live within an hour by bus and train; from the Loop, ${pct(s.within60.loop)} do.`;
+  `Plate XV, From the End of the Line: an hour by bus and train from 130th Street reaches the homes of ${pct(s.within60.start)} of Chicagoans; the same hour from the Loop reaches ${pct(s.within60.loop)}.`;
 const chartLabel = (s) =>
-  `${CHART_TITLE}: the city drawn by minutes from 130th Street and from the Loop at one scale. From 130th Street the Loop sits ${Math.round(s.startToLoop)} minutes out.`;
+  `${CHART_TITLE}: the city redrawn by travel time, around 130th Street and around the Loop, at one scale. From 130th Street the Loop is ${Math.round(s.startToLoop)} minutes out.`;

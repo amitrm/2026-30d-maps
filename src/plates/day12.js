@@ -234,7 +234,7 @@ export function renderDay12(data, { mode = 'gray', variant = 'plate', palette, c
     else {
       uy = Math.round(labelTop + 10.5 * T * 0.72);
       title(uy, CHART_TITLE.toUpperCase());
-      const noteLines = wrap(CHART_NOTE + (color ? ', each row shaded in the ward’s colour from the scatter' : ''), Math.floor(cw / (ns * 0.45)));
+      const noteLines = wrap(CHART_NOTE + (color ? ', each row shaded in the ward’s color from the scatter' : ''), Math.floor(cw / (ns * 0.45)));
       noteLines.forEach((l, i) => note(uy + (i + 1) * nh + 4, l));
       uy += noteLines.length * nh + 14;
     }
@@ -381,7 +381,7 @@ export function renderDay12(data, { mode = 'gray', variant = 'plate', palette, c
     ['AUDIT', 'Office of Inspector General, audit of the Aldermanic Menu Program (April 2017) and advisory (June 2019)'],
     ['LAWSUIT', 'Lane v. City of Chicago, filed September 2025 (Disability Rights Advocates); the city has moved to dismiss; still open'],
     ['GRID', 'Each square one mile from State & Madison; the first mile south of Madison runs to Roosevelt Road (1200 S)'],
-    ...(color && PAL === PALETTES.sandteal ? [['COLOUR', 'Sand to teal, light for less, dark for more; scatter in Joshua Stevens’ purple–gold bivariate scheme']] : []),
+    ...(color && PAL === PALETTES.sandteal ? [['COLOR', 'Sand to teal, light for less, dark for more; scatter in Joshua Stevens’ purple–gold bivariate scheme']] : []),
   ];
   dy += 18;
   for (const [kk, v] of ledger) {

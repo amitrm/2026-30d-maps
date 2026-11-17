@@ -6,10 +6,10 @@ import { gridLines, formatAddress, toMiles } from '../lib/grid.js';
 // variant 'map': the map alone, with hover hooks, for the day page's left column.
 // variant 'chart': every city station line by line, with hover hooks.
 // variant 'inset': the inset alone, drawn tall so the page can crop it.
-// Modelled transport noise (BTS National Transportation Noise Map, 2022: road, rail and aviation,
+// Modeled transport noise (BTS National Transportation Noise Map, 2022: road, rail and aviation,
 // a 24-hour average, LAeq) drawn as a speaker grille: one dot per city block (data.lattice, ⅛ mile),
 // its area growing with the decibels above 45, the median within 90 m of the block. Stations carry
-// sound rings, one for every 5 dB above 50 at their loudest platform; the centre is filled where the
+// sound rings, one for every 5 dB above 50 at their loudest platform; the center is filled where the
 // station is accessible. Diamonds are the Chicago Department of Aviation's Midway monitors, which
 // measure what the model estimates. The grille stays gray in color mode; stations and the track
 // take their line's color.
@@ -39,7 +39,7 @@ export function renderDay11(data, { mode = 'gray', variant = 'plate' } = {}) {
   const byId = new Map(stations.map((s) => [s.id, s]));
 
   // ---------- marks and hover hooks ----------
-  // the station: centre dot (accessible) or ring (not), and a sound ring per 5 dB above 50, each
+  // the station: center dot (accessible) or ring (not), and a sound ring per 5 dB above 50, each
   // knocked out of the grille with a paper halo so it reads over the dots
   const mark = (s, x, y, r, gap) => {
     const cx = x.toFixed(1), cy = y.toFixed(1), ink = tint(s.lines);
@@ -133,7 +133,7 @@ export function renderDay11(data, { mode = 'gray', variant = 'plate' } = {}) {
   const labelLen = 7 * (gl * 0.6 + 0.4);
   const colX = fx1 + 6 + labelLen;
   const labelTop = fy0 - 6 - labelLen;
-  const rMain = 0.47 * (k / 8); // the largest dot: just short of touching its neighbours
+  const rMain = 0.47 * (k / 8); // the largest dot: just short of touching its neighbors
   const rSt = isMap ? 2.4 : 2;
   const gapSt = isMap ? 1.9 : 1.6;
 
@@ -350,7 +350,7 @@ export function renderDay11(data, { mode = 'gray', variant = 'plate' } = {}) {
     ['CHECK', `Midway monitors, CDA, 12 months to Dec 2025: the model reads ${Math.abs(summary.monitorDiffRange[0])} dB below to ${summary.monitorDiffRange[1]} dB above the measured DNL`],
     ['STATIONS', `CTA GTFS platforms, feed of ${data.gtfsDate}; each station its loudest platform; accessible as on Plate VIII`],
     ['PEOPLE', `2020 Census blocks, ${fmt(summary.residents)} residents, read at each block’s internal point`],
-    ['LIMITS', 'City of Chicago, Boundaries – City · qqq8-j68g; no shielding by buildings; the tunnels are not modelled'],
+    ['LIMITS', 'City of Chicago, Boundaries – City · qqq8-j68g; no shielding by buildings; the tunnels are not modeled'],
   ];
   dy += 18;
   for (const [kk, v] of ledger) {
@@ -395,4 +395,4 @@ function placeLabels(list, fx, fy, r, size, { x0, x1, avoid = [], text: str = (s
 }
 
 const mapLabel = (summary) =>
-  `Plate XI, What You Hear While You Wait: modelled transport noise across Chicago, one dot per block; ${summary.stationsLoud} of ${summary.stations} city ‘L’ stations average ${LOUD} dB or more over a day.`;
+  `Plate XI, What You Hear While You Wait: modeled transport noise across Chicago, one dot per block; ${summary.stationsLoud} of ${summary.stations} city ‘L’ stations average ${LOUD} dB or more over a day.`;
