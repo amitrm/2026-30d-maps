@@ -45,6 +45,8 @@ import day14Data from '../../days/day14-borgesian/output/plate.json';
 import { renderDay14, CHART_TITLE as D14_CHART_TITLE } from './day14.js';
 import day15Data from '../../days/day15-inside-out/output/plate.json';
 import { renderDay15, CHART_TITLE as D15_CHART_TITLE, CHART_NOTE as D15_CHART_NOTE, dayLong as d15Day } from './day15.js';
+import day17Data from '../../days/day17-light-dark/output/plate.json';
+import { renderDay17, CHART_TITLE as D17_CHART_TITLE, CHART_NOTE as D17_CHART_NOTE, INSET_TITLE as D17_INSET, hourName as d17Hour, dayLong as d17Day } from './day17.js';
 import { renderDay07, CHART_NOTE as D7_CHART_NOTE, chartTitle as d7ChartTitle, insetTitle as d7InsetTitle, clock as d7Clock, dayLong as d7Day, hundreds as d7Hundreds, sortOutages as d7Sort } from './day07.js';
 
 const csv = (rows) =>
@@ -590,6 +592,37 @@ const d15Story = {
   ],
 };
 
+// Day 17: every number below comes from days/day17-light-dark/output/plate.json.
+const d17 = day17Data.summary;
+const d17H = day17Data.hours;
+const d17N = day17Data.night, d17P = day17Data.peak;
+const d17Side = Object.fromEntries(d17.sides.map(([n, v]) => [n, v]));
+const d17Pct = (v) => (v < 0.01 ? 'under 1%' : pct(v));
+const d17About = (v, n) => fmt(Math.round(v / n) * n);
+const d17Ratio = d17H.departures[d17N] / d17H.departures[d17P];
+const d17List = (a) => (a.length < 2 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a.at(-1)}`);
+const d17Story = {
+  sections: [
+    ['Background', [
+      `Chicago’s address grid puts a main street every half mile, and nearly every one carries a bus. By day, that promise holds: at ${d17Hour(d17P)}, ${(d17H.within[d17P] * 100).toFixed(1)}% of residents live within a half mile of a bus or train leaving that hour.`,
+      'This map is made of light and shadow only. Each quarter-mile block of the grid is lit by the buses that leave its stops in an hour: the more buses, the brighter. Each block also stands up toward a light in the northwest, so the busiest blocks cast a short shadow. The map shows 3 a.m. on an ordinary weekday.',
+      'Hover or tap an hour in the chart to light the city at that hour. Hover a block for its whole day of buses.',
+    ]],
+    ['Findings', [
+      day17Data.finding,
+      `On a weekday, buses leave city stops about ${(d17.departuresDay / 1e6).toFixed(1)} million times. At ${d17Hour(d17P)}, about ${d17About(d17H.departures[d17P], 1000)} leave in the hour; at 3 a.m., ${d17Ratio < 0.1 ? 'less than a tenth' : `about ${pct(d17Ratio)}`} as many. Half of the blocks lit at 3 a.m. see ${d17.medianLit[d17N]} buses or fewer in the hour, both directions together. At ${d17Hour(d17P)}, half see ${d17.medianLit[d17P]} or more.`,
+      `Through the night, ${day17Data.routes.allNight.length} bus routes keep running, and so do the ${d17List(['Red', 'Blue'].filter((l) => day17Data.routes.railAllNight.includes(l)))} Lines. Together they keep the inner city lit. The dark is at the edges. At 3 a.m., ${pct(d17Side['Far Southwest Side'])} of residents of the Far Southwest Side live more than a half mile from a bus or train leaving that hour, ${pct(d17Side['Far North Side'])} on the Far North Side and ${pct(d17Side['Far Southeast Side'])} on the Far Southeast Side. On the North Side, ${d17Pct(d17Side['North Side'])} do.`,
+      `About ${d17About(d17.nightCommuters, 1000)} Chicagoans leave home for work between midnight and 5 a.m. About ${pct(d17.dark.nightShare)} of them, some ${d17About(d17.dark.night, 100)} people, live more than a half mile from a bus or train leaving at 3 a.m.`,
+    ], true],
+    ['What the map cannot see', [
+      'A timetable, not a ride. The map counts the buses the schedule promises. It cannot tell whether they come.',
+      'A straight half mile. At night the walk is longer than the line: dark underpasses, closed shortcuts and, for a rider who cannot take stairs, the long way round to a ramp. The half mile here is drawn straight, so it is the best case.',
+      `Not the wait. At 3 a.m., a lit block may see one bus an hour in each direction. The map shows where buses leave, not how long the wait is.`,
+    ]],
+  ],
+};
+d17Story.findings = d17Story.sections[1][1];
+
 export const plates = {
   1: {
     file: 'day01-the-doors',
@@ -1043,6 +1076,33 @@ export const plates = {
       csv([
         ['x_miles_east', 'y_miles_north', 'minutes_from_130th_st', 'minutes_from_state_madison', 'miles_from_130th_st'],
         ...day15Data.cells.map(([x, y, a, b]) => [x, y, a, b, Math.hypot(x - day15Data.points.start[0], y - day15Data.points.start[1]).toFixed(2)]),
+      ]),
+  },
+  17: {
+    file: 'day17-the-3-am-city',
+    render: (o) => renderDay17({ ...day17Data, findings: d17Story.findings.slice(1), boundary: cityBoundary.rings }, o), // the headline is the plate's finding note
+    subtitle: 'How much of Chicago’s bus grid still runs at 3 a.m., and who is left in the dark?',
+    finding: day17Data.finding,
+    story: d17Story,
+    ledger: [
+      ['Buses', `CTA GTFS, feed of ${day17Data.gtfsDate}: every bus leaving every stop on Tuesday ${d17Day(day17Data.serviceDay)}, ${fmt(d17.departuresDay)} departures at city stops. Schedule times past midnight fold onto the morning, so the 24 hours are one ordinary weekday.`, day17Data.sources.gtfs],
+      ['Blocks', 'Quarter-mile squares of the address grid, set so the arterials run through their middles: on the quarter-mile lines from State Street, and a sixteenth of a mile south of the lines from Madison, where the stops of the east–west arterials sit. A block counts the buses leaving stops inside it, both directions together, and is drawn when it overlaps the city limits.'],
+      ['Light', 'Brightness: buses in the hour, in ten classes on a log scale from 1 to 150 or more. Each block stands as tall as it is bright, up to 1.3 blocks, toward a light in the northwest 38° above the horizon; its shadow darkens what it falls on by about a third.'],
+      ['All night', 'A route runs all night when a trip leaves the end of the line in every hour from 1 to 4 a.m. Late runs that finish after 1 a.m. and early runs that start before 4 a.m. do not count.'],
+      ['People', `2020 Census: ${fmt(d17.residents)} residents, at their blocks’ internal points. The half mile is a straight line to a CTA bus stop or ‘L’ platform with a departure in the hour, inside the city or not.`, day17Data.sources.census],
+      ['Night shift', `Census Bureau, American Community Survey 2020–2024 (5-year), table B08302, time leaving home to go to work: about ${d17About(d17.nightCommuters, 1000)} of ${d17About(d17.commuters, 1000)} Chicago commuters leave between 12:00 and 4:59 a.m. Tract counts are shared out to blocks by population, so block figures are estimates.`, day17Data.sources.acs],
+      ['Sides', 'Community areas grouped into nine sides as on Plate X, after Wikipedia’s list of Chicago community areas (an unofficial grouping).', day17Data.sources.sides],
+      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
+    ],
+    page: {
+      chart: { title: D17_CHART_TITLE, note: D17_CHART_NOTE },
+      inset: { title: D17_INSET },
+    },
+    csv: () =>
+      csv([
+        ['x_miles_east', 'y_miles_north', ...d17H.departures.map((_, h) => `buses_h${String(h).padStart(2, '0')}`), 'routes_3am'],
+        ...day17Data.cells.map(([i, j, n, r]) => [(day17Data.grid.x0 + i * day17Data.grid.step).toFixed(3), day17Data.grid.rows[j][0].toFixed(4), ...n, r.join(' ')]),
       ]),
   },
 };
