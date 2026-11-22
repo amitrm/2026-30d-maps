@@ -3,17 +3,21 @@ import { C, SERIF, esc, text, textWidth, legendBox, wrap, frame, svg } from '../
 import { gridLines, formatAddress, toMiles } from '../lib/grid.js';
 
 // variant 'plate': the full 1080 x 1350 plate (export, download), at 3 a.m.
-// variant 'map': the map alone, with hover hooks, for the day page's left column. It carries 25 states:
-//   <g data-state="all"> (3 a.m., as the plate) and <g data-state="h00">…<g data-state="h23"> (hidden).
+// variant 'map': the map alone, with hover hooks, for the day page's left column. It carries 24 states:
+//   <g data-state="all"> (3 a.m., as the plate) and <g data-state="h00">…<g data-state="h23"> (hidden),
+//   except h03, which is 'all'.
 // variant 'chart': buses leaving city stops each hour and the share of residents within a half mile of a
 //   departure; each hour is a control, [data-state-key="hNN"], that shows that hour on the map and inset.
 // variant 'inset': the Far Southwest Side, with the same 25 states.
-// The map is made of light and shadow only. Each quarter-mile block of the address grid (centered on the
-// quarter-mile lines, so the half-mile arterials run through the middle of a block) is lit by the buses
-// leaving its stops in the hour: brighter = more. Each block also stands up in proportion to its light,
-// toward a light in the northwest, and casts a mild shadow to the southeast (an SVG filter per class:
-// the class's blocks, offset along the light, in black at SHADOW opacity). Classes are drawn from dim to
-// bright, so a taller block covers the shadows that fall on it. Thin gutters mark the blocks.
+// The map is made of light and shadow only. Each quarter-mile block of the address grid (set so the
+// arterials run through the middle of a block) is lit by the buses leaving its stops in the hour:
+// brighter = more. Each block also stands up in proportion to its light, toward a light in the
+// northwest, and casts a shadow to the southeast (per class, the class's blocks swept along the light,
+// drawn as exact polygons; each class's sweep is masked off blocks as tall or taller, and all sweeps sit
+// in one group at SHADOW opacity, so a block in two shadows darkens once, with a slight blur, SOFT, on
+// the group's edges). Thin gutters mark the blocks.
+// The background is the sky of that day at that hour (data.hours.sky, from the sun's altitude in the
+// notebook): night to day, SKY[mode]. The city limit is a line in a darker shade of that sky.
 
 // buses leaving a block in the hour: class c (1–10) from BREAKS[c - 1]
 export const BREAKS = [1, 2, 4, 7, 12, 20, 35, 60, 100, 150];
@@ -21,6 +25,7 @@ const CAP = 150;
 const ALT = 38; // the light's altitude, degrees
 const HMAX = 1.3; // the brightest block's height, in blocks
 const SHADOW = 0.34;
+const SOFT = 1.5; // the shadow's blurred edge: Gaussian σ in path units (a block is 20)
 const U = 20; // path units per block
 const GAP = '#1B1B1A'; // gutters
 
@@ -40,7 +45,9 @@ const RAMPS = {
   color: ramp(['#5A3E22', '#B87A2C', '#F2C467', '#FFF4D6']),
 };
 export const NONE = { gray: '#363634', color: '#3A332C' }; // a city block with no bus in the hour
-const FIELD = { gray: C.ink, color: '#211E1B' };
+// the sky: night, then full day (grayscale: the same lightness, without hue)
+const SKY = { gray: ['#262626', '#DDDDDD'], color: ['#2A2636', '#DADFCA'] };
+const mix = (a, b, t) => { const B = rgb(b); return hex(rgb(a).map((v, i) => v + (B[i] - v) * t)); };
 export const shade = (mode, c) => (c === 0 ? NONE[mode] ?? NONE.gray : (RAMPS[mode] ?? RAMPS.gray)(Math.pow((c - 1) / 9, 1.05)));
 const clsOf = (n) => BREAKS.filter((b) => n >= b).length;
 
@@ -60,10 +67,18 @@ export function renderDay17(data, { mode = 'gray', variant = 'plate' } = {}) {
   const hooks = isMap || isChart || isInset;
   const uid = `d17-${variant}-${mode}`;
   const T = isMap || isChart ? 1.3 : 1.15;
-  const field = FIELD[mode] ?? FIELD.gray;
   const night = data.night;
-  const states = hooks ? ['all', ...hours.departures.map((_, h) => `h${String(h).padStart(2, '0')}`)] : ['all'];
+  // 'all' is 3 a.m. (the plate's hour), so the 3 a.m. control shows 'all' and has no state of its own
+  const keyOf = (h) => (h === night ? 'all' : `h${String(h).padStart(2, '0')}`);
+  const states = hooks ? ['all', ...hours.departures.map((_, h) => h).filter((h) => h !== night).map(keyOf)] : ['all'];
   const hourOf = (st) => (st === 'all' ? night : Number(st.slice(1)));
+  const sky = SKY[mode] ?? SKY.gray;
+  const skyOf = (h) => mix(sky[0], sky[1], hours.sky[h]);
+  const onSky = (h) => (hours.sky[h] > 0.5 ? C.ink : C.paper); // text and lines over the sky
+  const tone = (h, t) => mix(skyOf(h), onSky(h), t);
+  const limitOf = (h) => mix(skyOf(h), '#000000', 0.6); // the city limit: a darker shade of the sky
+  // one copy per state (all, then the 24 hours; the plate has 'all' only), hidden but the first
+  const perState = (fn, attrs = '') => states.map((st) => `<g data-state="${st}"${st === 'all' ? '' : ' display="none"'}${attrs}>${fn(hourOf(st))}</g>`).join('');
   const r1 = (v) => (+v.toFixed(1)).toString();
   const miles = (b) => ({ west: toMiles(b.west, 'x'), east: toMiles(b.east, 'x'), south: toMiles(b.south, 'y'), north: toMiles(b.north, 'y') });
   const addrY = (y) => (y >= 0 ? y * 800 : y >= -1 ? y * 1200 : -1200 + (y + 1) * 800);
@@ -76,42 +91,55 @@ export function renderDay17(data, { mode = 'gray', variant = 'plate' } = {}) {
   const cy = (j) => rows[j][0];
   const yU = (m) => +(((NTOP - m) / G.step) * U).toFixed(2); // miles north -> path units down
 
-  // shadow filters, one per class, in the blocks' own units (the group is scaled to U units a block)
-  const tan = Math.tan((ALT * Math.PI) / 180);
-  const filters = () => {
-    const f = [];
-    for (let c = 1; c <= 10; c++) {
-      const L = ((HMAX * level(c)) / tan) * U / Math.SQRT2; // along x and y, toward the southeast
-      const offs = [1 / 3, 2 / 3, 1].map((p, i) => `<feOffset in="SourceAlpha" dx="${r1(L * p)}" dy="${r1(L * p)}" result="o${i}"/>`).join('');
-      f.push(`<filter id="${uid}-s${c}" filterUnits="userSpaceOnUse" x="${-2 * U}" y="${-2 * U}" width="${(G.nx + 4) * U}" height="${(rows.length + 4) * U}" color-interpolation-filters="sRGB">${offs}<feMerge result="m"><feMergeNode in="o0"/><feMergeNode in="o1"/><feMergeNode in="o2"/></feMerge><feFlood flood-color="#000" flood-opacity="${SHADOW}"/><feComposite in2="m" operator="in" result="sh"/><feMerge><feMergeNode in="sh"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`);
-    }
-    return `<defs>${f.join('')}</defs>`;
-  };
   // one row run of blocks, in path units
   const run = (i0, i1, j) => `M${i0 * U} ${yU(rows[j][2])}h${(i1 - i0 + 1) * U}v${+(yU(rows[j][1]) - yU(rows[j][2])).toFixed(2)}h${-(i1 - i0 + 1) * U}z`;
-  const runs = (list) => {
-    // list: [i, j] of one class; merge horizontal neighbours
+  // list: [i, j] of one class; merge horizontal neighbours into runs [first i, last i, j]
+  const segments = (list) => {
     const rows = new Map();
     for (const [i, j] of list) (rows.get(j) ?? rows.set(j, []).get(j)).push(i);
-    let d = '';
+    const out = [];
     for (const [j, is] of rows) {
       is.sort((a, b) => a - b);
       let a = is[0], b = is[0];
       for (const i of [...is.slice(1), null]) {
         if (i === b + 1) { b = i; continue; }
-        d += run(a, b, j);
+        out.push([a, b, j]);
         if (i != null) a = b = i;
       }
     }
-    return d;
+    return out;
+  };
+  const runs = (list) => segments(list).map(([a, b, j]) => run(a, b, j)).join('');
+  // shadows, as geometry: a run swept toward the southeast along the light, as long as its class
+  // stands tall (the hull of the run and its copy, clockwise, in relative steps)
+  const tan = Math.tan((ALT * Math.PI) / 180);
+  const reach = (c) => ((HMAX * level(c)) / tan) * U / Math.SQRT2; // along x and along y, path units
+  const sweep = ([a, b, j], d) => {
+    const w = (b - a + 1) * U, yt = yU(rows[j][2]), hh = +(yU(rows[j][1]) - yt).toFixed(1), dd = Math.round(d);
+    return `M${a * U} ${yt}h${w}l${dd} ${dd}v${hh}h${-w}l${-dd} ${-dd}z`;
   };
   const inBox = (box) => (c) => !box || (cx(c[0]) >= box.west - 0.2 && cx(c[0]) <= box.east + 0.2 && cy(c[1]) >= box.south - 0.2 && cy(c[1]) <= box.north + 0.2);
-  // the lit blocks of one hour, dim to bright, each class with its shadow
-  const hourLayer = (h, box) => {
+  // the lit blocks of one hour, and their shadows: each class's sweep, masked off the blocks as tall or
+  // taller (its own included), all drawn solid inside one group at SHADOW opacity
+  const hourLayer = (h, box, key) => {
     const by = Array.from({ length: 11 }, () => []);
     for (const c of cells) if (inBox(box)(c)) by[clsOf(c[2][h])].push(c);
-    return by.map((list, c) => (c && list.length ? `<path d="${runs(list)}" fill="${shade(mode, c)}" filter="url(#${uid}-s${c})"/>` : '')).join('');
+    const id = (c) => `${uid}-${key}-b${c}`;
+    const lit = by.map((l, c) => c && l.length > 0);
+    const defs = [], blocks = [], shadows = [];
+    by.forEach((list, c) => {
+      if (!lit[c]) return;
+      const seg = segments(list);
+      defs.push(`<path id="${id(c)}" d="${seg.map(([a, b, j]) => run(a, b, j)).join('')}"/>`);
+      blocks.push(`<use href="#${id(c)}" fill="${shade(mode, c)}"/>`);
+      const taller = by.map((_, t) => (t >= c && lit[t] ? `<use href="#${id(t)}" fill="#000"/>` : '')).join('');
+      defs.push(`<mask id="${id(c)}m" maskUnits="userSpaceOnUse" x="${-4 * U}" y="${-4 * U}" width="${(G.nx + 8) * U}" height="${(rows.length + 8) * U}"><rect x="${-4 * U}" y="${-4 * U}" width="${(G.nx + 8) * U}" height="${(rows.length + 8) * U}" fill="#fff"/>${taller}</mask>`);
+      shadows.push(`<path d="${seg.map((r) => sweep(r, reach(c))).join('')}" mask="url(#${id(c)}m)"/>`);
+    });
+    return `<defs>${defs.join('')}</defs>${blocks.join('')}<g fill="#000" opacity="${SHADOW}" filter="url(#${uid}-soft)">${shadows.join('')}</g>`;
   };
+  // the shadows' soft edge: one blur over the whole shadow layer, in the blocks' units
+  const softDef = `<defs><filter id="${uid}-soft" filterUnits="userSpaceOnUse" x="${-4 * U}" y="${-4 * U}" width="${(G.nx + 8) * U}" height="${(rows.length + 8) * U}"><feGaussianBlur stdDeviation="${SOFT}"/></filter></defs>`;
   // all city blocks, unlit, and the gutters over everything
   const baseLayer = (box) => `<path d="${runs([...dark, ...cells].filter(inBox(box)))}" fill="${NONE[mode] ?? NONE.gray}"/>`;
   const gutters = (box, w) => {
@@ -149,9 +177,9 @@ export function renderDay17(data, { mode = 'gray', variant = 'plate' } = {}) {
   // the state's name and numbers, in the lake
   const stateLabel = (st, x, y, size = 1) => {
     const h = hourOf(st);
-    return text(x, y, hourName(h).toUpperCase(), { size: 17 * size, weight: 600, spacing: 1.2, anchor: 'end', fill: C.paper }) +
-      text(x, y + 19 * size, `${fmt(hours.departures[h])} buses leave ${fmt(hours.lit[h])} blocks`, { size: 12.5 * size, font: SERIF, italic: true, fill: C.fog, anchor: 'end' }) +
-      text(x, y + 35 * size, `${pctEnd(1 - hours.within[h])} of residents beyond a half mile`, { size: 12.5 * size, font: SERIF, italic: true, fill: '#A4A29B', anchor: 'end' });
+    return text(x, y, hourName(h).toUpperCase(), { size: 17 * size, weight: 600, spacing: 1.2, anchor: 'end', fill: onSky(h) }) +
+      text(x, y + 19 * size, `${fmt(hours.departures[h])} buses leave ${fmt(hours.lit[h])} blocks`, { size: 12.5 * size, font: SERIF, italic: true, fill: tone(h, 0.8), anchor: 'end' }) +
+      text(x, y + 35 * size, `${pctEnd(1 - hours.within[h])} of residents beyond a half mile`, { size: 12.5 * size, font: SERIF, italic: true, fill: tone(h, 0.62), anchor: 'end' });
   };
 
   if (isPlate) out.push(frame({
@@ -183,17 +211,19 @@ export function renderDay17(data, { mode = 'gray', variant = 'plate' } = {}) {
 
   if (isPlate || isMap) {
     const city = cityPath(X, Y);
-    out.push(filters());
     out.push(`<defs><clipPath id="${uid}-map"><rect x="${fx0}" y="${fy0}" width="${fx1 - fx0}" height="${fy1 - fy0}"/></clipPath><clipPath id="${uid}-city"><path d="${city}" clip-rule="evenodd"/></clipPath></defs>`);
     out.push(`<g clip-path="url(#${uid}-map)">`);
-    out.push(`<rect x="${fx0}" y="${fy0}" width="${fx1 - fx0}" height="${fy1 - fy0}" fill="${field}"/>`);
-    for (const x of g.xs) out.push(`<line x1="${X(x)}" x2="${X(x)}" y1="${fy0}" y2="${fy1}" stroke="#3B3A37" stroke-width="${x === 0 ? 0.9 : 0.6}"/>`);
-    for (const y of g.ys) out.push(`<line x1="${fx0}" x2="${fx1}" y1="${Y(y)}" y2="${Y(y)}" stroke="#3B3A37" stroke-width="${y === 0 ? 0.9 : 0.6}"/>`);
+    // the sky and the mile grid, per hour
+    const gridD = g.xs.map((x) => `M${r1(X(x))},${r1(fy0)}V${r1(fy1)}`).join('') + g.ys.map((y) => `M${r1(fx0)},${r1(Y(y))}H${r1(fx1)}`).join('');
+    out.push(perState((h) => `<rect x="${fx0}" y="${fy0}" width="${fx1 - fx0}" height="${fy1 - fy0}" fill="${skyOf(h)}"/><path d="${gridD}" fill="none" stroke="${tone(h, 0.11)}" stroke-width="0.6"/>`, ' pointer-events="none"'));
     out.push(`<g clip-path="url(#${uid}-city)"><g transform="${blockGroup(Xm, Ym, k)}">`);
-    out.push(baseLayer(all));
-    for (const st of states) out.push(`<g data-state="${st}"${st === 'all' ? '' : ' display="none"'}>${hourLayer(hourOf(st), all)}</g>`);
+    out.push(softDef, baseLayer(all));
+    for (const st of states) out.push(`<g data-state="${st}"${st === 'all' ? '' : ' display="none"'}>${hourLayer(hourOf(st), all, st)}</g>`);
     out.push(gutters(all, U * 0.07));
     out.push('</g></g>');
+    // the city limit: a line in a darker shade of the sky, at every hour
+    out.push(`<defs><path id="${uid}-limit" d="${city}" fill="none" stroke-linejoin="round"/></defs>`);
+    out.push(perState((h) => `<use href="#${uid}-limit" stroke="${limitOf(h)}" stroke-width="${isMap ? 2 : 1.6}"/>`, ' pointer-events="none"'));
     if (isMap) out.push(hits(Xm, Ym, k, all));
     // state label in the lake
     const lx = fx1 - 14, ly = fy0 + 36;
@@ -205,14 +235,16 @@ export function renderDay17(data, { mode = 'gray', variant = 'plate' } = {}) {
     for (const y of g.ys) out.push(text(colX, Y(y) + gl * 0.35, formatAddress(y, 'y'), { size: gl, spacing: 0.4, anchor: 'end', ...gridLabel(y) }));
 
     // the inset's box
-    out.push(`<rect${hooks ? ` data-inset-frame data-y0="${+Ym(0).toFixed(2)}"` : ''} x="${r1(Xm(IB.west))}" y="${r1(Ym(IB.north))}" width="${r1((IB.east - IB.west) * k)}" height="${r1((IB.north - IB.south) * k)}" fill="none" stroke="${C.paper}" stroke-width="0.7" stroke-dasharray="2 2"/>`);
+    out.push(`<rect${hooks ? ` data-inset-frame data-y0="${+Ym(0).toFixed(2)}"` : ''} x="${r1(Xm(IB.west))}" y="${r1(Ym(IB.north))}" width="${r1((IB.east - IB.west) * k)}" height="${r1((IB.north - IB.south) * k)}" fill="none" stroke="#8C8A84" stroke-width="0.8" stroke-dasharray="2 2"/>`);
 
-    // mile ruler, in fog on the dark field
+    // mile ruler, over the sky, per hour
     const rx = X(ext.west + 800), ry = Y(ext.south) - k * 0.35;
-    out.push(`<line x1="${rx}" x2="${rx + 4 * k}" y1="${ry}" y2="${ry}" stroke="${C.fog}" stroke-width="1.2"/>`);
-    for (let i = 0; i <= 4; i++) out.push(`<line x1="${rx + i * k}" x2="${rx + i * k}" y1="${ry - (i % 4 === 0 ? 6 : 4)}" y2="${ry}" stroke="${C.fog}" stroke-width="1.2"/>`);
-    out.push(text(rx, ry - 9, '0', { size: 7.5 * T, anchor: 'middle', fill: C.fog }));
-    out.push(text(rx + 4 * k, ry - 9, '4 MI', { size: 7.5 * T, anchor: 'middle', fill: C.fog }));
+    out.push(perState((h) => {
+      const c = tone(h, 0.85);
+      let r = `<line x1="${rx}" x2="${rx + 4 * k}" y1="${ry}" y2="${ry}" stroke="${c}" stroke-width="1.2"/>`;
+      for (let i = 0; i <= 4; i++) r += `<line x1="${rx + i * k}" x2="${rx + i * k}" y1="${ry - (i % 4 === 0 ? 6 : 4)}" y2="${ry}" stroke="${c}" stroke-width="1.2"/>`;
+      return r + text(rx, ry - 9, '0', { size: 7.5 * T, anchor: 'middle', fill: c }) + text(rx + 4 * k, ry - 9, '4 MI', { size: 7.5 * T, anchor: 'middle', fill: c });
+    }, ' pointer-events="none"'));
 
     // legend
     const lgs = 9 * T;
@@ -288,7 +320,7 @@ export function renderDay17(data, { mode = 'gray', variant = 'plate' } = {}) {
     }
     if (hooks) out.push(`<style>.${uid}-col .bg{transition:fill .12s}.${uid}-col:hover .bg,.${uid}-col.on .bg{fill:${C.rule}}</style>`);
     for (let h = 0; h < 24; h++) {
-      const key = `h${String(h).padStart(2, '0')}`;
+      const key = keyOf(h);
       if (hooks) {
         const tip = `${fmt(hours.departures[h])} buses leave city stops|${fmt(hours.lit[h])} blocks lit|${pctEnd(hours.within[h])} of residents within a half mile of a bus or train leaving`;
         out.push(`<g class="${uid}-col" data-state-key="${key}" data-tip="${hourName(h)}" data-name="${hourName(h)}" data-shape="none" data-detail="${esc(tip)}"><rect class="bg" x="${r1(xc(h) - colW / 2)}" y="${top - 12}" width="${r1(colW)}" height="${ch + 12}" fill="transparent"/>`);
@@ -332,21 +364,26 @@ export function renderDay17(data, { mode = 'gray', variant = 'plate' } = {}) {
   const ibox = isInset ? { x: 0, y: 0, w: iw, h: Math.round((IBp.north - IBp.south) * ki) } : { x: mx, y: ty + nh + 14, w: iw, h: Math.round((IB.north - IB.south) * ki) };
   const IXm = (m) => ibox.x + (m - IBp.west) * ki;
   const IYm = (m) => ibox.y + (IBp.north - m) * ki;
-  out.push(filters());
   out.push(`<defs><clipPath id="${uid}-inset"><rect x="${ibox.x}" y="${ibox.y}" width="${ibox.w}" height="${ibox.h}"/></clipPath><clipPath id="${uid}-icity"><path d="${cityPath((x) => IXm(toMiles(x, 'x')), (y) => IYm(toMiles(y, 'y')))}" clip-rule="evenodd"/></clipPath></defs>`);
-  out.push(`<g clip-path="url(#${uid}-inset)"><rect x="${ibox.x}" y="${ibox.y}" width="${ibox.w}" height="${ibox.h}" fill="${field}"/>`);
+  out.push(`<g clip-path="url(#${uid}-inset)">`);
+  out.push(perState((h) => `<rect x="${ibox.x}" y="${ibox.y}" width="${ibox.w}" height="${ibox.h}" fill="${skyOf(h)}"/>`, ' pointer-events="none"'));
   out.push(`<g clip-path="url(#${uid}-icity)"><g transform="${blockGroup(IXm, IYm, ki)}">`);
-  out.push(baseLayer(IBp));
-  for (const st of states) out.push(`<g data-state="${st}"${st === 'all' ? '' : ' display="none"'}>${hourLayer(hourOf(st), IBp)}</g>`);
+  out.push(softDef, baseLayer(IBp));
+  for (const st of states) out.push(`<g data-state="${st}"${st === 'all' ? '' : ' display="none"'}>${hourLayer(hourOf(st), IBp, st)}</g>`);
   out.push(gutters(IBp, U * 0.05));
   out.push('</g></g>');
+  const icity = cityPath((x) => IXm(toMiles(x, 'x')), (y) => IYm(toMiles(y, 'y')));
+  out.push(`<defs><path id="${uid}-ilimit" d="${icity}" fill="none" stroke-linejoin="round"/></defs>`);
+  out.push(perState((h) => `<use href="#${uid}-ilimit" stroke="${limitOf(h)}" stroke-width="2"/>`, ' pointer-events="none"'));
   // the half-mile arterials named along the edges
   const ts = 7 * (isInset ? 1.35 : 1.15);
   // beside their block (west of a north-south street, south of an east-west one), clear of its light
   const hb = (ki * G.step) / 2 + 2;
-  const xs = data.inset.streets.x.map(([m, name]) => text(r1(IXm(m) - hb), isInset ? -5 : ibox.y + ibox.h - 5, name, { size: ts, fill: C.fog, weight: 500, rotate: -90 }));
-  out.push(isInset ? `<g data-pin-bottom transform="translate(0 ${ibox.h})">${xs.join('')}</g>` : xs.join(''));
-  for (const [m, name] of data.inset.streets.y) out.push(text(ibox.x + 4, r1(IYm(m) + hb + ts * 0.75), name, { size: ts, fill: C.fog, weight: 500 }));
+  // in the sky's contrast, with a halo of the sky, so they read over the city's blocks at every hour
+  const nameStyle = (h) => ({ size: ts, fill: onSky(h), weight: 500, halo: skyOf(h) });
+  const xs = (h) => data.inset.streets.x.map(([m, name]) => text(r1(IXm(m) - hb), isInset ? -5 : ibox.y + ibox.h - 5, name, { ...nameStyle(h), rotate: -90 })).join('');
+  out.push(isInset ? `<g data-pin-bottom transform="translate(0 ${ibox.h})">${perState(xs, ' pointer-events="none"')}</g>` : perState(xs));
+  out.push(perState((h) => data.inset.streets.y.map(([m, name]) => text(ibox.x + 4, r1(IYm(m) + hb + ts * 0.75), name, nameStyle(h))).join(''), ' pointer-events="none"'));
   if (isInset) out.push(hits(IXm, IYm, ki, IBp));
   out.push('</g>');
   if (isPlate) out.push(`<rect x="${ibox.x}" y="${ibox.y}" width="${ibox.w}" height="${ibox.h}" fill="none" stroke="${C.ink}" stroke-width="0.8"/>`);
@@ -375,6 +412,7 @@ export function renderDay17(data, { mode = 'gray', variant = 'plate' } = {}) {
     ['BUSES', `CTA GTFS, feed of ${data.gtfsDate}: every bus leaving every stop on Tuesday ${dayLong(data.serviceDay)}; times past midnight fold onto the morning`],
     ['BLOCKS', 'Quarter-mile squares of the address grid, set so the arterials run through their middles; city stops only'],
     ['LIGHT', `Brightness: buses in the hour, log scale, 1 to ${CAP}+. Height and shadow follow brightness; light from the northwest`],
+    ['SKY', 'Background: the sky that day at the hour, from the sun’s altitude; at 3 a.m., night'],
     ['PEOPLE', '2020 Census blocks; half mile in a straight line to a bus stop or ‘L’ platform with a departure in the hour'],
     ['LIMITS', 'City of Chicago, Boundaries – City · qqq8-j68g'],
   ];
