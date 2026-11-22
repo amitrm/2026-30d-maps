@@ -11,13 +11,13 @@ import { gridLines, formatAddress, toMiles } from '../lib/grid.js';
 // variant 'chart': two charts, reports a month, one line per year: wheels, then snow. It fills the
 //   page's middle column (no inset). Hover a month for every year's count.
 
-// Color: brick for the warm months (wheels), blue for winter (snow), plum between; darker = more reports.
+// Color: ochre for the warm months (wheels), slate for winter (snow), warm gray between; darker = more reports.
 // Grayscale: tone for reports, an ink square for the share in winter (Plate IX's way).
 export const PAL = {
   color: {
-    bivar: [['#F2D3C9', '#E2D6DE', '#D3E1EE'], ['#D98A73', '#A994A9', '#7FA9CF'], ['#A63A26', '#5E3F63', '#285E92']],
-    wheels: '#A63A26', snow: '#285E92',
-    years: { wheels: ['#E7A897', '#D27E68', '#B9553E', '#93341F', '#5E1D10'], snow: ['#A9C8E3', '#7BAAD3', '#4F88BD', '#2D6299', '#163F69'] },
+    bivar: [['#EFE2C2', '#E1DED6', '#D3DAE0'], ['#D9B56A', '#A9A69B', '#8A9DAE'], ['#A87A1A', '#5F5A4C', '#3C5468']],
+    wheels: '#A87A1A', snow: '#3C5468',
+    years: { wheels: ['#E3C98A', '#D2AE5C', '#B88D2E', '#8E6A16', '#5C440B'], snow: ['#B7C4CF', '#8FA2B3', '#677F95', '#45607A', '#273D52'] },
   },
   gray: {
     tones: ['#DAD8D2', '#AEACA6', '#7E7C76'], sizes: [0, 0.34, 0.62],
@@ -186,7 +186,7 @@ export function renderDay16(data, { mode = 'gray', variant = 'plate' } = {}) {
       const items = [
         ['head', `Each half-mile block, ${win}`],
         ...(b
-          ? [[sw(b[2][0]), 'Brick: many reports, mostly Mar–Nov (scooters, bikes)'], [sw(b[2][2]), 'Blue: many reports, mostly Dec–Feb (snow)'], [sw(b[2][1]), 'Plum: both'], [sw(b[0][1]), 'Pale: few reports']]
+          ? [[sw(b[2][0]), 'Ochre: many reports, mostly Mar–Nov (scooters, bikes)'], [sw(b[2][2]), 'Slate: many reports, mostly Dec–Feb (snow)'], [sw(b[2][1]), 'Dark gray: both'], [sw(b[0][1]), 'Pale: few reports']]
           : [[sw(pal.tones[2]), 'Darker gray: more reports'], [sw(pal.tones[1], pal.sizes[2]), 'Ink square: more of them in Dec–Feb (snow)']]),
       ];
       const box = legendBox(items, { x: rx, bottom: Y(ext.south) - k, k, size: lgs });
@@ -208,56 +208,55 @@ export function renderDay16(data, { mode = 'gray', variant = 'plate' } = {}) {
       .replace('<svg ', `<svg data-top="${labelTop - 184}" data-bottom="${fy1 - 184}" data-ftop="${+(fy0 - 184).toFixed(2)}" data-ppm="${+k.toFixed(3)}" `);
   }
 
-  // ---------- the two charts: reports a month, one line per year ----------
+  // ---------- the two matrices: months down, years across, cells shaded by reports ----------
   const years = s.years.map(String);
-  const charts = (x0, top, w, size) => {
+  const LIGHT = '#F4F1E8';
+  const mix = (c1, c2, f) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(c1.slice(i, i + 2), 16) * (1 - f) + parseInt(c2.slice(i, i + 2), 16) * f).toString(16).padStart(2, '0')).join('');
+  const charts = (x0, top, w, size, ch) => {
     const o = [];
     let y = top;
     const lastYear = years.at(-1), lastM = Number(s.window[1].slice(5, 7)) - 1; // the window ends before this month's first day
     for (const [grp, head] of [['wheels', 'SCOOTERS AND DIVVY BIKES PARKED IN THE WAY'], ['snow', 'SIDEWALKS NOT CLEARED OF SNOW']]) {
-      const ramp = pal.years[grp];
+      const dark = pal.years[grp].at(-1);
       o.push(text(x0, y + size * 0.85, head, { size: size * 0.95, weight: 600, spacing: 0.6 }));
-      y += size * 1.6;
-      const h = size * (isPlate ? 25 : 26), L = size * 3.6, R = size * 7.6;
-      const cx0 = x0 + L, cx1 = x0 + w - R;
+      y += size * 2.2;
+      const L = size * 3.4, cw = (w - L) / years.length;
       const max = Math.max(...years.flatMap((yr) => monthly[grp][yr]));
-      const stepV = max > 3000 ? 1000 : max > 1200 ? 500 : 250;
-      const top2 = Math.ceil(max / stepV) * stepV;
-      const Xc = (m) => cx0 + ((m - 1) / 11) * (cx1 - cx0);
-      const Yc = (v) => y + h - (v / top2) * h;
-      for (let v = 0; v <= top2; v += stepV) {
-        o.push(`<line x1="${r1(cx0)}" x2="${r1(cx1)}" y1="${r1(Yc(v))}" y2="${r1(Yc(v))}" stroke="${v ? C.rule : C.fog}" stroke-width="0.7"/>`);
-        o.push(text(r1(cx0 - 4), r1(Yc(v) + size * 0.3), fmt(v), { size: size * 0.78, fill: C.pencil, anchor: 'end' }));
+      years.forEach((yr, j) => o.push(text(r1(x0 + L + (j + 0.5) * cw), r1(y), yr, { size: size * 0.95, weight: 600, anchor: 'middle' })));
+      y += size * 0.7;
+      for (let m = 1; m <= 12; m++) {
+        const cy = y + (m - 1) * ch;
+        o.push(text(r1(x0 + L - 5), r1(cy + ch / 2 + size * 0.3), MONTH_LONG[m - 1].slice(0, 3), { size: size * 0.92, weight: 600, anchor: 'end' }));
+        years.forEach((yr, j) => {
+          const cx = x0 + L + j * cw;
+          if (yr === lastYear && m > lastM) {
+            o.push(`<rect x="${r1(cx + 1)}" y="${r1(cy + 1)}" width="${r1(cw - 2)}" height="${r1(ch - 2)}" fill="none" stroke="${C.fog}" stroke-width="0.7" stroke-dasharray="2 2"/>`);
+            return;
+          }
+          const v = monthly[grp][yr][m - 1];
+          const fill = mix(LIGHT, dark, Math.sqrt(v / max)); // square root: small months still show
+          o.push(`<rect x="${r1(cx + 1)}" y="${r1(cy + 1)}" width="${r1(cw - 2)}" height="${r1(ch - 2)}" fill="${fill}"/>`);
+          o.push(text(r1(cx + cw / 2), r1(cy + ch / 2 + size * 0.3), fmt(v), { size: size * 0.8, fill: isDark(fill) ? '#FFFFFF' : C.ink, anchor: 'middle' }));
+          if (hooks) {
+            const sh = JSON.stringify({
+              num: `${MONTH_LONG[m - 1].slice(0, 3)} ${yr}`, name: '', sub: grp === 'wheels' ? 'Scooters and Divvy bikes' : 'Snow on the sidewalk', fill, on: isDark(fill) ? '#FFFFFF' : C.ink,
+              blocks: [{ sec: 'Reports to 311, citywide' }, { row: ['That month', fmt(v), `${Math.round((100 * v) / Math.max(1, s.yearTotals[grp][yr]))}% of the year`] }, { row: [`All of ${yr}${yr === lastYear ? ' (to Oct)' : ''}`, fmt(s.yearTotals[grp][yr])] }],
+            });
+            o.push(`<g data-kind="sheet" data-id="${grp}${yr}-${m}" data-tip="${MONTH_LONG[m - 1]} ${yr}" data-name="${MONTH_LONG[m - 1]} ${yr}" data-sheet="${attr(sh)}"><rect x="${r1(cx)}" y="${r1(cy)}" width="${r1(cw)}" height="${r1(ch)}" fill="transparent"/></g>`);
+          }
+        });
       }
-      for (let m = 1; m <= 12; m++) o.push(text(r1(Xc(m)), r1(y + h + size * 1.15), MONTH_1[m - 1], { size: size * 0.8, fill: C.pencil, anchor: 'middle' }));
-      years.forEach((yr, i) => {
-        const vals = monthly[grp][yr].slice(0, yr === lastYear ? lastM : 12);
-        const pts = vals.map((v, m) => `${r1(Xc(m + 1))},${r1(Yc(v))}`).join(' ');
-        o.push(`<polyline points="${pts}" fill="none" stroke="${ramp[i]}" stroke-width="${i === years.length - 1 ? 2 : 1.3}" stroke-linejoin="round" stroke-linecap="round"/>`);
-        const ly = y + size * 0.4 + i * size * 1.35;
-        o.push(`<line x1="${r1(cx1 + size * 0.9)}" x2="${r1(cx1 + size * 2.1)}" y1="${r1(ly)}" y2="${r1(ly)}" stroke="${ramp[i]}" stroke-width="2.2"/>`);
-        o.push(text(r1(cx1 + size * 2.5), r1(ly + size * 0.3), yr, { size: size * 0.8, fill: C.pencil }));
-        o.push(text(r1(x0 + w), r1(ly + size * 0.3), fmt(s.yearTotals[grp][yr]), { size: size * 0.8, weight: 600, anchor: 'end' }));
-      });
-      o.push(text(r1(x0 + w), r1(y + size * 0.4 + years.length * size * 1.35 + size * 0.3), `${lastYear} to ${lastMonth(s.window[1]).slice(0, 3)}`, { size: size * 0.7, fill: C.pencil, anchor: 'end', italic: true, font: SERIF }));
-      if (hooks) {
-        for (let m = 1; m <= 12; m++) {
-          const sh = JSON.stringify({
-            num: MONTH_1[m - 1], name: MONTH_LONG[m - 1], sub: grp === 'wheels' ? 'Scooters and Divvy bikes' : 'Snow on the sidewalk', fill: ramp.at(-1), on: '#FFFFFF',
-            blocks: [{ sec: 'Reports to 311, citywide' }, ...years.filter((yr) => yr !== lastYear || m <= lastM).map((yr) => ({ row: [yr, fmt(monthly[grp][yr][m - 1])] }))],
-          });
-          const hw = (cx1 - cx0) / 11;
-          o.push(`<g data-kind="sheet" data-id="${grp}${m}" data-tip="${MONTH_LONG[m - 1]}" data-name="${MONTH_LONG[m - 1]}" data-sheet="${attr(sh)}"><rect x="${r1(Xc(m) - hw / 2)}" y="${r1(y)}" width="${r1(hw)}" height="${r1(h)}" fill="transparent"/></g>`);
-        }
-      }
-      y += h + size * 3.4;
+      y += 12 * ch + size * 1.3;
+      o.push(text(r1(x0 + L - 5), r1(y), 'TOTAL', { size: size * 0.92, weight: 600, spacing: 0.4, anchor: 'end' }));
+      years.forEach((yr, j) => o.push(text(r1(x0 + L + (j + 0.5) * cw), r1(y), fmt(s.yearTotals[grp][yr]), { size: size * 1.05, weight: 600, anchor: 'middle' })));
+      y += size * 2.6;
     }
-    return { svg: o.join(''), height: y - size * 1.6 - top };
+    return { svg: o.join(''), height: y - size * 2.6 - top + size * 0.5 };
   };
 
   if (isChart) {
     const cw = 390, size = 8 * T;
-    const c = charts(0, 4, cw, size);
+    const c = charts(0, 4, cw, size, size * 2.45);
     return svg(c.svg, { label: chartLabel(s), viewBox: `0 0 ${cw} ${Math.ceil(c.height + 8)}`, align: 'xMidYMin meet' });
   }
 
@@ -271,7 +270,7 @@ export function renderDay16(data, { mode = 'gray', variant = 'plate' } = {}) {
   const noteLines = wrap(CHART_NOTE, Math.floor(W_COL / (ns * 0.45)));
   noteLines.forEach((l, i) => note(uy + (i + 1) * nh + 4, l));
   uy += noteLines.length * nh + 16;
-  out.push(charts(mx, uy, W_COL, 8).svg);
+  out.push(charts(mx, uy, W_COL, 8, 16.5).svg);
 
   const findingsH = 330;
   let fy = Math.round(fy1 - findingsH + 30);
@@ -306,7 +305,7 @@ export function renderDay16(data, { mode = 'gray', variant = 'plate' } = {}) {
 
 const W_COL = 300;
 export const CHART_TITLE = 'Month by month, year by year';
-export const CHART_NOTE = 'Reports a month, citywide, one line for each year (darker is later). Scooter reports begin in April 2022.';
+export const CHART_NOTE = 'Reports a month, citywide: months down, years across, darker is more. Scooter reports begin in April 2022; Nov–Dec 2026 not yet over.';
 
 const mapLabel = (s) =>
   `Plate XVI, Something in the Way: half-mile blocks of Chicago shaded by the 311 reports residents sent about scooters, Divvy bikes and uncleared snow on the sidewalk, and by the share sent in winter. In the last 12 months: ${fmt(s.wheels12)} reports of wheels, ${fmt(s.snow12)} of snow.`;

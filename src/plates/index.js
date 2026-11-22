@@ -601,7 +601,7 @@ const d16Story = {
   sections: [
     ['Background', [
       'This map was made with Chicago residents. Each block’s color comes from the reports they sent to 311, the city’s service line, about something in the way on the sidewalk: a scooter or a Divvy bike parked across it, or snow nobody cleared. For a wheelchair user, a parent with a stroller or anyone who cannot step around it, either one can end the walk.',
-      `From ${d16Win} they sent ${fmt(d16.reports)} such reports. The map cuts the city into half-mile blocks and shades each one twice: by how many reports it got, and by the share sent in December to February. In color, brick blocks heard mostly about scooters and bikes, blue blocks mostly about snow, plum blocks about both; darker means more reports. In grayscale, darker means more reports and a larger ink square means more of them came in winter. The two charts give every month of every year. Hover a block or a month for its counts.`,
+      `From ${d16Win} they sent ${fmt(d16.reports)} such reports. The map cuts the city into half-mile blocks and shades each one twice: by how many reports it got, and by the share sent in December to February. In color, ochre blocks heard mostly about scooters and bikes, slate blocks mostly about snow, dark gray blocks about both; darker means more reports. In grayscale, darker means more reports and a larger ink square means more of them came in winter. The two tables in the middle give every month of every year, darker where there were more reports. Hover a block or a cell for its counts.`,
     ]],
     ['Findings', [
       day16Data.finding,
@@ -1083,7 +1083,7 @@ export const plates = {
     ledger: [
       ['Reports', `City of Chicago, 311 Service Requests · ${day16Data.dataset} · pulled ${day16Data.ledger.pulled}: three request types, ${d16Win}. Scooters and bikes: E-Scooter Parking Complaint (${fmt(d16.scooter)}) and Divvy Bike Parking Complaint (${fmt(d16.divvy)}). Snow: Snow – Uncleared Sidewalk Complaint (${fmt(d16.snow)}). Reports the city flags as duplicates, and the few without a location, are left out.`, day16Data.sources.sr311],
       ['Blocks', `Half-mile squares of the mile grid; each report counts in the block that holds it. Reports per block: ${d16Classes(d16Br).join(', ').toLowerCase()}. Share sent in December–February: under a third, a third to two thirds, over two thirds.`],
-      ['Charts', 'Reports a month, citywide, one line for each calendar year.'],
+      ['Tables', 'Reports a month, citywide: months down, calendar years across; each cell shaded on a square-root scale of its table’s largest month.'],
       ['Areas', 'City of Chicago, Boundaries – Community Areas, as recorded on each report.', day16Data.sources.areas],
       ['Notes', `Snow – Object/Dibs Removal Request (${fmt(d16.dibs)}) and Submerged Divvy or Lime Device in the Lake/River (${d16.sunk}), same window; counted, not drawn.`],
       ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
