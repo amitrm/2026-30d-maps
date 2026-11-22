@@ -45,6 +45,8 @@ import day14Data from '../../days/day14-borgesian/output/plate.json';
 import { renderDay14, CHART_TITLE as D14_CHART_TITLE } from './day14.js';
 import day15Data from '../../days/day15-inside-out/output/plate.json';
 import { renderDay15, CHART_TITLE as D15_CHART_TITLE, CHART_NOTE as D15_CHART_NOTE, dayLong as d15Day } from './day15.js';
+import day16Data from '../../days/day16-collaborative/output/plate.json';
+import { renderDay16, CHART_TITLE as D16_CHART_TITLE, CHART_NOTE as D16_CHART_NOTE, blockPlace as d16Place, windowText as d16Window, reportClasses as d16Classes, MONTH_LONG as D16_MONTHS } from './day16.js';
 import { renderDay07, CHART_NOTE as D7_CHART_NOTE, chartTitle as d7ChartTitle, insetTitle as d7InsetTitle, clock as d7Clock, dayLong as d7Day, hundreds as d7Hundreds, sortOutages as d7Sort } from './day07.js';
 
 const csv = (rows) =>
@@ -590,6 +592,33 @@ const d15Story = {
   ],
 };
 
+const d16 = day16Data.summary;
+const d16Win = d16Window(d16.window);
+const d16Br = day16Data.reportBreaks;
+const d16Y = (grp) => Object.entries(d16.yearTotals[grp]);
+const d16SnowSorted = d16Y('snow').slice(0, -1).sort((a, b) => b[1] - a[1]); // complete years only
+const d16Story = {
+  sections: [
+    ['Background', [
+      'This map was made with Chicago residents. Each block’s color comes from the reports they sent to 311, the city’s service line, about something in the way on the sidewalk: a scooter or a Divvy bike parked across it, or snow nobody cleared. For a wheelchair user, a parent with a stroller or anyone who cannot step around it, either one can end the walk.',
+      `From ${d16Win} they sent ${fmt(d16.reports)} such reports. The map cuts the city into half-mile blocks and shades each one twice: by how many reports it got, and by the share sent in December to February. In color, brick blocks heard mostly about scooters and bikes, blue blocks mostly about snow, plum blocks about both; darker means more reports. In grayscale, darker means more reports and a larger ink square means more of them came in winter. The two charts give every month of every year. Hover a block or a month for its counts.`,
+    ]],
+    ['Findings', [
+      day16Data.finding,
+      `The sidewalk is blocked in every season, by different things. ${pct(d16.snowWinterShare)} of the snow reports came from December to February; ${pct(d16.wheelsAprNovShare)} of the scooter and bike reports came from April to November.`,
+      `The busiest blocks split in two. Of the blocks with ${d16Br[1]} or more reports, ${d16.warm.blocks} heard mostly about scooters and bikes, most of them in ${list(d16.warm.areas.slice(0, 3))}. Another ${d16.cold.blocks} heard mostly about snow, most of them in ${list(d16.cold.areas.slice(0, 3))}.`,
+      `Scooter and bike reports grow every year: ${list(d16Y('wheels').slice(0, -1).map(([y, v]) => `${fmt(v)} in ${y}`))}, and ${fmt(d16Y('wheels').at(-1)[1])} in the first ten months of ${d16Y('wheels').at(-1)[0]}. Snow reports follow the winter: ${fmt(d16SnowSorted[0][1])} in ${d16SnowSorted[0][0]}, ${fmt(d16SnowSorted.at(-1)[1])} in ${d16SnowSorted.at(-1)[0]}.`,
+      `Reports gather where people send them. ${share(d16.topAreaShare).replace(/^./, (c) => c.toUpperCase())} of the scooter and bike reports came from ${d16.topArea}, and the ten busiest community areas sent ${pct(d16.top10Share)}. ${fmt(d16.quietBlocks)} of the ${fmt(d16.blocks)} blocks sent fewer than ${d16Br[0]} reports in almost five years.`,
+      `The same residents asked the city ${fmt(d16.dibs)} times to remove the chairs that hold a shoveled parking space, and reported ${d16.sunk} Divvy bikes and scooters in the lake or the river.`,
+    ], true],
+    ['What the map cannot see', [
+      'Reports, not obstacles. A block’s color shows where residents report as much as where things block the way. Some streets have neighbors who report every scooter; others have none, or have stopped reporting. A pale block is not proof of a clear sidewalk.',
+      `Only what was reported, and only since it could be. 311 took its first scooter report in ${D16_MONTHS[Number(d16.scooterFirst.slice(5, 7)) - 1]} ${d16.scooterFirst.slice(0, 4)}. ${pct(d16.webApp)} of these reports came by website or phone app. The city flags repeat reports of the same problem as duplicates; ${fmt(d16.duplicates)} were left out. Broken sidewalks, missing curb ramps and cars on the sidewalk are other request types and are not counted.`,
+    ]],
+  ],
+};
+d16Story.findings = d16Story.sections[1][1];
+
 export const plates = {
   1: {
     file: 'day01-the-doors',
@@ -1043,6 +1072,30 @@ export const plates = {
       csv([
         ['x_miles_east', 'y_miles_north', 'minutes_from_130th_st', 'minutes_from_state_madison', 'miles_from_130th_st'],
         ...day15Data.cells.map(([x, y, a, b]) => [x, y, a, b, Math.hypot(x - day15Data.points.start[0], y - day15Data.points.start[1]).toFixed(2)]),
+      ]),
+  },
+  16: {
+    file: 'day16-something-in-the-way',
+    render: (o) => renderDay16({ ...day16Data, findings: d16Story.findings.slice(1, 5), boundary: cityBoundary.rings }, o), // the headline is the plate's finding note
+    subtitle: 'What do Chicago residents tell the city is blocking the sidewalk, where, and when in the year?',
+    finding: day16Data.finding,
+    story: d16Story,
+    ledger: [
+      ['Reports', `City of Chicago, 311 Service Requests · ${day16Data.dataset} · pulled ${day16Data.ledger.pulled}: three request types, ${d16Win}. Scooters and bikes: E-Scooter Parking Complaint (${fmt(d16.scooter)}) and Divvy Bike Parking Complaint (${fmt(d16.divvy)}). Snow: Snow – Uncleared Sidewalk Complaint (${fmt(d16.snow)}). Reports the city flags as duplicates, and the few without a location, are left out.`, day16Data.sources.sr311],
+      ['Blocks', `Half-mile squares of the mile grid; each report counts in the block that holds it. Reports per block: ${d16Classes(d16Br).join(', ').toLowerCase()}. Share sent in December–February: under a third, a third to two thirds, over two thirds.`],
+      ['Charts', 'Reports a month, citywide, one line for each calendar year.'],
+      ['Areas', 'City of Chicago, Boundaries – Community Areas, as recorded on each report.', day16Data.sources.areas],
+      ['Notes', `Snow – Object/Dibs Removal Request (${fmt(d16.dibs)}) and Submerged Divvy or Lime Device in the Lake/River (${d16.sunk}), same window; counted, not drawn.`],
+      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
+    ],
+    page: {
+      chart: { title: D16_CHART_TITLE, note: D16_CHART_NOTE },
+    },
+    csv: () =>
+      csv([
+        ['block_middle', 'x_miles_east', 'y_miles_north', 'community_area', 'scooters', 'divvy_bikes', 'uncleared_sidewalks', 'share_dec_feb', 'busiest_month', 'report_class', 'winter_class'],
+        ...day16Data.blocks.map((b) => [d16Place(b[0], b[1], day16Data.step), b[0], b[1], day16Data.areas[b[7]], b[2], b[3], b[4], b[5], D16_MONTHS[b[6] - 1], b[8], b[9]]),
       ]),
   },
 };
