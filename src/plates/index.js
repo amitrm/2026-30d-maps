@@ -616,7 +616,7 @@ const d17Story = {
     ], true],
     ['What the map cannot see', [
       'A timetable, not a ride. The map counts the buses the schedule promises. It cannot tell whether they come.',
-      'A straight half mile. At night the walk is longer than the line: dark underpasses, closed shortcuts and, for a rider who cannot take stairs, the long way round to a ramp. The half mile here is drawn straight, so it is the best case.',
+      'A straight half mile. At night the walk is longer than the line: dark underpasses, closed shortcuts and, for a rider who cannot take stairs, the long way around to a ramp. The half mile here is drawn straight, so it is the best case.',
       `Not the wait. At 3 a.m., a lit block may see one bus an hour in each direction. The map shows where buses leave, not how long the wait is.`,
     ]],
   ],
