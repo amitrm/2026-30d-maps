@@ -151,8 +151,9 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   //        on) with a number box as Plate IV's; then blocks: {sec} small-caps section, {bar: [[frac,
   //        colour|'hatch'], ...]} a 100% bar, {row: [label, value, note?]} right-aligned figures,
   //        {foot} a closing line in pencil
-  //   [data-kind=card][data-card: JSON {name, aside?, mark?: {type, fill}, big?: [value, text],
-  //        bar?: {frac, segs: [[from, to, fill]], left, right}, sev?: [level, of], chips?: [..],
+  //   [data-kind=card][data-card: JSON {name, num?: {text, fill, on}, aside?, mark?: {type, fill},
+  //        big?: [value, text], bar?: {frac, segs: [[from, to, fill]], left, right, tick?: false},
+  //        sev?: [level, of], chips?: [..],
   //        sec?, counts?: [{type, fill, n, label}], foot?: [left, right]}]
   //        a compact card (Plate XIV): one number and a filled bar in the map's own shades, label
   //        marks with counts, severity pips, tags, a status footer
@@ -480,8 +481,8 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
         return;
       }
       if (g.dataset.kind === 'card') {
-        type Card = { name: string; aside?: string; mark?: { type: string; fill: string }; big?: [string, string];
-          bar?: { frac: number; segs: [number, number, string][]; left?: string; right?: string }; sev?: [number, number];
+        type Card = { name: string; num?: { text: string; fill: string; on: string }; aside?: string; mark?: { type: string; fill: string }; big?: [string, string];
+          bar?: { frac: number; segs: [number, number, string][]; left?: string; right?: string; tick?: boolean }; sev?: [number, number];
           chips?: string[]; sec?: string; counts?: { type: string; fill: string; n: string; label: string }[]; foot?: [string, string] };
         let cd: Card;
         try { cd = JSON.parse(g.dataset.card ?? ''); } catch { return; }
@@ -489,16 +490,17 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
         const kids: HTMLElement[] = [];
         const head = el('div', 'tt-head');
         if (cd.mark) head.innerHTML = labelGlyph(cd.mark.type, cd.mark.fill);
+        if (cd.num) { const nb = el('span', 'tt-num', cd.num.text); nb.style.background = cd.num.fill; nb.style.color = cd.num.on; head.append(nb); } // the chart's route box
         head.append(el('strong', '', cd.name));
         if (cd.aside) head.append(el('span', 'tt-aside', cd.aside));
         kids.push(head);
         if (cd.big) { const b = el('div', 'tt-big'); b.append(el('b', '', cd.big[0]), el('span', '', cd.big[1])); kids.push(b); }
         if (cd.bar) {
-          // filled to frac in the map's class shades; the rest open, framed; an ink tick at the value
+          // filled to frac in the map's class shades; the rest open, framed; an ink tick at the value unless tick is false
           const W = 236, f = Math.max(0, Math.min(1, cd.bar.frac));
           const rects = cd.bar.segs.filter(([a]) => a < f).map(([a, b, c]) => `<rect x="${(a * W).toFixed(1)}" width="${((Math.min(b, f) - a) * W).toFixed(1)}" height="9" fill="${c}"/>`).join('');
           const bar = el('div', 'tt-cbar');
-          bar.innerHTML = `<svg viewBox="0 0 ${W} 9" preserveAspectRatio="none" aria-hidden="true"><rect x="0.5" y="0.5" width="${W - 1}" height="8" fill="#fff" stroke="#CFCDC7"/>${rects}<line x1="${(f * W).toFixed(1)}" x2="${(f * W).toFixed(1)}" y1="0" y2="9" stroke="#232323" stroke-width="1.2"/></svg>`;
+          bar.innerHTML = `<svg viewBox="0 0 ${W} 9" preserveAspectRatio="none" aria-hidden="true"><rect x="0.5" y="0.5" width="${W - 1}" height="8" fill="#fff" stroke="#CFCDC7"/>${rects}${cd.bar.tick === false ? '' : `<line x1="${(f * W).toFixed(1)}" x2="${(f * W).toFixed(1)}" y1="0" y2="9" stroke="#232323" stroke-width="1.2"/>`}</svg>`;
           const lr = el('div', '');
           lr.append(el('span', '', cd.bar.left ?? ''), el('span', '', cd.bar.right ?? ''));
           bar.append(lr);
