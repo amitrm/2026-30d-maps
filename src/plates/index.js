@@ -53,6 +53,8 @@ import day18Data from '../../days/day18-null/output/plate.json';
 import { renderDay18, CHART_TITLE as D18_CHART_TITLE, chartNote as d18ChartNote, INSET_TITLE as D18_INSET, CHART_ROWS as D18_ROWS, dayShort as d18Day, monthRange as d18Range } from './day18.js';
 import day19Data from '../../days/day19-smell/output/plate.json';
 import { renderDay19, CHART_TITLE as D19_CHART_TITLE, CHART_NOTE as D19_CHART_NOTE, INSET_TITLE as D19_INSET, hourName as d19Hour, monthName as d19Month } from './day19.js';
+import day20Data from '../../days/day20-hexagons/output/plate.json';
+import { renderDay20, CHART_TITLE as D20_CHART_TITLE, CHART_NOTE as D20_CHART_NOTE, INSET_TITLE as D20_INSET, insetNote as d20InsetNote, jobsText as d20Jobs } from './day20.js';
 import { renderDay07, CHART_NOTE as D7_CHART_NOTE, chartTitle as d7ChartTitle, insetTitle as d7InsetTitle, clock as d7Clock, dayLong as d7Day, hundreds as d7Hundreds, sortOutages as d7Sort } from './day07.js';
 
 const csv = (rows) =>
@@ -708,6 +710,32 @@ const d19Story = {
 };
 d19Story.sections = [['Background', d19Story.background], ['Findings', d19Story.findings, true], ['What the map cannot see', d19Story.limits]];
 
+// Every number below is computed from the plotted data (days/day20-hexagons/output/plate.json).
+const d20 = day20Data.summary;
+const d20Side = Object.fromEntries(day20Data.sides.map((r) => [r.side, r]));
+const d20High = d20.highCas.slice(0, 4), d20Low = d20.lowCas.slice(0, 3);
+const d20Name = (n) => (n === 'Loop' ? 'the Loop' : n);
+const d20Story = {
+  background: [
+    `A 45-minute trip is the usual yardstick for a job within reach. The Census Bureau counts where people work: about ${fmt(Math.round(d20.jobsTotal / 1e5) * 1e5)} jobs in the six counties of the Chicago region. This map asks how many of them a Chicagoan can reach in 45 minutes by bus and train.`,
+    'The city is drawn in hexagons laid on its own address grid: a column of centers on every half-mile line, so every arterial runs through one. From the center of each hexagon where people live, the trip to every job is timed door to door on the CTA, Metra, Pace and South Shore Line schedules, leaving between 7:30 and 8:30 on a weekday morning. Each hexagon is shaded by the jobs reached within 45 minutes. Hover a hexagon for its count, or a bar of the chart to show only its class on the map.',
+    'Why hexagons: they tile the plane without favoring a direction. All six neighbors of a hexagon are the same distance away, while a square’s corner neighbors are farther than its side neighbors.',
+  ],
+  findings: [
+    day20Data.finding,
+    `${pct(d20.under100k)} of Chicagoans reach fewer than 100,000 jobs. ${pct(d20.over1M)} reach a million or more.`,
+    `The jobs within reach follow the trains into the center. In ${list(d20High.map((c) => d20Name(c.name)))}, half of the residents reach about ${d20Jobs(Math.min(...d20High.map((c) => c.median)))} jobs or more. In ${list(d20Low.map((c) => c.name))}, half reach about ${d20Jobs(Math.max(...d20Low.map((c) => c.median)))} or fewer.`,
+    `Even the best-placed hexagon, in ${d20Name(d20.maxCa)}, reaches about ${d20Jobs(d20.max)} jobs, ${pct(d20.maxShare)} of the region’s.${d20.maxShare < 0.5 ? ' From anywhere in the city, most of the region’s jobs lie more than 45 minutes away by bus and train.' : ''}`,
+  ],
+  limits: [
+    'Schedules, not trips. The times come from the published timetables: no delays, no crowding, no missed transfers. Fares differ between CTA, Metra, Pace and the South Shore Line and are not counted; a Metra ride that saves twenty minutes can cost several times a CTA fare.',
+    'Jobs, not openings. LODES places each job at its workplace block from employer records, with noise added to protect confidentiality, and counts all jobs alike, whatever they pay or require. Jobs in Indiana and Wisconsin are not counted.',
+    'One kind of rider. Every rider is assumed to walk 1.2 meters a second and to use any station. A rider who walks more slowly or cannot use stairs reaches fewer jobs.',
+    `A hard line at 45 minutes. A job 46 minutes away counts for nothing, and the count moves with the minute of departure: for half of Chicagoans it differs by ${pct(day20Data.qa.spreadMedian)} or more between the best and worst of the seven departures. Each hexagon keeps their median.`,
+  ],
+};
+d20Story.sections = [['Background', d20Story.background], ['Findings', d20Story.findings, true], ['What the map cannot see', d20Story.limits]];
+
 export const plates = {
   1: {
     file: 'day01-the-doors',
@@ -1264,6 +1292,32 @@ export const plates = {
       csv([
         ['sensor', 'x_miles_east', 'y_miles_north', 'hours', 'no2_weekday_7_9am_ppb', 'no2_median_ppb', 'no2_mean_ppb', 'pm25_weekday_7_9am_ugm3', 'side'],
         ...day19Data.sensors,
+      ]),
+  },
+  20: {
+    file: 'day20-jobs-in-45-minutes',
+    render: (o) => renderDay20({ ...day20Data, findings: d20Story.findings.slice(1), boundary: cityBoundary.rings }, o), // the headline is the plate's finding note
+    subtitle: 'How many jobs can Chicagoans reach in 45 minutes by bus and train?',
+    finding: day20Data.finding,
+    story: d20Story,
+    ledger: [
+      ['Jobs', `US Census Bureau, LEHD Origin-Destination Employment Statistics (LODES 8), workplace area characteristics for ${day20Data.lodesYear}: all ${fmt(d20.jobsTotal)} jobs in Cook, DuPage, Kane, Lake, McHenry and Will Counties, each at its census block’s point in the LODES geography crosswalk.`, [['LODES', day20Data.sources.lodes], ['Technical document', day20Data.sources.lodesDoc]]],
+      ['Transit', `Bus and train schedules (GTFS) from CTA (${day20Data.gtfs.cta}), Metra and Pace (${day20Data.gtfs.metra}) and the South Shore Line (NICTD, feed ${day20Data.gtfs.nictd}, from the Mobility Database), for Tuesday 17 November 2026.`, [['CTA', day20Data.gtfs.url], ['Metra', 'https://metra.com/developers'], ['Pace', 'https://www.pacebus.com/route-timetable-data-services'], ['South Shore Line', day20Data.gtfs.nictdUrl]]],
+      ['Trip', `Door to door within ${day20Data.horizon} minutes, leaving every 10 minutes from ${day20Data.starts[0]} to ${day20Data.starts[1]} a.m.; each hexagon keeps the median of the seven counts (earliest arrival by connection scan, as on Plate XV). Walking: a straight line × 1.3 at 1.2 m/s, up to ¾ mile to or from a stop and ¼ mile between stops, plus a minute to change.`],
+      ['Hexagons', `Pointy side up, laid on the address grid: centers every ½ mile along rows √3⁄4 mile apart, starting from State & Madison; each about ${(day20Data.S ** 2 * Math.sqrt(3) / 2).toFixed(2)} square mile. 2020 Census blocks go to the nearest center; the ${fmt(d20.hexes)} hexagons with residents are drawn (${fmt(d20.pop)} people).`, day20Data.sources.ca],
+      ['Sides', 'Community areas (Chicago Data Portal · igwz-8jzy), each hexagon in the one most of its residents live in, grouped into sides as on Plate X (Wikipedia’s unofficial grouping).', day20Data.sources.ca],
+      ['Inset', `The same jobs on hexagons centered a mile apart, in five classes of jobs per hexagon (${day20Data.regionClasses.map(fmt).join(', ')}).`],
+      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
+    ],
+    page: {
+      chart: { title: D20_CHART_TITLE, note: D20_CHART_NOTE },
+      inset: { title: D20_INSET, note: d20InsetNote(day20Data) },
+    },
+    csv: () =>
+      csv([
+        ['x_miles_east', 'y_miles_north', 'residents', 'jobs_within_45_min', 'community_area'],
+        ...day20Data.hexes.map(([r, c, pop, jobs, ca]) => [(c * day20Data.S + (((r % 2) + 2) % 2) * day20Data.S / 2).toFixed(3), (r * day20Data.S * Math.sqrt(3) / 2).toFixed(3), pop, jobs, day20Data.caNames[String(ca)] ?? '']),
       ]),
   },
 };
