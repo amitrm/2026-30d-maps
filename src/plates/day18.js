@@ -57,10 +57,11 @@ export function renderDay18(data, { mode = 'gray', variant = 'plate' } = {}) {
   // ---------- hover cards ----------
   const pctS = (v) => `${(v * 100).toFixed(v < 0.1 ? 1 : 0)}%`;
   const card = (r) => ({
-    name: `${r.id} · ${r.name}`,
+    name: r.name,
+    num: { text: r.id, fill: hue.box, on: hue.boxText }, // the chart's route box
     aside: r.express ? 'Express' : 'Local',
     big: [fmt(r.miss), `bus${Math.round(r.miss) === 1 ? '' : 'es'} a weekday never seen`],
-    bar: { frac: r.share, segs: [[0, 1, hue.ring]], left: `${pctS(r.share)} of ${fmt(r.sched)} scheduled trips`, right: '' },
+    bar: { frac: r.share, segs: [[0, 1, hue.ring]], left: `${pctS(r.share)} of ${fmt(r.sched)} scheduled trips`, right: '', tick: mode !== 'color' },
     foot: r.blank ? [`Record blank on ${r.blank} of ${r.days + r.blank} weekdays`, 'left out'] : [`${r.days} weekdays`, `${fmt(r.seen)} seen`],
   });
   const hoverRoute = (r, inner) =>
