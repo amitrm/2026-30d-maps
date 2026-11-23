@@ -483,6 +483,7 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
       if (g.dataset.kind === 'card') {
         type Card = { name: string; num?: { text: string; fill: string; on: string }; aside?: string; mark?: { type: string; fill: string }; big?: [string, string];
           bar?: { frac: number; segs: [number, number, string][]; left?: string; right?: string; tick?: boolean }; sev?: [number, number];
+          meter?: { ramp: string[]; lo: number; hi: number; ticks: number[]; value?: number; band?: [number, number]; cap?: string };
           chips?: string[]; sec?: string; counts?: { type: string; fill: string; n: string; label: string }[]; foot?: [string, string] };
         let cd: Card;
         try { cd = JSON.parse(g.dataset.card ?? ''); } catch { return; }
@@ -503,6 +504,32 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
           bar.innerHTML = `<svg viewBox="0 0 ${W} 9" preserveAspectRatio="none" aria-hidden="true"><rect x="0.5" y="0.5" width="${W - 1}" height="8" fill="#fff" stroke="#CFCDC7"/>${rects}${cd.bar.tick === false ? '' : `<line x1="${(f * W).toFixed(1)}" x2="${(f * W).toFixed(1)}" y1="0" y2="9" stroke="#232323" stroke-width="1.2"/>`}</svg>`;
           const lr = el('div', '');
           lr.append(el('span', '', cd.bar.left ?? ''), el('span', '', cd.bar.right ?? ''));
+          bar.append(lr);
+          kids.push(bar);
+        }
+        if (cd.meter) {
+          // the map's own color scale, lo to hi in equal steps (end bands open); an ink triangle under the value
+          // (hollow at the end, with an arrow, when the value lies beyond the scale); a band is outlined, triangle at its middle
+          const m = cd.meter, W = 236, P = 7, k = W / (m.hi - m.lo), X = (v: number) => P + (v - m.lo) * k;
+          const n = m.ramp.length, step = (m.hi - m.lo) / n;
+          let s = m.ramp.map((c, i) => `<rect x="${X(m.lo + i * step).toFixed(1)}" y="1.5" width="${(step * k + 0.4).toFixed(1)}" height="9" fill="${c}"/>`).join('');
+          s += `<rect x="${P}" y="1.5" width="${W}" height="9" fill="none" stroke="#BDBBB4" stroke-width="0.6"/>`;
+          let x: number, out = 0;
+          if (m.band) {
+            s += `<rect x="${X(m.band[0]).toFixed(1)}" y="0.8" width="${((m.band[1] - m.band[0]) * k).toFixed(1)}" height="10.4" fill="none" stroke="#232323" stroke-width="1.3"/>`;
+            x = X((m.band[0] + m.band[1]) / 2);
+          } else {
+            const v = m.value ?? m.lo;
+            out = v < m.lo ? -1 : v > m.hi ? 1 : 0;
+            x = X(Math.max(m.lo, Math.min(m.hi, v)));
+          }
+          s += `<path d="M${x.toFixed(1)},12.5L${(x - 4.5).toFixed(1)},19L${(x + 4.5).toFixed(1)},19Z" fill="${out ? '#fff' : '#232323'}" stroke="#232323" stroke-width="0.9" stroke-linejoin="round"/>`;
+          if (out) { const a = out > 0 ? P + W + 1.5 : P - 1.5; s += `<path d="M${a},3.5L${a + 4.5 * out},6L${a},8.5Z" fill="#232323"/>`; }
+          s += m.ticks.map((t) => `<text x="${X(t).toFixed(1)}" y="31" text-anchor="${t === m.lo ? 'start' : t === m.hi ? 'end' : 'middle'}">${t}</text>`).join('');
+          const bar = el('div', 'tt-meter');
+          bar.innerHTML = `<svg viewBox="0 0 ${W + 2 * P} 33" aria-hidden="true">${s}</svg>`;
+          const lr = el('div', '');
+          lr.append(el('span', '', m.cap ?? ''), el('span', '', out > 0 ? 'off the scale, darkest band' : out < 0 ? 'off the scale, lightest band' : ''));
           bar.append(lr);
           kids.push(bar);
         }
@@ -796,6 +823,10 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   .tip :global(.tt-big b) { font-size: 22px; font-weight: 500; line-height: 1; }
   .tip :global(.tt-big span) { font-size: 10.5px; color: var(--pencil); }
   .tip :global(.tt-cbar svg) { display: block; width: 100%; height: 9px; }
+  .tip :global(.tt-meter) { margin-top: 6px; }
+  .tip :global(.tt-meter svg) { display: block; width: 100%; height: auto; overflow: visible; }
+  .tip :global(.tt-meter text) { font-family: var(--sans); font-size: 9.5px; fill: var(--pencil); }
+  .tip :global(.tt-meter div) { display: flex; justify-content: space-between; gap: 8px; font-size: 10px; color: var(--pencil); margin-top: 1px; }
   .tip :global(.tt-cbar div) { display: flex; justify-content: space-between; font-size: 10px; color: var(--pencil); margin-top: 2px; }
   .tip :global(.tt-cap) { font-size: 9px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pencil); }
   .tip :global(.tt-counts) { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; }
