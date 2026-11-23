@@ -51,6 +51,8 @@ import day17Data from '../../days/day17-light-dark/output/plate.json';
 import { renderDay17, CHART_TITLE as D17_CHART_TITLE, CHART_NOTE as D17_CHART_NOTE, INSET_TITLE as D17_INSET, hourName as d17Hour, dayLong as d17Day } from './day17.js';
 import day18Data from '../../days/day18-null/output/plate.json';
 import { renderDay18, CHART_TITLE as D18_CHART_TITLE, chartNote as d18ChartNote, INSET_TITLE as D18_INSET, CHART_ROWS as D18_ROWS, dayShort as d18Day, monthRange as d18Range } from './day18.js';
+import day19Data from '../../days/day19-smell/output/plate.json';
+import { renderDay19, CHART_TITLE as D19_CHART_TITLE, CHART_NOTE as D19_CHART_NOTE, INSET_TITLE as D19_INSET, hourName as d19Hour, monthName as d19Month } from './day19.js';
 import { renderDay07, CHART_NOTE as D7_CHART_NOTE, chartTitle as d7ChartTitle, insetTitle as d7InsetTitle, clock as d7Clock, dayLong as d7Day, hundreds as d7Hundreds, sortOutages as d7Sort } from './day07.js';
 
 const csv = (rows) =>
@@ -679,6 +681,33 @@ const d18Story = {
 };
 d18Story.sections = [['Background', d18Story.background], ['Findings', d18Story.findings, true], ['What the record cannot see', d18Story.limits]];
 
+// Every number below is computed from the plotted data (days/day19-smell/output/plate.json).
+const d19 = day19Data.summary;
+const d19Side = Object.fromEntries(d19.sides.map((r) => [r.side, r]));
+const d19One = (v) => Number(v).toFixed(1);
+const d19Far = ['Far North Side', 'Far Southeast Side', 'Far Southwest Side'];
+const d19FarNone = d19Far.every((k) => !d19.stopsHiSides[k]);
+const d19FarLow = Math.min(...d19Far.map((k) => d19Side[k].median)), d19FarHigh = Math.max(...d19Far.map((k) => d19Side[k].median));
+const d19Story = {
+  background: [
+    'Nitrogen dioxide (NO₂) comes mostly from burning fuel in engines: cars, trucks, buses, trains and furnaces. Air scientists use it as the marker for traffic exhaust. At street levels the gas itself is too faint to smell; what the nose notices at a busy curb is the exhaust it comes with.',
+    `Open Air Chicago, started in 2025 by the Chicago Department of Public Health and the UIC School of Public Health, put about ${Math.round(d19.network / 10) * 10} air sensors across the city, roughly one per square mile, in every community area. This map takes each sensor’s typical reading on weekday mornings, 7 to 9 a.m., from ${d19Month(day19Data.window[0])} to ${d19Month(day19Data.window[1])}, and spreads the ${d19.sensors} readings into a smooth surface. It is drawn as land lit from the northwest: the higher the ground, the more NO₂ in the air. Hover a sensor, a band of the land or an hour of the chart for its numbers.`,
+  ],
+  findings: [
+    day19Data.finding,
+    `On weekday mornings, half of the sensors read ${d19One(d19.rushMedian)} ppb or more. The lowest reading is ${d19One(d19.rushMin)} ppb (${d19.rushMinName}), the highest ${d19One(d19.rushMax)} ppb (${d19.rushMaxName}).`,
+    `Read at the city’s ${fmt(d19.stops)} bus stops, the morning air is highest in the Loop and around it (half of the stops at ${d19One(d19Side.Central.median)} ppb or more), on the Southwest Side (${d19One(d19Side['Southwest Side'].median)}) and on the West Side (${d19One(d19Side['West Side'].median)}). It is lowest on the Far North, Far Southeast and Far Southwest Sides (${d19One(d19FarLow)} to ${d19One(d19FarHigh)}). About ${fmt(Math.round(d19.stopsHi / 10) * 10)} stops, ${pct(d19.stopsHiShare)} of them, sit at ${d19.hiBand} ppb or more${d19FarNone ? '; none of them on those three far sides' : ''}.`,
+    `On weekends, the middle sensor reads ${d19One(d19.weekendAtPeak)} ppb at ${d19Hour(d19.peakHour)}, against ${d19One(d19.peak)} on weekdays. The difference is the weekday traffic.`,
+    `Every sensor’s yearly average lies between ${d19One(d19.meanMin)} and ${d19One(d19.meanMax)} ppb: below the US standard of ${d19.epaPpb} ppb, and above the World Health Organization’s guideline of ${d19One(d19.whoPpb)} ppb.`,
+  ],
+  limits: [
+    'The smell itself. NO₂ marks exhaust but is not all of it. Fine particles (PM2.5), which the sensors also measure, hardly change across the city on weekday mornings: the middle 80% of sensors read between ' + `${d19One(d19.pmRushP10)} and ${d19One(d19.pmRushP90)} µg/m³. Odors from industry, sewers or food are not measured at all.`,
+    `Between the sensors. With about one sensor per square mile, the surface is smoothed over roughly half a mile. A stop beside an expressway, a rail yard or a bus garage can be dirtier than the land drawn around it.`,
+    `The sensors themselves. Open Air’s sensors are low-cost and non-regulatory, calibrated by their maker against federal monitors. Three sets of three stand beside federal monitors; at each site their morning readings differ by up to ${d19One(day19Data.qa.collocSpreadMax)} ppb. Differences on the map smaller than that mean little.`,
+  ],
+};
+d19Story.sections = [['Background', d19Story.background], ['Findings', d19Story.findings, true], ['What the map cannot see', d19Story.limits]];
+
 export const plates = {
   1: {
     file: 'day01-the-doors',
@@ -1209,6 +1238,32 @@ export const plates = {
       csv([
         ['route', 'name', 'express', 'scheduled_trips_weekday', 'seen_trips_weekday', 'missing_trips_weekday', 'missing_share', 'rings', 'weekdays_counted', 'weekdays_blank'],
         ...day18Data.routes.map((r) => [r.id, r.name, r.express, r.sched, r.seen, r.miss, r.share, r.rings, r.days, r.blank]),
+      ]),
+  },
+  19: {
+    file: 'day19-what-you-breathe',
+    render: (o) => renderDay19({ ...day19Data, findings: d19Story.findings.slice(1), boundary: cityBoundary.rings }, o), // the headline is the plate's finding note
+    subtitle: 'How much traffic exhaust is in the air where Chicago waits for the bus?',
+    finding: day19Data.finding,
+    story: d19Story,
+    ledger: [
+      ['Air', `Open Air Chicago (Chicago Department of Public Health; UIC School of Public Health), Open Air Chicago Hour Aggregations, Chicago Data Portal · di9s-96ws: hourly NO₂ from ${d19.sensors} sensors with 120 days or more of readings, ${d19Month(day19Data.window[0])} to ${d19Month(day19Data.window[1])}; the ${d19.collocated} sensors beside federal monitors kept for checks only.`, day19Data.sources.dataset],
+      ['Reading', 'Each sensor’s median NO₂ over the weekday hours from 7:00 to 8:59 a.m., Chicago time, in parts per billion (ppb). The values are the network’s cloud-calibrated ones (Clarity’s global NO₂ calibration).', day19Data.sources.calibration],
+      ['Surface', `A Gaussian kernel (σ = ${day19Data.sigma} mi) spreads the readings into a surface on a 1/32-mile grid, drawn inside the city where it weighs at least as much as one sensor ${day19Data.reach} mi away (${pct(d19.drawnShare)} of the city). Values between sensors are estimates.`],
+      ['Light', 'Bands between whole ppb, darker for more NO₂. Each contour is lit white where the slope beneath it faces a light in the northwest and shaded ink where it faces away; its width follows the angle to the light (illuminated contours, after Kitiro Tanaka).'],
+      ['Stops', `CTA GTFS, feed of ${day19Data.gtfs.snapshot}: the ${fmt(d19.stops)} bus stops inside the city served on Tuesday 17 November 2026, each read on the surface. Sides: community areas grouped as on Plate X (Wikipedia’s unofficial grouping).`, day19Data.gtfs.url],
+      ['Standards', `US EPA annual NO₂ standard, ${d19.epaPpb} ppb; WHO 2021 annual guideline, 10 µg/m³ (about ${d19One(d19.whoPpb)} ppb). Both apply to yearly averages, compared with each sensor’s mean over all hours.`, [['EPA', day19Data.sources.epa], ['WHO', day19Data.sources.who]]],
+      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
+    ],
+    page: {
+      chart: { title: D19_CHART_TITLE, note: D19_CHART_NOTE },
+      inset: { title: D19_INSET },
+    },
+    csv: () =>
+      csv([
+        ['sensor', 'x_miles_east', 'y_miles_north', 'hours', 'no2_weekday_7_9am_ppb', 'no2_median_ppb', 'no2_mean_ppb', 'pm25_weekday_7_9am_ugm3', 'side'],
+        ...day19Data.sensors,
       ]),
   },
 };
