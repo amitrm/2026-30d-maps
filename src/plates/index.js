@@ -45,6 +45,10 @@ import day14Data from '../../days/day14-borgesian/output/plate.json';
 import { renderDay14, CHART_TITLE as D14_CHART_TITLE } from './day14.js';
 import day15Data from '../../days/day15-inside-out/output/plate.json';
 import { renderDay15, CHART_TITLE as D15_CHART_TITLE, CHART_NOTE as D15_CHART_NOTE, dayLong as d15Day } from './day15.js';
+import day16Data from '../../days/day16-collaborative/output/plate.json';
+import { renderDay16, CHART_TITLE as D16_CHART_TITLE, CHART_NOTE as D16_CHART_NOTE, blockPlace as d16Place, windowText as d16Window, reportClasses as d16Classes, MONTH_LONG as D16_MONTHS } from './day16.js';
+import day17Data from '../../days/day17-light-dark/output/plate.json';
+import { renderDay17, CHART_TITLE as D17_CHART_TITLE, CHART_NOTE as D17_CHART_NOTE, INSET_TITLE as D17_INSET, hourName as d17Hour, dayLong as d17Day } from './day17.js';
 import day18Data from '../../days/day18-null/output/plate.json';
 import { renderDay18, CHART_TITLE as D18_CHART_TITLE, chartNote as d18ChartNote, INSET_TITLE as D18_INSET, CHART_ROWS as D18_ROWS, dayShort as d18Day, monthRange as d18Range } from './day18.js';
 import { renderDay07, CHART_NOTE as D7_CHART_NOTE, chartTitle as d7ChartTitle, insetTitle as d7InsetTitle, clock as d7Clock, dayLong as d7Day, hundreds as d7Hundreds, sortOutages as d7Sort } from './day07.js';
@@ -592,6 +596,64 @@ const d15Story = {
   ],
 };
 
+const d16 = day16Data.summary;
+const d16Win = d16Window(d16.window);
+const d16Br = day16Data.reportBreaks;
+const d16Y = (grp) => Object.entries(d16.yearTotals[grp]);
+const d16SnowSorted = d16Y('snow').slice(0, -1).sort((a, b) => b[1] - a[1]); // complete years only
+const d16Story = {
+  sections: [
+    ['Background', [
+      'This map was made with Chicago residents. Each block’s color comes from the reports they sent to 311, the city’s service line, about something in the way on the sidewalk: a scooter or a Divvy bike parked across it, or snow nobody cleared. For a wheelchair user, a parent with a stroller or anyone who cannot step around it, either one can end the walk.',
+      `From ${d16Win} they sent ${fmt(d16.reports)} such reports. The map cuts the city into half-mile blocks and shades each one twice: by how many reports it got, and by the share sent in December to February. In color, ochre blocks heard mostly about scooters and bikes, slate blocks mostly about snow, dark gray blocks about both; darker means more reports. In grayscale, darker means more reports and a larger ink square means more of them came in winter. The two tables in the middle give every month of every year, darker where there were more reports. Hover a block or a cell for its counts.`,
+    ]],
+    ['Findings', [
+      day16Data.finding,
+      `The sidewalk is blocked in every season, by different things. ${pct(d16.snowWinterShare)} of the snow reports came from December to February; ${pct(d16.wheelsAprNovShare)} of the scooter and bike reports came from April to November.`,
+      `The busiest blocks split in two. Of the blocks with ${d16Br[1]} or more reports, ${d16.warm.blocks} heard mostly about scooters and bikes, most of them in ${list(d16.warm.areas.slice(0, 3))}. Another ${d16.cold.blocks} heard mostly about snow, most of them in ${list(d16.cold.areas.slice(0, 3))}.`,
+      `Scooter and bike reports grow every year: ${list(d16Y('wheels').slice(0, -1).map(([y, v]) => `${fmt(v)} in ${y}`))}, and ${fmt(d16Y('wheels').at(-1)[1])} in the first ten months of ${d16Y('wheels').at(-1)[0]}. Snow reports follow the winter: ${fmt(d16SnowSorted[0][1])} in ${d16SnowSorted[0][0]}, ${fmt(d16SnowSorted.at(-1)[1])} in ${d16SnowSorted.at(-1)[0]}.`,
+      `Reports gather where people send them. ${share(d16.topAreaShare).replace(/^./, (c) => c.toUpperCase())} of the scooter and bike reports came from ${d16.topArea}, and the ten busiest community areas sent ${pct(d16.top10Share)}. ${fmt(d16.quietBlocks)} of the ${fmt(d16.blocks)} blocks sent fewer than ${d16Br[0]} reports in almost five years.`,
+      `The same residents asked the city ${fmt(d16.dibs)} times to remove the chairs that hold a shoveled parking space, and reported ${d16.sunk} Divvy bikes and scooters in the lake or the river.`,
+    ], true],
+    ['What the map cannot see', [
+      'Reports, not obstacles. A block’s color shows where residents report as much as where things block the way. Some streets have neighbors who report every scooter; others have none, or have stopped reporting. A pale block is not proof of a clear sidewalk.',
+      `Only what was reported, and only since it could be. 311 took its first scooter report in ${D16_MONTHS[Number(d16.scooterFirst.slice(5, 7)) - 1]} ${d16.scooterFirst.slice(0, 4)}. ${pct(d16.webApp)} of these reports came by website or phone app. The city flags repeat reports of the same problem as duplicates; ${fmt(d16.duplicates)} were left out. Broken sidewalks, missing curb ramps and cars on the sidewalk are other request types and are not counted.`,
+    ]],
+  ],
+};
+d16Story.findings = d16Story.sections[1][1];
+
+// Day 17: every number below comes from days/day17-light-dark/output/plate.json.
+const d17 = day17Data.summary;
+const d17H = day17Data.hours;
+const d17N = day17Data.night, d17P = day17Data.peak;
+const d17Side = Object.fromEntries(d17.sides.map(([n, v]) => [n, v]));
+const d17Pct = (v) => (v < 0.01 ? 'under 1%' : pct(v));
+const d17About = (v, n) => fmt(Math.round(v / n) * n);
+const d17Ratio = d17H.departures[d17N] / d17H.departures[d17P];
+const d17List = (a) => (a.length < 2 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a.at(-1)}`);
+const d17Story = {
+  sections: [
+    ['Background', [
+      `Chicago’s address grid puts a main street every half mile, and nearly every one carries a bus. By day, that promise holds: at ${d17Hour(d17P)}, ${(d17H.within[d17P] * 100).toFixed(1)}% of residents live within a half mile of a bus or train leaving that hour.`,
+      'This map is made of light and shadow only. Each quarter-mile block of the grid is lit by the buses that leave its stops in an hour: the more buses, the brighter. Each block also stands up toward a light in the northwest, so the busiest blocks cast a shadow. Behind the city, the background follows the sky over Chicago that day: dark from dusk to dawn, light while the sun is up. The map shows 3 a.m. on an ordinary weekday.',
+      'Hover or tap an hour in the chart to light the city at that hour. Hover a block for its whole day of buses.',
+    ]],
+    ['Findings', [
+      day17Data.finding,
+      `On a weekday, buses leave city stops about ${(d17.departuresDay / 1e6).toFixed(1)} million times. At ${d17Hour(d17P)}, about ${d17About(d17H.departures[d17P], 1000)} leave in the hour; at 3 a.m., ${d17Ratio < 0.1 ? 'less than a tenth' : `about ${pct(d17Ratio)}`} as many. Half of the blocks lit at 3 a.m. see ${d17.medianLit[d17N]} buses or fewer in the hour, both directions together. At ${d17Hour(d17P)}, half see ${d17.medianLit[d17P]} or more.`,
+      `Through the night, ${day17Data.routes.allNight.length} bus routes keep running, and so do the ${d17List(['Red', 'Blue'].filter((l) => day17Data.routes.railAllNight.includes(l)))} Lines. Together they keep the inner city lit. The dark is at the edges. At 3 a.m., ${pct(d17Side['Far Southwest Side'])} of residents of the Far Southwest Side live more than a half mile from a bus or train leaving that hour, ${pct(d17Side['Far North Side'])} on the Far North Side and ${pct(d17Side['Far Southeast Side'])} on the Far Southeast Side. On the North Side, ${d17Pct(d17Side['North Side'])} do.`,
+      `About ${d17About(d17.nightCommuters, 1000)} Chicagoans leave home for work between midnight and 5 a.m. About ${pct(d17.dark.nightShare)} of them, some ${d17About(d17.dark.night, 100)} people, live more than a half mile from a bus or train leaving at 3 a.m.`,
+    ], true],
+    ['What the map cannot see', [
+      'A timetable, not a ride. The map counts the buses the schedule promises. It cannot tell whether they come.',
+      'A straight half mile. At night the walk is longer than the line: dark underpasses, closed shortcuts and, for a rider who cannot take stairs, the long way around to a ramp. The half mile here is drawn straight, so it is the best case.',
+      `Not the wait. At 3 a.m., a lit block may see one bus an hour in each direction. The map shows where buses leave, not how long the wait is.`,
+    ]],
+  ],
+};
+d17Story.findings = d17Story.sections[1][1];
+
 // Every number below is computed from the plotted data (days/day18-null/output/plate.json).
 const d18 = day18Data.summary;
 const d18Pct = (v) => pct(v, v < 0.1 ? 1 : 0);
@@ -1070,6 +1132,58 @@ export const plates = {
       csv([
         ['x_miles_east', 'y_miles_north', 'minutes_from_130th_st', 'minutes_from_state_madison', 'miles_from_130th_st'],
         ...day15Data.cells.map(([x, y, a, b]) => [x, y, a, b, Math.hypot(x - day15Data.points.start[0], y - day15Data.points.start[1]).toFixed(2)]),
+      ]),
+  },
+  16: {
+    file: 'day16-something-in-the-way',
+    render: (o) => renderDay16({ ...day16Data, findings: d16Story.findings.slice(1, 5), boundary: cityBoundary.rings }, o), // the headline is the plate's finding note
+    subtitle: 'What do Chicago residents tell the city is blocking the sidewalk, where, and when in the year?',
+    finding: day16Data.finding,
+    story: d16Story,
+    ledger: [
+      ['Reports', `City of Chicago, 311 Service Requests · ${day16Data.dataset} · pulled ${day16Data.ledger.pulled}: three request types, ${d16Win}. Scooters and bikes: E-Scooter Parking Complaint (${fmt(d16.scooter)}) and Divvy Bike Parking Complaint (${fmt(d16.divvy)}). Snow: Snow – Uncleared Sidewalk Complaint (${fmt(d16.snow)}). Reports the city flags as duplicates, and the few without a location, are left out.`, day16Data.sources.sr311],
+      ['Blocks', `Half-mile squares of the mile grid; each report counts in the block that holds it. Reports per block: ${d16Classes(d16Br).join(', ').toLowerCase()}. Share sent in December–February: under a third, a third to two thirds, over two thirds.`],
+      ['Tables', 'Reports a month, citywide: months down, calendar years across; each cell shaded on a square-root scale of its table’s largest month.'],
+      ['Areas', 'City of Chicago, Boundaries – Community Areas, as recorded on each report.', day16Data.sources.areas],
+      ['Notes', `Snow – Object/Dibs Removal Request (${fmt(d16.dibs)}) and Submerged Divvy or Lime Device in the Lake/River (${d16.sunk}), same window; counted, not drawn.`],
+      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
+    ],
+    page: {
+      chart: { title: D16_CHART_TITLE, note: D16_CHART_NOTE },
+    },
+    csv: () =>
+      csv([
+        ['block_middle', 'x_miles_east', 'y_miles_north', 'community_area', 'scooters', 'divvy_bikes', 'uncleared_sidewalks', 'share_dec_feb', 'busiest_month', 'report_class', 'winter_class'],
+        ...day16Data.blocks.map((b) => [d16Place(b[0], b[1], day16Data.step), b[0], b[1], day16Data.areas[b[7]], b[2], b[3], b[4], b[5], D16_MONTHS[b[6] - 1], b[8], b[9]]),
+      ]),
+  },
+  17: {
+    file: 'day17-the-3-am-city',
+    render: (o) => renderDay17({ ...day17Data, findings: d17Story.findings.slice(1), boundary: cityBoundary.rings }, o), // the headline is the plate's finding note
+    subtitle: 'How much of Chicago’s bus grid still runs at 3 a.m., and who is left in the dark?',
+    finding: day17Data.finding,
+    story: d17Story,
+    ledger: [
+      ['Buses', `CTA GTFS, feed of ${day17Data.gtfsDate}: every bus leaving every stop on Tuesday ${d17Day(day17Data.serviceDay)}, ${fmt(d17.departuresDay)} departures at city stops. Schedule times past midnight fold onto the morning, so the 24 hours are one ordinary weekday.`, day17Data.sources.gtfs],
+      ['Blocks', 'Quarter-mile squares of the address grid, set so the arterials run through their middles: on the quarter-mile lines from State Street, and a sixteenth of a mile south of the lines from Madison, where the stops of the east–west arterials sit. A block counts the buses leaving stops inside it, both directions together, and is drawn when it overlaps the city limits.'],
+      ['Light', 'Brightness: buses in the hour, in ten classes on a log scale from 1 to 150 or more. Each block stands as tall as it is bright, up to 1.3 blocks, toward a light in the northwest 38° above the horizon; its shadow darkens what it falls on by about a third.'],
+      ['Sky', `The background is the sky over Chicago on ${d17Day(day17Data.serviceDay)} at the middle of each hour, from the sun’s altitude (NOAA’s solar formulas): night when the sun is more than 6° below the horizon, full day when it is more than 6° above, blended between. Grayscale uses grays of the same lightness. A thin line in a darker shade of the sky marks the city limit.`],
+      ['All night', 'A route runs all night when a trip leaves the end of the line in every hour from 1 to 4 a.m. Late runs that finish after 1 a.m. and early runs that start before 4 a.m. do not count.'],
+      ['People', `2020 Census: ${fmt(d17.residents)} residents, at their blocks’ internal points. The half mile is a straight line to a CTA bus stop or ‘L’ platform with a departure in the hour, inside the city or not.`, day17Data.sources.census],
+      ['Night shift', `Census Bureau, American Community Survey 2020–2024 (5-year), table B08302, time leaving home to go to work: about ${d17About(d17.nightCommuters, 1000)} of ${d17About(d17.commuters, 1000)} Chicago commuters leave between 12:00 and 4:59 a.m. Tract counts are shared out to blocks by population, so block figures are estimates.`, day17Data.sources.acs],
+      ['Sides', 'Community areas grouped into nine sides as on Plate X, after Wikipedia’s list of Chicago community areas (an unofficial grouping).', day17Data.sources.sides],
+      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
+    ],
+    page: {
+      chart: { title: D17_CHART_TITLE, note: D17_CHART_NOTE },
+      inset: { title: D17_INSET },
+    },
+    csv: () =>
+      csv([
+        ['x_miles_east', 'y_miles_north', ...d17H.departures.map((_, h) => `buses_h${String(h).padStart(2, '0')}`), 'routes_3am'],
+        ...day17Data.cells.map(([i, j, n, r]) => [(day17Data.grid.x0 + i * day17Data.grid.step).toFixed(3), day17Data.grid.rows[j][0].toFixed(4), ...n, r.join(' ')]),
       ]),
   },
   18: {

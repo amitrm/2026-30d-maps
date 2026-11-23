@@ -160,6 +160,9 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   //        segs: [[from, to, fill]], ticks: [..], foot: [dot label, square label, note]}]
   //        a minutes ruler (Plate XV): the legend's classes as a strip from 0 to max, a dot pin above
   //        for the first value and a square pin below for the second
+  //   [data-kind=hours][data-vals: 24 counts][data-at][data-detail]
+  //        a block's day (Plate XVII): the count at the hour shown (the chart's hour if one is picked,
+  //        else data-at) as a big number, the 24 hours as bars with that hour in ink, then detail rows
   //   [data-hl] (chart row) / [data-keys] (station, label)  highlight one line set, fade the rest
   // Highlighting spans every page SVG, so a line row in the chart lights its stations on the map.
   const cols = document.querySelector<HTMLElement>('.cols');
@@ -451,6 +454,31 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
         move(e);
         return;
       }
+      if (g.dataset.kind === 'hours') {
+        const vals = (g.dataset.vals ?? '').split(' ').map(Number);
+        const st = cols?.dataset.state;
+        const at = st && st !== 'all' ? Number(st.slice(1)) : Number(g.dataset.at ?? 0);
+        const hourName = (h: number) => (h === 0 ? 'midnight' : h === 12 ? 'noon' : h < 12 ? `${h} a.m.` : `${h - 12} p.m.`);
+        const el = (tag: string, cls: string, txt?: string) => { const n = document.createElement(tag); n.className = cls; if (txt != null) n.textContent = txt; return n; };
+        const head = el('div', 'tt-head');
+        head.append(el('strong', '', g.dataset.tip ?? ''));
+        const big = el('div', 'tt-big');
+        big.append(el('b', '', String(vals[at] ?? 0)), el('span', '', `${vals[at] === 1 ? 'bus leaves' : 'buses leave'} at ${hourName(at)}`));
+        // the day: 24 bars on the block's own scale, the hour shown in ink; ticks at midnight, 6, noon, 6
+        const W = 212, H = 34, bw = W / 24, max = Math.max(1, ...vals);
+        let svg = vals.map((v, h) => `<rect x="${(h * bw + 0.6).toFixed(1)}" y="${(H - (v / max) * H).toFixed(1)}" width="${(bw - 1.2).toFixed(1)}" height="${((v / max) * H).toFixed(1)}" fill="${h === at ? '#232323' : '#CFCDC7'}"/>`).join('');
+        svg += `<line x1="0" x2="${W}" y1="${H + 0.5}" y2="${H + 0.5}" stroke="#77756F" stroke-width="0.8"/>`;
+        svg += [[0, '12A'], [6, '6A'], [12, '12P'], [18, '6P']].map(([h, l]) => `<text x="${(Number(h) * bw + 0.6).toFixed(1)}" y="${H + 11}" font-family="Roboto, sans-serif" font-size="9" fill="#77756F">${l}</text>`).join('');
+        const bar = el('div', 'tt-ruler');
+        bar.innerHTML = `<svg viewBox="0 0 ${W} ${H + 13}" aria-hidden="true">${svg}</svg>`;
+        const kids: HTMLElement[] = [head, big, bar];
+        for (const row of (g.dataset.detail ?? '').split('|').filter(Boolean)) kids.push(el('span', 'tt-detail', row));
+        tip.replaceChildren(...kids);
+        tip.classList.add('ruler');
+        tip.hidden = false;
+        move(e);
+        return;
+      }
       if (g.dataset.kind === 'card') {
         type Card = { name: string; aside?: string; mark?: { type: string; fill: string }; big?: [string, string];
           bar?: { frac: number; segs: [number, number, string][]; left?: string; right?: string }; sev?: [number, number];
@@ -636,6 +664,7 @@ const saveName = `DAY${pad(d.day)}-${d.theme.toUpperCase().replace(/[^A-Z0-9]+/g
   const hosts = [...document.querySelectorAll<SVGSVGElement>('[data-state-host]')];
   if (hosts.length) {
     const setState = (key: string) => {
+      if (cols) cols.dataset.state = key; // the hours tooltip (Plate XVII) reads the hour shown
       cols?.querySelectorAll('[data-state]').forEach((g) => {
         if (g.getAttribute('data-state') === key) g.removeAttribute('display');
         else g.setAttribute('display', 'none');
