@@ -45,6 +45,8 @@ import day14Data from '../../days/day14-borgesian/output/plate.json';
 import { renderDay14, CHART_TITLE as D14_CHART_TITLE } from './day14.js';
 import day15Data from '../../days/day15-inside-out/output/plate.json';
 import { renderDay15, CHART_TITLE as D15_CHART_TITLE, CHART_NOTE as D15_CHART_NOTE, dayLong as d15Day } from './day15.js';
+import day18Data from '../../days/day18-null/output/plate.json';
+import { renderDay18, CHART_TITLE as D18_CHART_TITLE, chartNote as d18ChartNote, INSET_TITLE as D18_INSET, CHART_ROWS as D18_ROWS, dayShort as d18Day, monthRange as d18Range } from './day18.js';
 import { renderDay07, CHART_NOTE as D7_CHART_NOTE, chartTitle as d7ChartTitle, insetTitle as d7InsetTitle, clock as d7Clock, dayLong as d7Day, hundreds as d7Hundreds, sortOutages as d7Sort } from './day07.js';
 
 const csv = (rows) =>
@@ -590,6 +592,31 @@ const d15Story = {
   ],
 };
 
+// Every number below is computed from the plotted data (days/day18-null/output/plate.json).
+const d18 = day18Data.summary;
+const d18Pct = (v) => pct(v, v < 0.1 ? 1 : 0);
+const d18Top = day18Data.routes.slice(0, 3);
+const d18Route = (r) => `${r.name} (${r.id})`;
+const d18Never = day18Data.never.map((r) => r.id);
+const d18Story = {
+  background: [
+    'CTA keeps two records of its buses. The schedule lists every trip a bus should make. Bus Tracker reports where each bus actually is. Since 2022 the Ghost Buses project, started at Chi Hack Night and now kept by the Mansueto Institute, has saved those reports every five minutes.',
+    `This map joins the two records for the weekdays of ${d18Range(day18Data.window)}. A trip in the schedule with no bus behind it in Bus Tracker is a NULL: a row that should be there and is not. Each hollow ring is one such bus on an average weekday, placed along its route. Hover a route or a row of the chart for its numbers.`,
+  ],
+  findings: [
+    day18Data.finding,
+    `${pct(d18.southStops)} of the buses due at a Chicago bus stop are due south of Roosevelt Road, but ${pct(d18.southGhosts)} of the missing ones were.`,
+    `${d18Route(d18Top[0])} lost the most, about ${fmt(d18Top[0].miss)} buses a weekday (${pct(d18Top[0].share)} of its trips). Then came ${d18Route(d18Top[1])} with ${fmt(d18Top[1].miss)} (${pct(d18Top[1].share)}) and ${d18Route(d18Top[2])} with ${fmt(d18Top[2].miss)} (${pct(d18Top[2].share)}). Express routes lost ${d18Pct(d18.expressShare)} of their trips; local routes, ${d18Pct(d18.localShare)}.`,
+    `Some days were worse than others: ${d18Pct(d18.worstShare)} of trips went missing on ${d18Day(d18.worstDay)}, ${d18Pct(d18.bestShare)} on ${d18Day(d18.bestDay)}.`,
+  ],
+  limits: [
+    `The record has holes of its own. On ${d18.blankDays} of ${fmt(d18.routeDays)} route-days, Bus Tracker saw fewer than half of a route’s buses, often for several days in a row. Those days are treated as gaps in the record, not as missing buses. Counted as missing, they would raise the total to about ${fmt(Math.round(d18.rawMiss / 10) * 10)} a weekday (${d18Pct(d18.rawShare)}).`,
+    `Routes ${list(d18Never)} are in the schedule every weekday but never appear in Bus Tracker under their own number, so they are left out. ${list(day18Data.missingDays.map(d18Day))} are missing from the archive.`,
+    'A bus whose tracker is switched off counts as missing, and a bus that ran only part of its trip counts as seen. Bus Tracker is still the only public record of where the buses are.',
+  ],
+};
+d18Story.sections = [['Background', d18Story.background], ['Findings', d18Story.findings, true], ['What the record cannot see', d18Story.limits]];
+
 export const plates = {
   1: {
     file: 'day01-the-doors',
@@ -1043,6 +1070,31 @@ export const plates = {
       csv([
         ['x_miles_east', 'y_miles_north', 'minutes_from_130th_st', 'minutes_from_state_madison', 'miles_from_130th_st'],
         ...day15Data.cells.map(([x, y, a, b]) => [x, y, a, b, Math.hypot(x - day15Data.points.start[0], y - day15Data.points.start[1]).toFixed(2)]),
+      ]),
+  },
+  18: {
+    file: 'day18-ghost-buses',
+    render: (o) => renderDay18({ ...day18Data, findings: d18Story.findings.slice(1), boundary: cityBoundary.rings }, o), // the headline is the plate's finding note
+    subtitle: 'The timetable promises a bus. How many never come, and where?',
+    finding: day18Data.finding,
+    story: d18Story,
+    ledger: [
+      ['Seen', `CTA Bus Tracker vehicle positions, saved every five minutes by the Ghost Buses archive (Chi Hack Night; kept by the Mansueto Institute since 2024): ${d18.days} weekdays, ${d18Range(day18Data.window)}. ${list(day18Data.missingDays.map(d18Day))} are not in the archive.`, [['archive', day18Data.sources.archive], ['Bus Tracker', day18Data.sources.busTracker]]],
+      ['Scheduled', `CTA GTFS, downloaded ${day18Data.gtfs.snapshot}, whose calendars cover the window: the bus trips scheduled on each route each weekday.`, day18Data.gtfs.url],
+      ['Method', 'A trip is seen if Bus Tracker reported it on its route at least once that day. Trips are counted, not matched, because the two records number trips differently. Seen trips are capped at the scheduled count, so extra runs do not offset missing ones. Route figures are averages over the route’s weekdays.'],
+      ['Blank days', `Route-days with under ${Math.round(day18Data.blankRule * 100)}% of trips seen (${d18.blankDays} of ${fmt(d18.routeDays)}, on ${d18.blankRoutes} routes) are gaps in the record and left out. Routes ${list(d18Never)} are scheduled but never appear in Bus Tracker; left out.`],
+      ['Drawing', `One hollow ring per missing bus on an average weekday (route averages rounded so the rings add up to ${fmt(d18.rings)}), spaced evenly along the route’s main pattern. South and north: every bus due at a stop on Wednesday ${d18Day(day18Data.gtfs.refDay)}, each taking its route’s missing share.`],
+      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
+    ],
+    page: {
+      chart: { title: D18_CHART_TITLE, note: d18ChartNote(D18_ROWS) },
+      inset: { title: D18_INSET },
+    },
+    csv: () =>
+      csv([
+        ['route', 'name', 'express', 'scheduled_trips_weekday', 'seen_trips_weekday', 'missing_trips_weekday', 'missing_share', 'rings', 'weekdays_counted', 'weekdays_blank'],
+        ...day18Data.routes.map((r) => [r.id, r.name, r.express, r.sched, r.seen, r.miss, r.share, r.rings, r.days, r.blank]),
       ]),
   },
 };
