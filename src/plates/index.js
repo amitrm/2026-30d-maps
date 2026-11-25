@@ -55,6 +55,8 @@ import day19Data from '../../days/day19-smell/output/plate.json';
 import { renderDay19, CHART_TITLE as D19_CHART_TITLE, CHART_NOTE as D19_CHART_NOTE, INSET_TITLE as D19_INSET, hourName as d19Hour, monthName as d19Month } from './day19.js';
 import day20Data from '../../days/day20-hexagons/output/plate.json';
 import { renderDay20, CHART_TITLE as D20_CHART_TITLE, CHART_NOTE as D20_CHART_NOTE, INSET_TITLE as D20_INSET, insetNote as d20InsetNote, jobsText as d20Jobs } from './day20.js';
+import day21Data from '../../days/day21-osm/output/plate.json';
+import { renderDay21, CHART_TITLE as D21_CHART_TITLE, CHART_NOTE as D21_CHART_NOTE, INSET_TITLE as D21_INSET, insetNote as d21InsetNote, longDate as d21Date } from './day21.js';
 import { renderDay07, CHART_NOTE as D7_CHART_NOTE, chartTitle as d7ChartTitle, insetTitle as d7InsetTitle, clock as d7Clock, dayLong as d7Day, hundreds as d7Hundreds, sortOutages as d7Sort } from './day07.js';
 
 const csv = (rows) =>
@@ -736,6 +738,40 @@ const d20Story = {
 };
 d20Story.sections = [['Background', d20Story.background], ['Findings', d20Story.findings, true], ['What the map cannot see', d20Story.limits]];
 
+// Every number below is computed from the plotted data (days/day21-osm/output/plate.json).
+const d21 = day21Data.summary;
+const d21q = day21Data.qa;
+const d21St = (id) => Object.fromEntries(day21Data.stationCols.map((c, i) => [c, day21Data.stations.find((r) => r[0] === String(id))[i]]));
+const [d21Best, d21Worst] = day21Data.inset.map((w) => d21St(w.id));
+const d21Apart = Math.round(Math.hypot(d21Best.x - d21Worst.x, d21Best.y - d21Worst.y) * 2) / 2;
+const d21Miles = (v) => (v === 0.5 ? 'half a mile' : v === 1 ? 'a mile' : v === 1.5 ? 'a mile and a half' : `${v} miles`);
+const d21Side = (i) => day21Data.sides.at(i);
+const d21Pct = (r) => pct(r.both / r.n);
+const d21Story = {
+  background: [
+    `A route planner for wheelchair users can trust a street crossing only if its map says the curb at each end is lowered or flush. Many such planners are built on OpenStreetMap, the free map of the world that anyone can edit. In OpenStreetMap, the curb is a point where the crosswalk meets the sidewalk, and its height is a tag: lowered, flush or raised.`,
+    `Chicago’s sidewalks and crosswalks are now drawn in OpenStreetMap as lines of their own, almost all of them since 2022: ${pct(d21q.sidewalkSince2022)} of the sidewalk lines and ${pct(d21q.crosswalksSince2022)} of the crosswalks. Along ${pct(d21q.streetShareWithSidewalk)} of the city’s street length, a sidewalk is drawn beside the street.`,
+    `This map shows each of the ${fmt(d21.n)} crosswalks as a dot, shaded by how many of its two ends give the curb’s height. Hover a station for its quarter mile, or a bar of the chart to show only that shade on the map.`,
+  ],
+  findings: [
+    day21Data.finding,
+    `Only ${pct(d21.both / d21.n)} give the height at both ends, the case a route planner can trust. Where a height is given, it is almost always lowered or flush: ${fmt(d21.raised)} of ${fmt(d21.endsGiven)} curb ends are raised.`,
+    `It depends on where mappers have worked. On the ${d21Side(0).side}, ${d21Pct(d21Side(0))} of crosswalks give both heights; on the ${d21Side(-1).side}, ${d21Pct(d21Side(-1))}.`,
+    `Around accessible ‘L’ stations it is no better. Within a quarter mile of them, ${pct(d21.accBoth / d21.accN)} of crosswalks give both heights. At ${d21.accZero} of the ${d21.accStations} accessible stations, not one does. ${d21Best.short} (${pct(d21Best.both / d21Best.n)}) and ${d21Worst.short} (${pct(d21Worst.both / d21Worst.n)}) lie ${d21Miles(d21Apart)} apart.`,
+  ],
+  edit: [
+    `The gap is in the map, and anyone can close it. In OpenStreetMap’s editor, select the point where a crosswalk meets the sidewalk and set its curb to lowered, flush or raised. Street-level imagery in the editor, or a walk to the corner, settles it.`,
+    `Within a quarter mile of the accessible ‘L’ stations, about ${thousands(d21.accEndsToTag)} curb ends wait for a height. Around ${d21Worst.short} alone, ${fmt(d21Worst.ends)}.`,
+  ],
+  limits: [
+    'The map, not the street. A curb without a height in OpenStreetMap may well be lowered; the map simply does not say. A height that is given may be out of date, because curb ramps are rebuilt and tags are not always changed.',
+    'Height, not condition. A curb tagged lowered says nothing about the ramp’s slope, cracks, standing water or a missing warning surface.',
+    'Crossings drawn as points. Alley and driveway crossings, mapped as points on the sidewalk, and street crossings with no crosswalk drawn are not counted.',
+    `One day’s map. OpenStreetMap changes every day; this is the map of ${d21Date(day21Data.extract.date)}.`,
+  ],
+};
+d21Story.sections = [['Background', d21Story.background], ['Findings', d21Story.findings, true], ['Fill the gap', d21Story.edit], ['What the map cannot see', d21Story.limits]];
+
 export const plates = {
   1: {
     file: 'day01-the-doors',
@@ -1318,6 +1354,32 @@ export const plates = {
       csv([
         ['x_miles_east', 'y_miles_north', 'residents', 'jobs_within_45_min', 'community_area'],
         ...day20Data.hexes.map(([r, c, pop, jobs, ca]) => [(c * day20Data.S + (((r % 2) + 2) % 2) * day20Data.S / 2).toFixed(3), (r * day20Data.S * Math.sqrt(3) / 2).toFixed(3), pop, jobs, day20Data.caNames[String(ca)] ?? '']),
+      ]),
+  },
+  21: {
+    file: 'day21-does-the-map-know-the-curb',
+    render: (o) => renderDay21({ ...day21Data, findings: d21Story.findings.slice(1), boundary: cityBoundary.rings }, o), // the headline is the plate's finding note
+    subtitle: 'Where does OpenStreetMap tell a wheelchair user whether a crosswalk’s curb is lowered?',
+    finding: day21Data.finding,
+    story: d21Story,
+    ledger: [
+      ['OpenStreetMap', `© OpenStreetMap contributors, under the Open Database License. Geofabrik extract of Illinois, ${d21Date(day21Data.extract.date)} (${day21Data.extract.file}), cut to the city with osmium.`, [['Copyright', day21Data.sources.osm], ['Geofabrik', day21Data.extract.url]]],
+      ['Crosswalks', `The ${fmt(d21.n)} crosswalk ways (footway=crossing) whose midpoint lies in the city. Crossings drawn only as points are not counted.`, day21Data.sources.crossing],
+      ['Curbs', `Each end takes the curb point (barrier=kerb or kerb=*) among the crosswalk’s first or last two points. It gives the height if kerb is lowered, flush, raised or no; kerb=yes, unspecified or no kerb tag do not. Of ${fmt(d21q.endsNoCurb)} ends with no curb point, ${fmt(d21q.endsCurbWithin5m)} have one within 5 meters off the crosswalk, not counted. Counting any curb point at all, ${pct(d21q.looseBoth)} of crosswalks have one at both ends.`, day21Data.sources.kerb],
+      ['Stations', `The ${d21.stations} ‘L’ stations in the city, ${d21.accStations} of them accessible, with CTA’s accessibility flags as corrected on Plate VIII (Racine and Austin). Crosswalks whose midpoint lies within a straight-line quarter mile.`],
+      ['Sides', 'Community areas (Chicago Data Portal), grouped into sides as on Plate X (Wikipedia’s unofficial grouping).'],
+      ['Drawn since', 'OpenStreetMap numbers new objects in order, so each line’s creation date is read off its number against lines still in their first version. Sidewalks: footway=sidewalk lines; streets: residential to trunk roads, with a sidewalk if one is drawn within 30 meters of the street’s midpoint.'],
+      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
+    ],
+    page: {
+      chart: { title: D21_CHART_TITLE, note: D21_CHART_NOTE },
+      inset: { title: D21_INSET, note: d21InsetNote(day21Data) },
+    },
+    csv: () =>
+      csv([
+        ['x_miles_east', 'y_miles_north', 'curb_ends_with_height'],
+        ...day21Data.cross,
       ]),
   },
 };
