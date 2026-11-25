@@ -1374,7 +1374,7 @@ export const plates = {
     ],
     page: {
       chart: { title: D21_CHART_TITLE, note: D21_CHART_NOTE },
-      inset: { title: D21_INSET, note: d21InsetNote(day21Data) },
+      inset: { title: D21_INSET, note: d21InsetNote(day21Data), frame: false },
     },
     csv: () =>
       csv([
