@@ -320,7 +320,7 @@ export function renderDay01(data, { mode = 'gray', variant = 'plate' } = {}) {
     ['UNITS', `${summary.total} stations (map_id); ADA flag as published`],
     ['METHOD', 'Vertically accessible only if every platform is flagged accessible'],
     ['', 'Plotted in miles from State & Madison; grid lines labeled with address'],
-    ['', 'numbers (800 per mile; 1,200 for the first mile south of Madison)'],
+    ['', 'numbers (south of Madison: 1200 S Roosevelt, 2200 S Cermak, 3100 S 31st, then 800 a mile)'],
     ['CAVEAT', 'Flag lags CTA: 110 of 146 accessible (Aug 2026)'],
     ['', 'Austin (Green) reopened accessible Aug 2026; still flagged non-accessible'],
     ['LIMITS', 'City of Chicago, Boundaries – City · qqq8-j68g'],

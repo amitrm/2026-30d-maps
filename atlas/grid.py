@@ -1,9 +1,12 @@
 """Chicago address-grid coordinates, the shared coordinate system of the atlas.
 
 Chicago addresses count 800 numbers per mile from an origin at State Street (east-west) and
-Madison Street (north-south). The first mile south of Madison is the exception: it runs to
-Roosevelt Road, which is 1200 South. Plates are drawn in these address units rather than in
-latitude and longitude.
+Madison Street (north-south). Plates are drawn in "address units": 800 per mile, with 1,200 for the
+first mile south of Madison (to Roosevelt Road, 1200 South). The unit is a position code, exact both
+ways with miles. South of Roosevelt it is not the street address: the street centerlines show 1,000
+numbers in the second mile (to Cermak Road, 2200 S) and 900 in the third (to 31st Street), then 800
+a mile (Plate XXII). :func:`address_south` gives the real number; the site labels grid lines with it
+(``src/lib/grid.js``).
 
 Distances use a local equirectangular approximation around the origin, which is accurate to well
 under 1% across the city.
@@ -40,6 +43,13 @@ def north_to_address(north: ArrayLike) -> np.ndarray:
         [n * NUMBERS_PER_MILE, n * FIRST_MILE_SOUTH],
         default=-FIRST_MILE_SOUTH + (n + 1) * NUMBERS_PER_MILE,
     )
+
+
+def address_south(miles: ArrayLike) -> np.ndarray:
+    """Real address number at a true distance south of Madison (Roosevelt, Cermak and 31st taken as
+    one, two and three miles south; 800 a mile beyond)."""
+    m = np.asarray(miles, dtype=float)
+    return np.where(m >= 3, 3100 + (m - 3) * 800, np.interp(m, [0, 1, 2, 3], [0, 1200, 2200, 3100]))
 
 
 def to_address(lat: ArrayLike, lon: ArrayLike) -> tuple[np.ndarray, np.ndarray]:

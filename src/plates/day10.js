@@ -1,6 +1,6 @@
 // Plate X · The Line Printer · Day 10 Prompting only
 import { C, LINES, SERIF, SANS, esc, text, textWidth, legendBox, wrap, frame, svg } from '../lib/plate.js';
-import { formatAddress, gridLines, toMiles } from '../lib/grid.js';
+import { formatAddress, gridLines, toMiles, realY } from '../lib/grid.js';
 
 // variant 'plate': the full 1080 x 1350 plate (export, download).
 // variant 'map': the map alone, with hover hooks on the stations, for the day page's left column.
@@ -141,7 +141,7 @@ export function renderDay10(data, { mode = 'gray', variant = 'plate', palette, s
 
   // ---------- main map: the whole city ----------
   const ext = data.extent; // miles, on grid lines
-  const extA = { west: ext.west * 800, east: ext.east * 800, south: addrY(ext.south), north: addrY(ext.north) };
+  const extA = { west: ext.west * 800, east: ext.east * 800, south: unitY(ext.south), north: unitY(ext.north) };
   const field = isMap ? { x: 60, y: 250, w: 760, h: 1040 } : { x: 60, y: 262, w: 575, h: 830 };
   const k = Math.min(field.w / (ext.east - ext.west), field.h / (ext.north - ext.south));
   const Xm = (m) => field.x + (m - ext.west) * k;
@@ -356,8 +356,9 @@ function blockHooks(inset, IXm, IYm, ki, box, fillOf) {
 export const BREAKS = [7.5, 10, 12.5, 15, 20];
 export const classOf = (t) => BREAKS.filter((b) => t > b).length;
 const minutes = (v) => (v < 10 ? `${(Math.round(v * 2) / 2).toString().replace('.5', '½')} min` : `${Math.round(v)} min`);
-// miles north -> address
-export const addrY = (m) => (m >= 0 ? m * 800 : m >= -1 ? m * 1200 : -1200 + (m + 1) * 800);
+// miles north -> real address number
+const unitY = (m) => (m >= 0 ? m * 800 : m >= -1 ? m * 1200 : -1200 + (m + 1) * 800);
+export const addrY = (m) => realY(unitY(m));
 // the block's address range, as a resident would say it: '9500 S block, 3100–3200 W'
 export function blockName(col, row) {
   const x0 = col * 100, x1 = (col + 1) * 100;

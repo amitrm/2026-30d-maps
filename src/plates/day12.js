@@ -380,7 +380,7 @@ export function renderDay12(data, { mode = 'gray', variant = 'plate', palette, c
     ['SHARED', 'Shared Cost Sidewalk Program, 2026 overview: the owner pays part; applications on one day each January, first come, first served'],
     ['AUDIT', 'Office of Inspector General, audit of the Aldermanic Menu Program (April 2017) and advisory (June 2019)'],
     ['LAWSUIT', 'Lane v. City of Chicago, filed September 2025 (Disability Rights Advocates); the city has moved to dismiss; still open'],
-    ['GRID', 'Each square one mile from State & Madison; the first mile south of Madison runs to Roosevelt Road (1200 S)'],
+    ['GRID', 'Each square one mile from State & Madison; south of it 1200 S is Roosevelt, 2200 S Cermak, 3100 S 31st, then 800 a mile'],
     ...(color && PAL === PALETTES.sandteal ? [['COLOR', 'Sand to teal, light for less, dark for more; scatter in Joshua Stevens’ purple–gold bivariate scheme']] : []),
   ];
   dy += 18;
