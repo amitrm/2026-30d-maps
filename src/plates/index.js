@@ -56,8 +56,13 @@ import { renderDay19, CHART_TITLE as D19_CHART_TITLE, CHART_NOTE as D19_CHART_NO
 import day20Data from '../../days/day20-hexagons/output/plate.json';
 import { renderDay20, CHART_TITLE as D20_CHART_TITLE, CHART_NOTE as D20_CHART_NOTE, INSET_TITLE as D20_INSET, insetNote as d20InsetNote, jobsText as d20Jobs } from './day20.js';
 import day21Data from '../../days/day21-osm/output/plate.json';
+import day22Data from '../../days/day22-projections/output/plate.json';
+import { renderDay22, CHART_TITLE as D22_CHART_TITLE, CHART_NOTE as D22_CHART_NOTE, INSET_TITLE as D22_INSET, INSET_NOTE as D22_INSET_NOTE, longDate as d22Date } from './day22.js';
 import { renderDay21, CHART_TITLE as D21_CHART_TITLE, CHART_NOTE as D21_CHART_NOTE, INSET_TITLE as D21_INSET, insetNote as d21InsetNote, longDate as d21Date } from './day21.js';
 import { renderDay07, CHART_NOTE as D7_CHART_NOTE, chartTitle as d7ChartTitle, insetTitle as d7InsetTitle, clock as d7Clock, dayLong as d7Day, hundreds as d7Hundreds, sortOutages as d7Sort } from './day07.js';
+
+// Grid ledger row, every map plate. South of Roosevelt the numbers are not 800 a mile (Plate XXII).
+const GRID_NOTE = 'Each square is one mile, measured from State & Madison. Grid lines carry street numbers: south of Madison, 1200 S is Roosevelt, 2200 S Cermak, 3100 S 31st Street, then 800 a mile.';
 
 const csv = (rows) =>
   rows.map((r) => r.map((v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v)).join(',')).join('\n') + '\n';
@@ -772,6 +777,30 @@ const d21Story = {
 };
 d21Story.sections = [['Background', d21Story.background], ['Findings', d21Story.findings, true], ['Fill the gap', d21Story.edit], ['What the map cannot see', d21Story.limits]];
 
+// Every number below is computed from the plotted data (days/day22-projections/output/plate.json).
+const d22 = day22Data.summary;
+const d22q = day22Data.qa;
+const d22Feet = (miles) => fmt(Math.round((miles * 5280) / 10) * 10);
+const d22Story = {
+  background: [
+    'Every Chicago address counts from State and Madison, and the grid promises 800 numbers to the mile: eight blocks of 100. Chicagoans judge distance by it, and every plate in this atlas is drawn on it.',
+    'A map projection turns one surface into another, and every projection stretches something. Treated as a projection, the address grid turns the city’s miles into numbers. This plate draws Chicago where its numbers put it, with a circle of the same real size at every mile crossing. Where the grid keeps its promise, the circle stays round. Where a mile holds more numbers, it grows tall.',
+    'Hover a circle for the numbers a mile holds there, or a row of the chart to show the circles in that mile.',
+  ],
+  findings: [day22Data.finding, ...day22Data.findings],
+  method: [
+    `The city’s street centerlines give every grid street its own address line: 63rd Street is 6300 S, Western Avenue 2400 W. Where two such streets cross, the corner has a real position and an address position. ${fmt(d22.controlPoints)} corners in the city tie the two together.`,
+    `Between the corners runs a rubber sheet: on a lattice every quarter mile, the median shift of the corners nearby, blended smoothly in between. For half of the corners, it lands within about ${d22Feet(d22q.fitMedian)} feet of where their numbers say.`,
+    `The sheet also carries the grid’s lean. Chicago’s grid streets run about ${d22.lean}° off true north and east, roughly ${d22Feet(Math.tan((d22.lean * Math.PI) / 180))} feet a mile, so the dotted city limit sits a little turned against the city its numbers draw.`,
+  ],
+  limits: [
+    'Streets, not doors. The sheet follows the corners of grid streets; a building’s own number can differ from its block’s grid line.',
+    `Old centerlines. The city last updated its street centerlines on ${d22Date(day22Data.datasetUpdated)}; streets built or renumbered since are missing.`,
+    'Off the grid. Diagonal streets and curving neighborhoods carry no grid line of their own; the sheet only reaches them from the grid corners around them.',
+  ],
+};
+d22Story.sections = [['Background', d22Story.background], ['Findings', d22Story.findings, true], ['How the projection is made', d22Story.method], ['What the map cannot see', d22Story.limits]];
+
 export const plates = {
   1: {
     file: 'day01-the-doors',
@@ -783,7 +812,7 @@ export const plates = {
       ['Source', `CTA – List of 'L' Stops, Chicago Data Portal · ${day01Data.ledger.dataset_id} · pulled ${day01Data.ledger.pulled}`, day01Data.ledger.url],
       ['Units', day01Data.ledger.units],
       ['Method', 'Stops merged to stations; a station is vertically accessible only if every platform is flagged accessible.'],
-      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S), so the lines south of it read 1200 S, 2000 S, 2800 S and so on.'],
+      ['Grid', GRID_NOTE],
       ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
       ['Order', `CTA GTFS schedule, feed of ${lineSequences.feed_date}; State/Lake, not scheduled, placed by position.`, 'https://www.transitchicago.com/developers/gtfs/'],
       ['Caveat', 'The ADA flag lags CTA’s own count (110 of 146 accessible, Aug 2026) and still marks Austin (Green), reopened accessible, as non-accessible.'],
@@ -814,7 +843,7 @@ export const plates = {
       ['Units', `Average weekday riders per route, ${monthSpan(day02Data.window)}: weekday rides divided by weekdays. A route that runs part of the year is averaged over the whole year.`],
       ['Service', `CTA GTFS schedule, feed of ${day02Data.gtfs.feedDate}, on Wednesday ${day02Data.gtfs.refDay}: trips, bus-hours (first to last stop) and the midday interval, 300 minutes divided by the trips each way starting 10:00–15:00. ’L’ lines from the same feed.`, day02Data.gtfs.url],
       ['Method', 'One shape per route: the longest pattern carrying at least a quarter of its direction’s trips, plus the other direction where it runs on another street (one-way pairs, end loops). Routes on a shared street overlap, most frequent on top.'],
-      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Grid', GRID_NOTE],
       ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
       ['Caveat', `Riders are boardings on the whole route, not the load on any one street. Ridership runs to ${day02Data.window[1]}; service is a later schedule. ${d2NotDrawn.length} event and seasonal routes (${d2NotDrawn.map((r) => r.id).join(', ')}) count in the totals but do not run on the reference day and are not drawn. Coverage is straight-line distance, not a walk.`],
       ['CTA', [
@@ -848,7 +877,7 @@ export const plates = {
       ['Walk', `OpenStreetMap walk network, Geofabrik extract of ${day03Data.osm.extract}, filtered with OSMnx’s walk rules. A half mile is ${Math.round(day03Data.walkM)} m along the network. Step-free: the same network without its ${fmt(day03Data.network.stairs)} mapped stair segments and ${day03Data.network.wheelchairNo} ways tagged wheelchair=no; its ${day03Data.network.elevators} mapped elevators and all ramps are kept. © OpenStreetMap contributors (ODbL).`, day03Data.osm.url],
       ['People', `2020 Census, Redistricting Data (P.L. 94-171): ${fmt(d3.residents)} residents in ${fmt(day03Data.census.blocks)} blocks, each placed by the walk from its internal point. Ambulatory difficulty: ACS 2020–2024 5-year, table B18105, by tract, spread over blocks by population.`, 'https://www.census.gov/programs-surveys/decennial-census/about/rdo/summary-files.html'],
       ['Method', `Each station joins the network at its nearest walkway, and the walk to it counts. A station is vertically accessible as on Plate I: every platform flagged accessible (an elevator or ramp from the street). Walksheds are the reached streets widened by 40 m (about one lot depth), clipped to the city limits. The network reaches a mile past the city limits; ${day03Data.leftOut.length - 1} suburban stations beyond it are left out, as is O’Hare, whose station inside the terminal is about 1 km from the nearest mapped walkway. No one in Chicago lives within a half mile of any of them.`],
-      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Grid', GRID_NOTE],
       ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
       ['Caveat', 'The step-free walk is an upper bound: OSM records stairs, not every missing curb ramp or elevator outage. The ADA flag lags CTA’s own count (110 of 146 accessible, Aug 2026) and still marks Austin (Green) non-accessible. Ambulatory-difficulty counts are estimates with wide margins.'],
       ['CTA', [
@@ -879,7 +908,7 @@ export const plates = {
       ['Clusters', `HDBSCAN on each person’s position (minimum ${day04Data.params.minCluster} people, ${day04Data.params.minSamples} samples, leaf selection). ${d4.clusters} of the ${d4.clustersFound} clusters it finds hold in at least half of 200 refits on 80% of the data and are drawn. Each is drawn along the streets that join its people: the shortest paths along OpenStreetMap streets that link them all (a minimum spanning tree), ${fmt(d4.clusterMiles)} miles in all.`],
       ['Network', `CDOT High Injury Network, 2025: the 34 corridors listed in its annual report, drawn along OpenStreetMap streets (extract of ${day04Data.sources.osm.extract}) between their cross streets, ${d4.hinMiles.toFixed(1)} miles. A person is on it within 75 feet, CDOT’s own buffer; a cluster is on it when a quarter of its people are.`, CDOT_REPORT],
       ['Bus stops', `CTA GTFS, feed of ${day04Data.sources.gtfs.feedDate}: people walking within 30 m (about 100 ft) of a bus stop, against the share of OpenStreetMap street length that close to one.`, day04Data.sources.gtfs.url],
-      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Grid', GRID_NOTE],
       ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
       ['Caveat', 'Counts, not rates. Police-reported crashes on city streets only. Serious injuries as recorded at the scene. The network is drawn from CDOT’s list of corridors, not from CDOT’s own file.'],
       ['CDOT', [
@@ -909,7 +938,7 @@ export const plates = {
       ['Track', `‘L’ lines: CTA GTFS rail shapes, feed of ${lineSequences.feed_date}, every shape carrying at least a tenth of its line’s trips (as Plate II).`, 'https://www.transitchicago.com/developers/gtfs/'],
       ['Transit', 'The order’s transit priority: CTA ‘L’ stations, Metra stations (Metra GTFS), Pace Pulse stops (Pace GTFS), crossings of two CTA bus routes (CTA GTFS), and streets passing under the elevated ‘L’ (OpenStreetMap).'],
       ['People', 'Vision difficulty: ACS 2020–2024 5-year, table B18103, by tract, spread over 2020 Census blocks by population; each block is placed by the walk from its internal point.', 'https://www.census.gov/programs-surveys/acs/data/summary-file.html'],
-      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Grid', GRID_NOTE],
       ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
       ['Caveat', `Installed is not compliant: the court monitor found none of ${d5.monitor.inspected} inspected APS fully compliant. The signal count is OpenStreetMap’s, not the City’s.`],
       ['Court', [
@@ -941,7 +970,7 @@ export const plates = {
       ['Streets', `OpenStreetMap, Geofabrik extract of ${day06Data.osmDate}, drivable named streets. A street is a CSL line where red ink runs along it on the 1929 map for at least half its length, over a quarter mile. © OpenStreetMap contributors (ODbL).`, 'https://download.geofabrik.de/north-america/us/illinois.html'],
       ['Today', `CTA bus routes as on Plate II, GTFS feed of ${day06Data.gtfs.feedDate}, on the street where a route runs along it.`, day06Data.gtfs.url],
       ['Miles', 'Street-miles inside today’s city, counted so both roadways of a divided street count once. Expressways and Lake Shore Drive are left out.'],
-      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Grid', GRID_NOTE],
       ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
       ['Caveat', `Checked by eye on 80 random streets: ${day06Data.qaRight.only1929}/40 “CSL only” and ${day06Data.qaRight.todayOnly}/40 “CTA only” right. The few dashed CSL bus lines can be missed. The map shows the CSL network in 1929 only. ${Math.round(d6.offSheetMiles)} miles of streets around O’Hare are off the map.`],
       ['Sources', [
@@ -977,7 +1006,7 @@ export const plates = {
       ['Walk', `As Plate III: a step-free half mile (${Math.round(day07Data.walkM)} m) on the OpenStreetMap walk network, Geofabrik extract of ${day07Data.osm.extract}, rerun without the stations that lost every platform. © OpenStreetMap contributors (ODbL).`, 'https://download.geofabrik.de/north-america/us/illinois.html'],
       ['Track', `‘L’ lines: CTA GTFS rail shapes, feed of ${day07Data.gtfs.feedDate}, every shape carrying at least a tenth of its line’s trips (as Plates II and V).`, 'https://www.transitchicago.com/developers/gtfs/'],
       ['People', '2020 Census blocks, placed by the walk from their internal point. Ambulatory difficulty: ACS 2020–2024 5-year, table B18105, by tract, spread over blocks by population.', 'https://www.census.gov/programs-surveys/acs/data/summary-file.html'],
-      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Grid', GRID_NOTE],
       ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
       ['Caveat', 'The alerts describe elevators in words; the match to platforms is a rule, checked by eye on each run. An outage counts from the alert’s start. Residents outside Chicago are not counted.'],
       ['Sources', [
@@ -1009,7 +1038,7 @@ export const plates = {
       ['Sea', 'The step-free walk to the nearest station once every station is accessible, on a 40 m grid, with a line every eighth of a mile from 5/8 to 4 miles and an ink line every half mile.'],
       ['Track', `CTA GTFS rail shapes, feed of ${day08Data.gtfs.feedDate}; the extension dashed.`, 'https://www.transitchicago.com/developers/gtfs/'],
       ['People', '2020 Census blocks, placed by the walk from their internal point.', 'https://www.census.gov/programs-surveys/decennial-census/about/rdo/summary-files.html'],
-      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Grid', GRID_NOTE],
       ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
       ['Sources', [
         ['CTA accessibility (ASAP)', day08Data.asap.page],
@@ -1103,7 +1132,7 @@ export const plates = {
         ['Phan & Jones (2017), noise inside CTA trains', day11Data.sources.ctaStudy],
         ['Orange Line on freight rights-of-way (chicago-l.org)', 'https://www.chicago-l.org/operations/lines/midway.html'],
       ]],
-      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Grid', GRID_NOTE],
       ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
     ],
     page: {
@@ -1135,7 +1164,7 @@ export const plates = {
         ['Lane v. City of Chicago (Disability Rights Advocates)', 'https://dralegal.org/case/lane-v-city-of-chicago/'],
         ['WTTW on the motion to dismiss (June 2026)', 'https://news.wttw.com/2026/06/22/chicago-s-sidewalks-aren-t-accessible-people-mobility-challenges-lawsuit-argues-city'],
       ]],
-      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Grid', GRID_NOTE],
       ['Color', `Seven classes of the share spent on sidewalks and crossings: under 2%, 2–5, 5–7, 7–10, 10–15, 15–20 and 20% or more. In color mode they run from sand to teal in seven even steps of lightness, light for less, dark for more, and the chart’s sidewalk and crossing bars take the same teals. In grayscale the same classes step from light to dark. The city as a whole spent ${pct(d12.walkShare)}.`],
       ['Scatter', 'In color mode the nine cells of Complaint and Wallet (thirds of the wards on each axis) use Joshua Stevens’ purple–gold bivariate scheme: purple for more requests, gold for more applications, umber for both.', 'https://www.joshuastevens.net/cartography/make-a-bivariate-choropleth-map/'],
     ],
@@ -1163,7 +1192,7 @@ export const plates = {
       ['Stairs', 'The same test with accessible stations only. The part of a copy it cannot match needs stairs. Accessible: the City’s flag, with Racine (Blue) and Austin (Green) counted accessible after their reopenings (as Plate VIII).', day13Data.sources.stops],
       ['Trains', `CTA GTFS, feed of ${day13Data.gtfsDate}: ‘L’ trains leaving their first stop in each hour, averaged over a week (five weekdays, Saturday, Sunday).`, day13Data.sources.gtfs],
       ['Fare', `CTA fares: $${d13.fare.toFixed(2)} for an ‘L’ ride (the O’Hare surcharge is left out).`, day13Data.sources.fares],
-      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Grid', GRID_NOTE],
       ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
     ],
     page: {
@@ -1191,7 +1220,7 @@ export const plates = {
       ['Mapped', `Project Sidewalk’s street segments (OpenStreetMap ways) inside the city that have imagery: ${fmt(d14.openKm)} km. A segment is mapped once a volunteer has completed a virtual walk of it: ${fmt(d14.mappedKm)} km, drawn as thin lines. Pace: the length first labeled in the 12 months before the pull, ${fmt(d14.lastYearKm)} km.`, day14Data.sources.api],
       ['Mile', `Cicero Avenue from Madison Street to Chicago Avenue. The CTA bus stops at each end, both directions averaged, fix 0 and 800 N; each label’s distance between them is scaled to 800 numbers. Its side comes from a center line fitted through the bus stops at each crossing. CTA GTFS, feed of ${day14Data.gtfsDate}. Cross streets: every named street meeting the mile in OpenStreetMap (Geofabrik extract, ODbL); arterials darker, minor streets lighter.`, day14Data.sources.gtfs],
       ['Areas', 'City of Chicago, Boundaries – Community Areas; a street segment counts in the area that holds its midpoint.', day14Data.sources.areas],
-      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Grid', GRID_NOTE],
       ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
     ],
     page: {
@@ -1215,7 +1244,7 @@ export const plates = {
       ['Start', 'The center is 130th Street where the Red Line Extension’s alignment, as mapped in OpenStreetMap (railway=construction), crosses it: the site of the extension’s last station. The Loop is State & Madison. The hospital is Northwestern Memorial Hospital, 251 E Huron St.', day15Data.sources.rleFaq],
       ['People', `2020 Census: ${fmt(d15.residents)} residents, each block at its internal point taking the minutes of the nearest quarter-mile point.`, day15Data.sources.census],
       ['Drawing', 'Main map: every quarter mile of the grid, its minutes lightly smoothed (0.2 mile). Inside out: each point keeps its true direction from the start and sits as far out as its minutes, smoothed over about 0.4 mile; the rings are minutes. Hover blocks (every half mile) show the unsmoothed minutes. Points with no stop within reach, on Lake Calumet, take the minutes of their neighbors.'],
-      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Grid', GRID_NOTE],
       ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
     ],
     page: {
@@ -1239,7 +1268,7 @@ export const plates = {
       ['Tables', 'Reports a month, citywide: months down, calendar years across; each cell shaded on a square-root scale of its table’s largest month.'],
       ['Areas', 'City of Chicago, Boundaries – Community Areas, as recorded on each report.', day16Data.sources.areas],
       ['Notes', `Snow – Object/Dibs Removal Request (${fmt(d16.dibs)}) and Submerged Divvy or Lime Device in the Lake/River (${d16.sunk}), same window; counted, not drawn.`],
-      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Grid', GRID_NOTE],
       ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
     ],
     page: {
@@ -1266,7 +1295,7 @@ export const plates = {
       ['People', `2020 Census: ${fmt(d17.residents)} residents, at their blocks’ internal points. The half mile is a straight line to a CTA bus stop or ‘L’ platform with a departure in the hour, inside the city or not.`, day17Data.sources.census],
       ['Night shift', `Census Bureau, American Community Survey 2020–2024 (5-year), table B08302, time leaving home to go to work: about ${d17About(d17.nightCommuters, 1000)} of ${d17About(d17.commuters, 1000)} Chicago commuters leave between 12:00 and 4:59 a.m. Tract counts are shared out to blocks by population, so block figures are estimates.`, day17Data.sources.acs],
       ['Sides', 'Community areas grouped into nine sides as on Plate X, after Wikipedia’s list of Chicago community areas (an unofficial grouping).', day17Data.sources.sides],
-      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Grid', GRID_NOTE],
       ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
     ],
     page: {
@@ -1291,7 +1320,7 @@ export const plates = {
       ['Method', 'A trip is seen if Bus Tracker reported it on its route at least once that day. Trips are counted, not matched, because the two records number trips differently. Seen trips are capped at the scheduled count, so extra runs do not offset missing ones. Route figures are averages over the route’s weekdays.'],
       ['Blank days', `Route-days with under ${Math.round(day18Data.blankRule * 100)}% of trips seen (${d18.blankDays} of ${fmt(d18.routeDays)}, on ${d18.blankRoutes} routes) are gaps in the record and left out. Routes ${list(d18Never)} are scheduled but never appear in Bus Tracker; left out.`],
       ['Drawing', `One hollow ring per missing bus on an average weekday (route averages rounded so the rings add up to ${fmt(d18.rings)}), spaced evenly along the route’s main pattern. South and north: every bus due at a stop on Wednesday ${d18Day(day18Data.gtfs.refDay)}, each taking its route’s missing share.`],
-      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Grid', GRID_NOTE],
       ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
     ],
     page: {
@@ -1317,7 +1346,7 @@ export const plates = {
       ['Light', 'Bands between whole ppb, darker for more NO₂. Each contour is lit white where the slope beneath it faces a light in the northwest and shaded ink where it faces away; its width follows the angle to the light (illuminated contours, after Kitiro Tanaka).'],
       ['Stops', `CTA GTFS, feed of ${day19Data.gtfs.snapshot}: the ${fmt(d19.stops)} bus stops inside the city served on Tuesday 17 November 2026, each read on the surface. Sides: community areas grouped as on Plate X (Wikipedia’s unofficial grouping).`, day19Data.gtfs.url],
       ['Standards', `US EPA annual NO₂ standard, ${d19.epaPpb} ppb; WHO 2021 annual guideline, 10 µg/m³ (about ${d19One(d19.whoPpb)} ppb). Both apply to yearly averages, compared with each sensor’s mean over all hours.`, [['EPA', day19Data.sources.epa], ['WHO', day19Data.sources.who]]],
-      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Grid', GRID_NOTE],
       ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
     ],
     page: {
@@ -1343,7 +1372,7 @@ export const plates = {
       ['Hexagons', `Pointy side up, laid on the address grid: centers every ½ mile along rows √3⁄4 mile apart, starting from State & Madison; each about ${(day20Data.S ** 2 * Math.sqrt(3) / 2).toFixed(2)} square mile. 2020 Census blocks go to the nearest center; the ${fmt(d20.hexes)} hexagons with residents are drawn (${fmt(d20.pop)} people).`, day20Data.sources.ca],
       ['Sides', 'Community areas (Chicago Data Portal · igwz-8jzy), each hexagon in the one most of its residents live in, grouped into sides as on Plate X (Wikipedia’s unofficial grouping).', day20Data.sources.ca],
       ['Inset', `The same jobs on hexagons centered a mile apart, in five classes of jobs per hexagon (${day20Data.regionClasses.map(fmt).join(', ')}).`],
-      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Grid', GRID_NOTE],
       ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
     ],
     page: {
@@ -1369,7 +1398,7 @@ export const plates = {
       ['Stations', `The ${d21.stations} ‘L’ stations in the city, ${d21.accStations} of them accessible, with CTA’s accessibility flags as corrected on Plate VIII (Racine and Austin). Crosswalks whose midpoint lies within a straight-line quarter mile.`],
       ['Sides', 'Community areas (Chicago Data Portal), grouped into sides as on Plate X (Wikipedia’s unofficial grouping).'],
       ['Drawn since', 'OpenStreetMap numbers new objects in order, so each line’s creation date is read off its number against lines still in their first version. Sidewalks: footway=sidewalk lines; streets: residential to trunk roads, with a sidewalk if one is drawn within 30 meters of the street’s midpoint.'],
-      ['Grid', 'Each square is one mile, measured from State & Madison, and grid lines carry address numbers. The first mile south of Madison runs to Roosevelt Road (1200 S).'],
+      ['Grid', GRID_NOTE],
       ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
     ],
     page: {
@@ -1380,6 +1409,32 @@ export const plates = {
       csv([
         ['x_miles_east', 'y_miles_north', 'curb_ends_with_height'],
         ...day21Data.cross,
+      ]),
+  },
+  22: {
+    file: 'day22-the-chicago-projection',
+    render: (o) => renderDay22(day22Data, o),
+    subtitle: 'Chicago’s addresses promise 800 numbers to the mile. Drawn as a map projection, where does the promise hold?',
+    finding: day22Data.finding,
+    story: d22Story,
+    ledger: [
+      ['Streets', `${day22Data.ledger.source} · ${day22Data.ledger.dataset_id} (map view 6imu-meau), last updated ${d22Date(day22Data.datasetUpdated)} · pulled ${day22Data.ledger.pulled}. ${fmt(d22.segments)} segments, each with its street’s grid coordinate.`, day22Data.ledger.url],
+      ['Corners', `${fmt(d22.controlPoints)} corners in the city where one east–west and one north–south grid street meet: the true position (miles from State & Madison) against the address position.`],
+      ['Projection', 'Address miles: the address number ÷ 800, south and west negative, with the South Side’s real numbers. Rubber sheet: the median shift of the corners within a band 2 miles along and ½ mile across each axis, on a quarter-mile lattice, bilinear in between.'],
+      ['Circles', `Tissot’s indicatrix: a circle of 0.3 mile at each of the ${d22.tissot} mile crossings in the city, drawn through the sheet. Stretched where a mile holds more than 880 numbers north to south.`],
+      ['Chart', 'Each mile street’s true position is the median of its corners in the city. Miles added: its number ÷ 800, minus its true miles from Madison. The tooltip gives the numbers per mile between consecutive mile streets.'],
+      ['Grid', 'On this plate the grid lines are address lines, every 800 numbers. On the other plates they are true miles, labeled with the real street numbers.'],
+      ['Caveat', `Grid streets lean about ${d22.lean}° from true north; the sheet carries the lean. Centerlines last updated ${d22Date(day22Data.datasetUpdated)}.`],
+      ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
+    ],
+    page: {
+      chart: { title: D22_CHART_TITLE, note: D22_CHART_NOTE },
+      inset: { title: D22_INSET, note: D22_INSET_NOTE },
+    },
+    csv: () =>
+      csv([
+        ['from_street', 'to_street', 'from_number', 'to_number', 'numbers', 'true_miles', 'numbers_per_mile'],
+        ...day22Data.ladder.map((r) => [r.from, r.to, r.a, r.b, r.numbers, r.miles, r.perMile]),
       ]),
   },
 };

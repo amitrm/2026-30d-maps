@@ -1,6 +1,6 @@
 // Plate XX · Jobs in 45 Minutes · Day 20 Hexagons
 import { C, SERIF, esc, text, textWidth, legendBox, wrap, frame, svg } from '../lib/plate.js';
-import { gridLines, formatAddress, toMiles } from '../lib/grid.js';
+import { gridLines, formatAddress, toMiles, realY } from '../lib/grid.js';
 
 // variant 'plate': the full 1080 x 1350 plate (export, download).
 // variant 'map': the map alone, with hover hooks, for the day page's left column.
@@ -45,7 +45,7 @@ const classShort = (cl, k) => {
 };
 // miles back to address numbers, to the nearest hundred (inverse of toMiles)
 const addr = (m, axis) => {
-  const v = axis === 'x' || m >= 0 ? m * 800 : m >= -1 ? m * 1200 : -1200 + (m + 1) * 800;
+  const v = axis === 'x' || m >= 0 ? m * 800 : realY(m >= -1 ? m * 1200 : -1200 + (m + 1) * 800);
   const r = Math.round(v / 100) * 100;
   return r === 0 ? (axis === 'x' ? 'State' : 'Madison') : `${Math.abs(r)} ${axis === 'x' ? (r < 0 ? 'W' : 'E') : r < 0 ? 'S' : 'N'}`;
 };
