@@ -1422,7 +1422,7 @@ export const plates = {
       ['Corners', `${fmt(d22.controlPoints)} corners in the city where one east–west and one north–south grid street meet: the true position (miles from State & Madison) against the address position.`],
       ['Projection', 'Address miles: the address number ÷ 800, south and west negative, with the South Side’s real numbers. Rubber sheet: the median shift of the corners within a band 2 miles along and ½ mile across each axis, on a quarter-mile lattice, bilinear in between.'],
       ['Circles', `Tissot’s indicatrix: a circle of 0.3 mile at each of the ${d22.tissot} mile crossings in the city, drawn through the sheet. Stretched where a mile holds more than 880 numbers north to south.`],
-      ['Chart', 'Each mile street’s true position is the median of its corners in the city; numbers per mile between consecutive mile streets.'],
+      ['Chart', 'Each mile street’s true position is the median of its corners in the city. Miles added: its number ÷ 800, minus its true miles from Madison. The tooltip gives the numbers per mile between consecutive mile streets.'],
       ['Grid', 'On this plate the grid lines are address lines, every 800 numbers. On the other plates they are true miles, labeled with the real street numbers.'],
       ['Caveat', `Grid streets lean about ${d22.lean}° from true north; the sheet carries the lean. Centerlines last updated ${d22Date(day22Data.datasetUpdated)}.`],
       ['Limits', `City of Chicago, ${cityBoundary.source} · ${cityBoundary.dataset_id} · pulled ${cityBoundary.pulled}`, cityBoundary.url],
